@@ -7,6 +7,7 @@ const navItems = [
   { to: "/clients", label: "Clients" },
   { to: "/credentials", label: "Credentials" },
   { to: "/tenders", label: "Tenders" },
+  { to: "/dsc", label: "DSC Keys" },
 ];
 const adminNavItems = [
   { to: "/admin/users", label: "Users" },
