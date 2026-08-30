@@ -283,13 +283,17 @@ Deactivating (`is_active: false`) removes a portal from `?active_only=true` resu
 
 ## 5. Credentials
 
+**Password visibility model.** Stored portal passwords are readable by *any* authenticated user — both roles, regardless of who created the row. This is deliberate and matches the module's purpose ("so any employee can log in to file their tenders"). Ownership still gates writes, as everywhere else.
+
+Passwords are **never** returned by the list endpoint. Revealing one is a single-row action against `GET /api/credentials/:id?reveal=true`, so a list response can't leak every password at once. The password is stored in plaintext (see `PRD.md` §4.3 and the encryption-at-rest hardening item in `ARCHITECTURE.md` §7).
+
 ### `GET /api/credentials`
 
 Authenticated (any role).
 
-Query params: `page`, `page_size`, `client_id` (filter), `portal_id` (filter), `search` (matches client company_name or portal name), `reveal` (bool, default false).
+Query params: `page`, `page_size`, `client_id` (filter), `portal_id` (filter), `search` (matches client company_name or portal name).
 
-By default, `password` is returned as `"••••••"`. When `?reveal=true`, the actual password is returned. (Simple approach for prototype. Harden later if audit is needed.)
+`password` is **always** `"••••••"` here — there is no list-level reveal. Use the per-row endpoint below.
 
 Each item:
 ```json
@@ -303,6 +307,16 @@ Each item:
   "created_at": "..."
 }
 ```
+
+---
+
+### `GET /api/credentials/:id`
+
+Authenticated (any role). Query params: `reveal` (bool, default false).
+
+Returns a single credential in the same shape as a list item. With `?reveal=true` the `password` field holds the real stored password; otherwise it's masked. This is what the table's click-to-reveal action calls.
+
+**Errors:** `404 NOT_FOUND`.
 
 ---
 
@@ -326,13 +340,19 @@ Each item:
 
 ### `PATCH /api/credentials/:id`
 
-Owner or admin. Any subset of the writable fields.
+Owner or admin. Any subset of `client_id`, `portal_id`, `login_identifier`, `password`.
+
+**Success 200:** updated credential, password masked.
+**Errors:** `403 FORBIDDEN`, `404 NOT_FOUND`, `404 CLIENT_NOT_FOUND`, `404 PORTAL_NOT_FOUND`, `422 VALIDATION_ERROR`.
 
 ---
 
 ### `DELETE /api/credentials/:id`
 
 Owner or admin.
+
+**Success 200:** `{ "success": true, "data": { "id": "uuid", "deleted": true } }`
+**Errors:** `403 FORBIDDEN`, `404 NOT_FOUND`.
 
 ---
 
