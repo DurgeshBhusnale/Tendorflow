@@ -393,7 +393,7 @@ Admin only. **Request:** `{ "name"?, "is_active"? }`
 
 Authenticated.
 
-Query params: `page`, `page_size`, `client_id`, `status` (`Paid` | `Pending`), `search`.
+Query params: `page`, `page_size`, `client_id`, `status` (`Paid` | `Pending`), `search` (matches client company_name or tender name).
 
 Each item:
 ```json
@@ -411,6 +411,31 @@ Each item:
 ```
 
 (Note: `price` and `total_amount` returned as strings to preserve decimal precision across JSON — frontend parses to number for display.)
+
+---
+
+### `GET /api/tenders/summary`
+
+Authenticated. Backs the "Total Pending Value" / "Total Paid Value" strip above the tenders table (`PRD.md` §4.4).
+
+Accepts the **same** filter params as `GET /api/tenders` (`client_id`, `status`, `search`; pagination params are ignored) and describes exactly the rows that filter selects — so the strip always agrees with the table beneath it. Filtering to `status=Paid` therefore reports a pending value of `"0.00"`, which is correct for the visible rows.
+
+This is a separate endpoint rather than an extra key inside the list response, so the paginated envelope stays uniform across every list endpoint (root `CLAUDE.md` invariant 4).
+
+**Success 200:**
+```json
+{
+  "success": true,
+  "data": {
+    "total_pending_value": "12500.00",
+    "total_paid_value": "25000.00",
+    "pending_count": 3,
+    "paid_count": 2
+  }
+}
+```
+
+Values are summed from the stored `total_amount` generated column, so they can't drift from the rows.
 
 ---
 
@@ -437,13 +462,21 @@ Each item:
 
 ### `PATCH /api/tenders/:id`
 
-Owner or admin. Common use: `{ "status": "Paid" }`. Also accepts `quantity`, `price` — `total_amount` recomputes automatically.
+Owner or admin. Accepts any subset of `client_id`, `tender_name_id`, `quantity`, `price`, `status`. Common use is the row-level quick action, `{ "status": "Paid" }` — there is no separate endpoint for it.
+
+`total_amount` recomputes automatically in Postgres and is never accepted in the body.
+
+**Success 200:** updated tender.
+**Errors:** `403 FORBIDDEN`, `404 NOT_FOUND`, `404 CLIENT_NOT_FOUND`, `404 TENDER_NAME_NOT_FOUND`, `422 VALIDATION_ERROR`.
 
 ---
 
 ### `DELETE /api/tenders/:id`
 
 Owner or admin.
+
+**Success 200:** `{ "success": true, "data": { "id": "uuid", "deleted": true } }`
+**Errors:** `403 FORBIDDEN`, `404 NOT_FOUND`.
 
 ---
 
