@@ -201,9 +201,24 @@ pnpm test:watch    # vitest watch
 
 ## 6. Deploying to Vercel
 
+### 6.0 Environments
+
+Two Supabase projects, both in `ap-southeast-1`:
+
+| Environment | Supabase project | Ref | Used by |
+|---|---|---|---|
+| Development + tests | `Tendorflow` | `sxylliqkymxffzzsfowi` | local `backend/.env` (`DATABASE_URL` **and** `TEST_DATABASE_URL`) |
+| Production | `Tendorflow-Prod` | `knsivapygfpcqxgcgdur` | the deployed backend's Vercel env var only |
+
+They are deliberately separate so `pytest` — which writes and rolls back constantly — can never reach live client data, and so demo rows don't show up in production. **Never point `TEST_DATABASE_URL` at the prod project.**
+
+`JWT_SECRET` must also differ per environment; a token minted for dev must not be valid in production.
+
 ### 6.1 Initial project setup
 
-You'll create **two Vercel projects** pointing at the same repo:
+**Prerequisite:** the repo must be pushed to GitHub — Vercel deploys from the remote, not your working copy.
+
+You'll create **two Vercel projects** pointing at the same repo. This is not a contradiction of the monorepo: a monorepo is a source-control layout, while the two halves have different runtimes (Python serverless vs. static assets) and so need different build pipelines. Each project sets its own **Root Directory** against the same repo.
 
 1. **Backend project**
    - Import repo → set **Root Directory** to `backend/`.
@@ -224,19 +239,46 @@ You'll create **two Vercel projects** pointing at the same repo:
 
 ### 6.2 Running migrations on production
 
-Two options:
+Migrations are **not** run automatically on deploy — a failed migration would take the deploy down with it. Run them from your machine against the prod URL, before the first deploy and after any schema change:
 
-**Option A: run manually from your local machine** (safer, recommended for prototype):
 ```bash
 cd backend
-DATABASE_URL="<production-pooled-url>" uv run alembic upgrade head
+DATABASE_URL="postgresql+asyncpg://postgres.knsivapygfpcqxgcgdur:<PROD-PASSWORD>@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres" \
+  uv run alembic upgrade head
 ```
 
-**Option B: run automatically on deploy** — add a `buildCommand` to `backend/vercel.json` that runs migrations. Not recommended yet because a failed migration would break a deploy; do this once you have staging + prod separated.
+Note this overrides `DATABASE_URL` for one command only; your `.env` still points at the dev project afterwards.
+
+Then bootstrap the first production admin the same way (the script reads the same env var):
+
+```bash
+DATABASE_URL="<same prod URL>" uv run python -m app.scripts.create_admin
+```
+
+There is no other way to create the first account — there is no self-signup, and every `/api/admin/users` call requires an existing admin.
+
+### 6.2a `requirements.txt`
+
+Vercel's Python runtime installs from `backend/requirements.txt` and ignores `pyproject.toml`. Regenerate it after **any** dependency change or the deployed function will run against stale packages:
+
+```bash
+cd backend
+uv pip compile pyproject.toml -o requirements.txt
+```
+
+Only `[project.dependencies]` are exported — `pytest`, `ruff` and `httpx` stay out of the deployed bundle.
 
 ### 6.3 Custom domain (optional)
 
 Vercel → project settings → Domains → add your domain, follow DNS instructions. Update `CORS_ORIGINS` accordingly.
+
+### 6.4 Deploy-time gotchas
+
+- **`CORS_ORIGINS` is a chicken-and-egg.** You don't know the frontend's URL until it's deployed, and the frontend needs the backend's URL to build. Deploy backend → deploy frontend → come back and set the real `CORS_ORIGINS` on the backend → redeploy the backend. Step 3 above is not optional; skipping it means every API call from the browser fails CORS.
+- **Vercel preview deployments get their own URLs** (`*-git-branch-*.vercel.app`), which are not in `CORS_ORIGINS`. Preview frontends will fail to reach the backend unless you add them. Fine to ignore while only `main` is deployed.
+- **Cold starts.** The first request after idle takes 1–2s on Vercel Python. Expected, not a bug. If it becomes painful, `ARCHITECTURE.md` §7 item 8 covers moving to Railway/Fly.
+- **Use the pooled (Supavisor, port 6543) URL, never the direct 5432 one.** Serverless functions open a connection per invocation and would exhaust direct connections. The `statement_cache_size: 0` setting this repo already applies is what makes asyncpg work through that pooler.
+- **Verify `/api/health` on the deployed backend before touching the frontend.** It needs no auth and no database, so a failure there isolates the problem to the Python build rather than config.
 
 ---
 
