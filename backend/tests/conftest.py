@@ -1,4 +1,5 @@
 from collections.abc import AsyncGenerator
+from uuid import uuid4
 
 import pytest
 from fastapi import FastAPI
@@ -66,17 +67,30 @@ async def db_session(app: FastAPI) -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest.fixture
-def make_user(db_session: AsyncSession):
+def uniq() -> str:
+    """A short token unique to this test.
+
+    Tests share a database with committed demo/smoke data (see
+    DEVELOPMENT_GUIDE.md section 5), so anything a test inserts under a fixed
+    name risks colliding with a row that is already there. Suffix names and
+    emails with this, and assert on membership rather than absolute counts.
+    """
+    return uuid4().hex[:10]
+
+
+@pytest.fixture
+def make_user(db_session: AsyncSession, uniq: str):
     """Factory fixture: creates and commits a user, returns (user, plaintext_password)."""
 
     async def _make_user(
         *,
-        email: str = "user@example.com",
+        email: str | None = None,
         password: str = "Password123",
         role: str = "employee",
         full_name: str = "Test User",
         is_active: bool = True,
     ) -> tuple[User, str]:
+        email = email or f"user-{uniq}@example.com"
         user = User(
             full_name=full_name,
             email=email,
@@ -99,12 +113,31 @@ async def _login_headers(client: AsyncClient, email: str, password: str) -> dict
 
 
 @pytest.fixture
-async def admin_headers(client: AsyncClient, make_user) -> dict[str, str]:
-    user, password = await make_user(email="admin@example.com", role="admin")
+async def admin_user(make_user, uniq: str) -> tuple[User, str]:
+    return await make_user(email=f"admin-{uniq}@example.com", role="admin", full_name="Test Admin")
+
+
+@pytest.fixture
+async def admin_headers(client: AsyncClient, admin_user: tuple[User, str]) -> dict[str, str]:
+    user, password = admin_user
     return await _login_headers(client, user.email, password)
 
 
 @pytest.fixture
-async def employee_headers(client: AsyncClient, make_user) -> dict[str, str]:
-    user, password = await make_user(email="employee@example.com", role="employee")
+async def employee_user(make_user, uniq: str) -> tuple[User, str]:
+    return await make_user(email=f"employee-{uniq}@example.com", role="employee")
+
+
+@pytest.fixture
+async def employee_headers(client: AsyncClient, employee_user: tuple[User, str]) -> dict[str, str]:
+    user, password = employee_user
+    return await _login_headers(client, user.email, password)
+
+
+@pytest.fixture
+async def other_employee_headers(client: AsyncClient, make_user, uniq: str) -> dict[str, str]:
+    """A second, distinct employee — for cross-ownership permission tests."""
+    user, password = await make_user(
+        email=f"other-employee-{uniq}@example.com", role="employee", full_name="Other Employee"
+    )
     return await _login_headers(client, user.email, password)

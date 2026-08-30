@@ -1,9 +1,9 @@
-async def test_create_user_happy_path(client, admin_headers):
+async def test_create_user_happy_path(client, admin_headers, uniq):
     resp = await client.post(
         "/api/admin/users",
         json={
             "full_name": "New Employee",
-            "email": "new.employee@example.com",
+            "email": f"new.employee-{uniq}@example.com",
             "password": "Password123",
             "role": "employee",
         },
@@ -13,17 +13,17 @@ async def test_create_user_happy_path(client, admin_headers):
     assert resp.status_code == 201
     body = resp.json()
     assert body["success"] is True
-    assert body["data"]["email"] == "new.employee@example.com"
+    assert body["data"]["email"] == f"new.employee-{uniq}@example.com"
     assert body["data"]["role"] == "employee"
     assert "password" not in body["data"]
 
 
-async def test_create_user_requires_auth(client):
+async def test_create_user_requires_auth(client, uniq):
     resp = await client.post(
         "/api/admin/users",
         json={
             "full_name": "New Employee",
-            "email": "new.employee@example.com",
+            "email": f"new.employee-{uniq}@example.com",
             "password": "Password123",
             "role": "employee",
         },
@@ -33,12 +33,12 @@ async def test_create_user_requires_auth(client):
     assert resp.json()["error"]["code"] == "UNAUTHENTICATED"
 
 
-async def test_create_user_requires_admin(client, employee_headers):
+async def test_create_user_requires_admin(client, employee_headers, uniq):
     resp = await client.post(
         "/api/admin/users",
         json={
             "full_name": "New Employee",
-            "email": "new.employee@example.com",
+            "email": f"new.employee-{uniq}@example.com",
             "password": "Password123",
             "role": "employee",
         },
@@ -49,8 +49,8 @@ async def test_create_user_requires_admin(client, employee_headers):
     assert resp.json()["error"]["code"] == "FORBIDDEN"
 
 
-async def test_create_user_duplicate_email(client, admin_headers, make_user):
-    existing, _ = await make_user(email="dup@example.com")
+async def test_create_user_duplicate_email(client, admin_headers, make_user, uniq):
+    existing, _ = await make_user(email=f"dup-{uniq}@example.com")
 
     resp = await client.post(
         "/api/admin/users",
@@ -67,12 +67,12 @@ async def test_create_user_duplicate_email(client, admin_headers, make_user):
     assert resp.json()["error"]["code"] == "EMAIL_EXISTS"
 
 
-async def test_create_user_weak_password(client, admin_headers):
+async def test_create_user_weak_password(client, admin_headers, uniq):
     resp = await client.post(
         "/api/admin/users",
         json={
             "full_name": "New Employee",
-            "email": "weakpass@example.com",
+            "email": f"weakpass-{uniq}@example.com",
             "password": "short",
             "role": "employee",
         },
@@ -83,18 +83,22 @@ async def test_create_user_weak_password(client, admin_headers):
     assert resp.json()["error"]["code"] == "VALIDATION_ERROR"
 
 
-async def test_list_users_happy_path(client, admin_headers):
-    resp = await client.get("/api/admin/users", headers=admin_headers)
+async def test_list_users_happy_path(client, admin_headers, admin_user):
+    user, _password = admin_user
+
+    resp = await client.get(
+        "/api/admin/users", params={"search": user.email}, headers=admin_headers
+    )
 
     assert resp.status_code == 200
     body = resp.json()["data"]
     assert body["page"] == 1
     assert body["page_size"] == 25
-    assert any(item["email"] == "admin@example.com" for item in body["items"])
+    assert any(item["email"] == user.email for item in body["items"])
 
 
-async def test_patch_user_toggles_active(client, admin_headers, make_user):
-    target, _ = await make_user(email="target@example.com")
+async def test_patch_user_toggles_active(client, admin_headers, make_user, uniq):
+    target, _ = await make_user(email=f"target-{uniq}@example.com")
 
     resp = await client.patch(
         f"/api/admin/users/{target.id}",

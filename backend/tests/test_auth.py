@@ -1,5 +1,5 @@
-async def test_login_happy_path(client, make_user):
-    user, password = await make_user(email="asha@example.com", password="Password123")
+async def test_login_happy_path(client, make_user, uniq):
+    user, password = await make_user(email=f"asha-{uniq}@example.com", password="Password123")
 
     resp = await client.post("/api/auth/login", json={"email": user.email, "password": password})
 
@@ -11,8 +11,8 @@ async def test_login_happy_path(client, make_user):
     assert body["data"]["user"]["email"] == user.email
 
 
-async def test_login_invalid_credentials(client, make_user):
-    user, _password = await make_user(email="asha@example.com", password="Password123")
+async def test_login_invalid_credentials(client, make_user, uniq):
+    user, _password = await make_user(email=f"asha-{uniq}@example.com", password="Password123")
 
     resp = await client.post(
         "/api/auth/login", json={"email": user.email, "password": "WrongPass1"}
@@ -22,9 +22,9 @@ async def test_login_invalid_credentials(client, make_user):
     assert resp.json()["error"]["code"] == "INVALID_CREDENTIALS"
 
 
-async def test_login_inactive_account(client, make_user):
+async def test_login_inactive_account(client, make_user, uniq):
     user, password = await make_user(
-        email="inactive@example.com", password="Password123", is_active=False
+        email=f"inactive-{uniq}@example.com", password="Password123", is_active=False
     )
 
     resp = await client.post("/api/auth/login", json={"email": user.email, "password": password})
@@ -40,8 +40,8 @@ async def test_login_validation_error(client):
     assert resp.json()["error"]["code"] == "VALIDATION_ERROR"
 
 
-async def test_refresh_happy_path(client, make_user):
-    user, password = await make_user(email="asha@example.com", password="Password123")
+async def test_refresh_happy_path(client, make_user, uniq):
+    user, password = await make_user(email=f"asha-{uniq}@example.com", password="Password123")
     login_resp = await client.post(
         "/api/auth/login", json={"email": user.email, "password": password}
     )
@@ -67,8 +67,10 @@ async def test_me_requires_auth(client):
     assert resp.json()["error"]["code"] == "UNAUTHENTICATED"
 
 
-async def test_me_happy_path(client, employee_headers):
+async def test_me_happy_path(client, employee_headers, employee_user):
+    user, _password = employee_user
+
     resp = await client.get("/api/auth/me", headers=employee_headers)
 
     assert resp.status_code == 200
-    assert resp.json()["data"]["email"] == "employee@example.com"
+    assert resp.json()["data"]["email"] == user.email

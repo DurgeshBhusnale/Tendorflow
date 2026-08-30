@@ -178,6 +178,15 @@ Tests run against whatever `TEST_DATABASE_URL` points at (falls back to `DATABAS
 
 **Current state (pre-launch):** `TEST_DATABASE_URL` is set to the *same* Supabase project as `DATABASE_URL` — there's no separate test database yet. This is safe only because of the transaction-rollback isolation above; it's flagged in `ARCHITECTURE.md` §7 as a hardening item to fix (a dedicated Supabase branch, or a local Postgres instance for tests) before this project holds real client data.
 
+#### Writing tests against a non-empty database
+
+That shared database also holds **committed demo data** left behind deliberately by each phase's smoke test, so it is inspectable in the Supabase dashboard. Rollback isolates rows a *test* creates, but pre-existing committed rows are visible to every test. Two rules follow, and breaking either produces tests that pass today and fail after the next smoke test:
+
+1. **Never assert an absolute count or an exact set.** `assert total_count == 1` breaks the moment one more row exists. Assert membership (`assert name in names`), a subset, or a delta against a baseline read taken at the start of the test.
+2. **Never insert under a hardcoded name or email.** It will eventually collide with committed data and fail with a `409`. Use the `uniq` fixture (a short per-test token) to suffix every name and email: `f"GeM Portal {uniq}"`, `f"rohan-{uniq}@example.com"`.
+
+The `admin_headers`, `employee_headers`, and `other_employee_headers` fixtures already generate unique accounts per test. `admin_user` / `employee_user` expose the underlying `(user, password)` if a test needs to assert on the account itself.
+
 ### Frontend
 
 Not yet configured. When we add it:
