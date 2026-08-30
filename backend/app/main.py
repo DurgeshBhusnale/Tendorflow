@@ -14,6 +14,7 @@ from app.routers import (
     auth,
     clients,
     credentials,
+    dsc,
     health,
     portals,
     tender_names,
@@ -48,6 +49,7 @@ def create_app() -> FastAPI:
     app.include_router(tender_names.router)
     app.include_router(credentials.router)
     app.include_router(tenders.router)
+    app.include_router(dsc.router)
 
     return app
 

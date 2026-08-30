@@ -130,7 +130,10 @@ create table dsc_keys (
   client_id               uuid not null references clients (id) on delete cascade,
   key_status              dsc_key_status not null default 'Key Created',
   storage_location_notes  text,
-  created_by              uuid not null references users (id) on delete set null,
+  -- Nullable, like every other created_by. It was originally written as
+  -- `not null ... on delete set null`, which contradicts itself: deleting a
+  -- user would force a null into a non-nullable column and fail.
+  created_by              uuid references users (id) on delete set null,
   created_at              timestamptz not null default now(),
   updated_at              timestamptz not null default now()
 );

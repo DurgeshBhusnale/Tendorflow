@@ -486,7 +486,9 @@ Owner or admin.
 
 Authenticated (any role — global dashboard).
 
-Query params: `page`, `page_size`, `client_id`, `status`, `search`.
+Query params: `page`, `page_size`, `client_id`, `status` (one of the four `key_status` values), `search` (matches client company_name **or** `storage_location_notes` — locating a key by "Drawer 3" is the point of the module).
+
+`key_status` is one of `Key Created` (default), `Key Issued`, `Key Returned`, `Key Lost`.
 
 Each item:
 ```json
@@ -499,6 +501,17 @@ Each item:
   "created_at": "..."
 }
 ```
+
+`created_by` is `null` if the user who logged the key was later deleted.
+
+---
+
+### `GET /api/dsc/:id`
+
+Authenticated (any role).
+
+**Success 200:** single DSC key entry.
+**Errors:** `404 NOT_FOUND`.
 
 ---
 
@@ -513,19 +526,28 @@ Each item:
 }
 ```
 
+`key_status` defaults to `Key Created`; `storage_location_notes` is optional (a key can be logged before its location is decided).
+
 **Success 201:** created DSC key entry.
+**Errors:** `404 CLIENT_NOT_FOUND`, `422 VALIDATION_ERROR` (unknown `key_status`).
 
 ---
 
 ### `PATCH /api/dsc/:id`
 
-Owner or admin. Typical: update `key_status` or `storage_location_notes`.
+Owner or admin. Accepts any subset of `client_id`, `key_status`, `storage_location_notes`. Typical use is advancing the key through its lifecycle, or correcting where it's stored.
+
+**Success 200:** updated DSC key entry.
+**Errors:** `403 FORBIDDEN`, `404 NOT_FOUND`, `404 CLIENT_NOT_FOUND`, `422 VALIDATION_ERROR`.
 
 ---
 
 ### `DELETE /api/dsc/:id`
 
 Owner or admin.
+
+**Success 200:** `{ "success": true, "data": { "id": "uuid", "deleted": true } }`
+**Errors:** `403 FORBIDDEN`, `404 NOT_FOUND`.
 
 ---
 

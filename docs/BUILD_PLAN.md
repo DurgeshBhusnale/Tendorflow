@@ -319,7 +319,7 @@ Frontend: Vercel frontend project setup, `VITE_API_BASE_URL` pointed at deployed
 
 Raised here per root `CLAUDE.md`'s "flag it before proceeding" rule — none of these block Phase 0, but several block the phase noted.
 
-1. **`dsc_keys.created_by` is `NOT NULL` with `ON DELETE SET NULL`** (`DATABASE_SCHEMA.md` line ~133) — contradictory: if a referenced user were ever hard-deleted, Postgres would try to set the column null and violate the `NOT NULL` constraint. In practice this likely never fires because there's no user-delete endpoint (soft-disable only), but the DDL as written would explode if it ever did. Blocks Phase 6. **Proposal:** drop `NOT NULL` on `dsc_keys.created_by` to match every other table's `created_by` pattern, unless there's a reason DSC keys specifically must always have an attributed creator — confirm before writing that migration.
+1. ~~**`dsc_keys.created_by` is `NOT NULL` with `ON DELETE SET NULL`**~~ **RESOLVED (Phase 6):** confirmed — `NOT NULL` dropped, so `created_by` is nullable like every other table's. `DATABASE_SCHEMA.md` corrected. Verified against the live database: deleting the creating user now nulls the column and the DSC key row survives, where the original DDL would have failed the delete outright.
 
 2. ~~**Dashboard's "Total Active Clients" metric — clients have no `is_active` column.**~~ **RESOLVED (Phase 2):** implemented as a plain count of all client rows (the paginated `total_count`). There is no soft-delete on `clients` — deletion is a hard cascade — so "active" and "exists" are the same set. Phase 7's dashboard metric must use the same definition.
 
@@ -333,7 +333,7 @@ Raised here per root `CLAUDE.md`'s "flag it before proceeding" rule — none of 
 
 7. ~~**JWT claim contents unspecified.**~~ **RESOLVED (Phase 1):** implemented as proposed — `sub` (user id as string UUID), `iat`, `exp`, and `type` (`access` / `refresh`). `get_current_user` rejects a token whose `type` isn't `access`; `/refresh` rejects one whose `type` isn't `refresh`. The user row is still reloaded from the DB on every request, so no claim beyond `sub` is trusted for authorization.
 
-**Still open:** item 1 only, which should be resolved before Phase 6 (DSC Keys) starts. Items 2, 3, 5, and 7 were resolved during Phases 1–2; items 4 and 6 during Phase 4.
+**All resolved.** Items 2, 3, 5, and 7 during Phases 1–2; items 4 and 6 during Phase 4; item 1 during Phase 6.
 
 ### Decisions made after this plan was written
 
