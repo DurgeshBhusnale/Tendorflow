@@ -7,6 +7,7 @@ import TenderNamesPage from "@/pages/admin/TenderNamesPage";
 import UsersPage from "@/pages/admin/UsersPage";
 import ClientsPage from "@/pages/clients/ClientsPage";
 import CredentialsPage from "@/pages/credentials/CredentialsPage";
+import TendersPage from "@/pages/tenders/TendersPage";
 import DashboardPage from "@/pages/DashboardPage";
 import LoginPage from "@/pages/LoginPage";
 
@@ -21,6 +22,7 @@ export const router = createBrowserRouter([
           { path: "/dashboard", element: <DashboardPage /> },
           { path: "/clients", element: <ClientsPage /> },
           { path: "/credentials", element: <CredentialsPage /> },
+          { path: "/tenders", element: <TendersPage /> },
           {
             element: <AdminRoute />,
             children: [
