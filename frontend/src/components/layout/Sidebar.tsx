@@ -6,7 +6,11 @@ const navItems = [
   { to: "/dashboard", label: "Dashboard" },
   { to: "/clients", label: "Clients" },
 ];
-const adminNavItems = [{ to: "/admin/users", label: "Users" }];
+const adminNavItems = [
+  { to: "/admin/users", label: "Users" },
+  { to: "/admin/portals", label: "Portals" },
+  { to: "/admin/tender-names", label: "Tender Names" },
+];
 
 export function Sidebar() {
   const { isAdmin } = useAuth();
