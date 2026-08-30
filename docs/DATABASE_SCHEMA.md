@@ -171,9 +171,11 @@ create trigger trg_dsc_keys_updated_at     before update on dsc_keys     for eac
 
 ## 3. Row-Level Security
 
-**Not used.** Authorization is enforced entirely in the FastAPI application layer (see `docs/ARCHITECTURE.md` §3.3). This is a deliberate simplification vs. the earlier Supabase-based plan, which relied on `auth.uid()` for RLS. Since we're not using Supabase Auth from the Python backend, database-side RLS would require passing the user ID via `SET LOCAL` on every connection — worth the effort in a multi-tenant SaaS, not worth it here.
+**Not used for authorization.** Authorization is enforced entirely in the FastAPI application layer (see `docs/ARCHITECTURE.md` §3.3). This is a deliberate simplification vs. the earlier Supabase-based plan, which relied on `auth.uid()` for RLS. Since we're not using Supabase Auth from the Python backend, database-side RLS-as-authorization would require passing the user ID via `SET LOCAL` on every connection — worth the effort in a multi-tenant SaaS, not worth it here.
 
-The DB service role connection has full access. All access decisions happen in the service layer, using the authenticated user loaded via the `get_current_user` FastAPI dependency.
+The DB service role (`postgres`) connection has full access. All access decisions happen in the service layer, using the authenticated user loaded via the `get_current_user` FastAPI dependency.
+
+**RLS is nonetheless turned on (with zero policies) on every table**, purely as hosting hardening: Supabase auto-exposes every `public` table through PostgREST to the `anon`/`authenticated` Postgres roles, and our backend never uses that surface. Enabling RLS with no policies blocks PostgREST entirely while leaving our own `postgres`-role connection untouched (the table owner is exempt from its own RLS). Every migration that creates a new table should include this — see `46d416635855_enable_row_level_security_on_users_table.py` for the pattern.
 
 ---
 

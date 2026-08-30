@@ -23,10 +23,13 @@
 - **Tailwind CSS + shadcn/ui** — utility CSS + a set of unstyled-but-accessible component primitives. For prototype phase we use them as-is; visual design comes later.
 - **axios** — HTTP client with interceptors (attach JWT, handle 401 → refresh flow).
 
-### Database: PostgreSQL (Supabase or Neon)
+### Database: PostgreSQL (Supabase)
 
-- Either works. Both give you a free Postgres URL with SSL. Pick whichever you already have an account with.
-- We use Postgres purely as a database — no Supabase Auth, no Supabase SDK, no RLS (auth is handled at the application layer in FastAPI). This is intentional: it keeps the backend framework-agnostic and portable to any Postgres host.
+- Settled on Supabase (project "Tendorflow") for this client engagement. `DATABASE_URL`/`TEST_DATABASE_URL` use the **Transaction pooler** connection string (Supavisor, port 6543) from Project Settings → Database, not the direct connection — matches the serverless pooling requirement below.
+- We use Postgres purely as a database — no Supabase Auth, no Supabase SDK (auth is handled at the application layer in FastAPI, see below). This is intentional: it keeps the backend framework-agnostic and portable to any Postgres host, even though we're hosting on Supabase specifically today.
+- **RLS is enabled (no policies) on every table anyway** — not for app authorization (that stays in the FastAPI service layer, per `DATABASE_SCHEMA.md` §3), but because Supabase auto-exposes every `public` table via PostgREST to the `anon`/`authenticated` roles. Our backend connects as the `postgres` role (table owner, exempt from its own RLS), so this only blocks the PostgREST surface we don't use — it has no effect on the app.
+- **asyncpg + Supavisor gotcha:** the transaction-mode pooler doesn't support asyncpg's server-side prepared statement cache (`DuplicatePreparedStatementError` otherwise). Every engine construction (`app/database.py`, Alembic's `env.py`, `tests/conftest.py`) passes `connect_args={"statement_cache_size": 0}` to work around it.
+- **Dev and test currently share the same Supabase project/database** (no separate branch) — tests are transaction-scoped and rolled back per test, so this is safe pre-launch, but revisit before this holds real client data. See `DEVELOPMENT_GUIDE.md` §5.
 
 ### Auth: JWT issued by FastAPI
 
@@ -75,7 +78,8 @@ Configuration (`backend/vercel.json`):
 - 10-second execution timeout on the Hobby tier, 60 seconds on Pro. Fine for our workload.
 - No long-lived connections. Every function invocation is a fresh Python process, so **do not rely on SQLAlchemy connection pooling across requests.**
 - To handle this cleanly, we use SQLAlchemy with `poolclass=NullPool` in the production config, so each request opens and closes its own connection. Yes, this is slower than pooling — but pooling in serverless is broken, not slow.
-- Use a database with **built-in connection pooling** (Supabase's pgBouncer transaction-mode endpoint, or Neon's pooled connection URL). Set `DATABASE_URL` to the *pooled* endpoint in Vercel env vars.
+- Use Supabase's **Transaction pooler** (Supavisor) endpoint. Set `DATABASE_URL` to the *pooled* endpoint (port 6543) in Vercel env vars, not the direct connection.
+- Supavisor's transaction mode doesn't support asyncpg's prepared statement cache — `connect_args={"statement_cache_size": 0}` is required wherever an async engine is created. See §1 above.
 
 **If Vercel Python becomes painful** (cold starts unbearable, cost surprises, tooling frustration), the backend is trivially portable to Railway, Render, or Fly.io — none of the code changes, only the deploy config. `docs/DEVELOPMENT_GUIDE.md` covers this.
 
@@ -176,3 +180,4 @@ Flagged now so they don't get forgotten:
 6. **Structured logging** — swap `logging` for `structlog` with JSON output for better Vercel log filtering.
 7. **CORS lockdown review** — currently a comma-separated allowlist. Confirm no wildcards leak into production env vars.
 8. **Move off Vercel Python** if cold starts hurt UX — Railway or Fly.io with a persistent container solves this.
+9. **Split dev/test off the shared Supabase project** — before this holds real client data, give tests their own Supabase branch (or a local DB) instead of sharing the Tendorflow project's database.

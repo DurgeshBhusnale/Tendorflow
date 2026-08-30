@@ -10,7 +10,7 @@ from app.core.exceptions import (
     validation_exception_handler,
 )
 from app.core.logging import configure_logging
-from app.routers import health
+from app.routers import auth, health, users
 
 
 def create_app() -> FastAPI:
@@ -32,6 +32,8 @@ def create_app() -> FastAPI:
     app.add_exception_handler(Exception, unhandled_exception_handler)
 
     app.include_router(health.router)
+    app.include_router(auth.router)
+    app.include_router(users.router)
 
     return app
 

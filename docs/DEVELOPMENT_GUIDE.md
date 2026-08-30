@@ -10,7 +10,7 @@ Everything you (or Claude Code) need to run this app locally, add features, and 
 - **Node.js 20+**
 - **`uv`** — install with `curl -LsSf https://astral.sh/uv/install.sh | sh`
 - **`pnpm`** — install with `npm install -g pnpm`
-- **A Postgres URL** — get one free from [Supabase](https://supabase.com) or [Neon](https://neon.tech). Both give you a connection string with SSL.
+- **Access to the "Tendorflow" Supabase project** — ask a teammate for the pooled connection string (Project Settings → Database → Connection String → Transaction pooler tab).
 - **A Vercel account** — free tier is enough for prototype hosting.
 
 ---
@@ -31,10 +31,11 @@ cd backend
 cp .env.example .env
 ```
 
-Edit `.env`:
+Edit `.env`. `DATABASE_URL`/`TEST_DATABASE_URL` come from the "Tendorflow" Supabase project → **Project Settings → Database → Connection String → Transaction pooler tab** (port 6543 — not "Direct connection"). Convert the `postgresql://` scheme to `postgresql+asyncpg://`. Dev and test currently point at the **same** Supabase project/database (see §5) — ask a teammate for the connection string rather than creating a second project.
 
 ```
-DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/dbname?sslmode=require
+DATABASE_URL=postgresql+asyncpg://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres
+TEST_DATABASE_URL=postgresql+asyncpg://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres
 JWT_SECRET=<generate a random 64-char string, e.g. `openssl rand -hex 32`>
 JWT_ACCESS_TTL_MINUTES=30
 JWT_REFRESH_TTL_DAYS=7
@@ -95,7 +96,8 @@ Visit `http://localhost:5173`. Log in with the admin credentials you created abo
 
 | Var | Required | Example | Notes |
 |---|---|---|---|
-| `DATABASE_URL` | ✅ | `postgresql+asyncpg://...` | Must use the `+asyncpg` driver prefix. Use your DB's **pooled** endpoint in production (e.g. Supabase pgbouncer or Neon pooled URL). |
+| `DATABASE_URL` | ✅ | `postgresql+asyncpg://...` | Must use the `+asyncpg` driver prefix. Use Supabase's **Transaction pooler** endpoint (port 6543), always — even locally. Every async engine must pass `connect_args={"statement_cache_size": 0}` (asyncpg + Supavisor transaction mode incompatibility) — see `app/database.py`. |
+| `TEST_DATABASE_URL` | ⬜ | same as `DATABASE_URL` | Currently the same Supabase project as dev (see §5) — set it explicitly rather than relying on the old "`_test` suffix" fallback, which assumed a locally-creatable second database. |
 | `JWT_SECRET` | ✅ | 64-char hex | Signs tokens. Rotate = invalidates all sessions. |
 | `JWT_ACCESS_TTL_MINUTES` | ⬜ | `30` | Default 30. |
 | `JWT_REFRESH_TTL_DAYS` | ⬜ | `7` | Default 7. |
@@ -172,7 +174,9 @@ uv run pytest -v                    # verbose
 uv run pytest --cov=app             # coverage
 ```
 
-Tests use a separate Postgres schema (or a separate test database — configured via `TEST_DATABASE_URL` in `.env`). Each test runs inside a transaction that's rolled back at the end, so tests are isolated and the DB stays clean.
+Tests run against whatever `TEST_DATABASE_URL` points at (falls back to `DATABASE_URL` with a `_test` suffix if unset — irrelevant right now, see below). Each test runs inside a transaction that's rolled back at the end, so tests are isolated and the DB stays clean.
+
+**Current state (pre-launch):** `TEST_DATABASE_URL` is set to the *same* Supabase project as `DATABASE_URL` — there's no separate test database yet. This is safe only because of the transaction-rollback isolation above; it's flagged in `ARCHITECTURE.md` §7 as a hardening item to fix (a dedicated Supabase branch, or a local Postgres instance for tests) before this project holds real client data.
 
 ### Frontend
 
@@ -250,7 +254,9 @@ Vercel → project settings → Domains → add your domain, follow DNS instruct
 - **`401 UNAUTHENTICATED` right after login** → the axios interceptor probably isn't attaching the Bearer header. Check `frontend/src/api/client.ts`.
 - **Migrations "no changes detected"** → Alembic autogenerate compares SQLAlchemy models to the DB. If you edited raw SQL, Alembic doesn't see it. Also, ensure you imported all model files in `alembic/env.py` so autogenerate sees them.
 - **Vercel Python cold start slow** → expected. First request after inactivity takes 1–2s. Subsequent requests are fast. If it's painful, move backend to Railway/Fly.
-- **`asyncpg` connection issues on Vercel** → make sure `DATABASE_URL` uses the **pooled** endpoint (Supabase pgbouncer / Neon pooler) and SQLAlchemy is configured with `poolclass=NullPool`. See `backend/app/database.py`.
+- **`asyncpg` connection issues on Vercel** → make sure `DATABASE_URL` uses the Supabase **Transaction pooler** endpoint (port 6543) and SQLAlchemy is configured with `poolclass=NullPool`. See `backend/app/database.py`.
+- **`asyncpg.exceptions.DuplicatePreparedStatementError`** → you created an async engine without `connect_args={"statement_cache_size": 0}`. Supavisor's transaction-mode pooler doesn't support asyncpg's prepared statement cache. Every engine construction in this repo already handles this (`app/database.py`, `app/db/migrations/env.py`, `tests/conftest.py`) — if you add a new one (a script, a one-off tool), copy the pattern.
+- **`passlib`/`bcrypt` warning: `module 'bcrypt' has no attribute '__about__'`** → `passlib` 1.7.4 probes an attribute `bcrypt` removed in 4.1+. `pyproject.toml` pins `bcrypt<4.1.0` to avoid it; if you see this, your venv has a stale/mismatched bcrypt install — `uv sync --reinstall-package bcrypt` (stop anything holding the `.venv` file lock first, e.g. a running `uvicorn`).
 
 ---
 

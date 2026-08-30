@@ -12,7 +12,7 @@ Internal, authentication-gated web application for a tender-filling business. Ha
 |---|---|
 | Backend | Python 3.12, FastAPI, SQLAlchemy 2.0 (async), Alembic, Pydantic v2 |
 | Frontend | React 19 + TypeScript, Vite, TanStack Query, React Router v7, React Hook Form + Zod, Tailwind CSS |
-| Database | PostgreSQL (Supabase or Neon — either works, both are Postgres) |
+| Database | PostgreSQL, hosted on Supabase (project "Tendorflow") — used as plain Postgres, no Supabase Auth/SDK/RLS-for-authorization |
 | Auth | JWT (access + refresh tokens), bcrypt password hashing — issued by the FastAPI backend |
 | Hosting | Vercel (two projects, same monorepo — backend as Python serverless, frontend as static Vite build) |
 | Package mgmt | `uv` (backend), `pnpm` (frontend) |
@@ -81,12 +81,12 @@ tender-app/
 
 ## Quick Start
 
-Prerequisites: Python 3.12+, Node 20+, `uv`, `pnpm`, and a Postgres database URL (get one free from Supabase or Neon).
+Prerequisites: Python 3.12+, Node 20+, `uv`, `pnpm`, and access to the "Tendorflow" Supabase project (Project Settings → Database → Connection String → **Transaction pooler** tab).
 
 ```bash
 # 1. Backend
 cd backend
-cp .env.example .env               # fill in DATABASE_URL, JWT_SECRET, etc.
+cp .env.example .env               # fill in DATABASE_URL (Supabase pooled URL), JWT_SECRET, etc.
 uv sync                            # installs dependencies from pyproject.toml
 uv run alembic upgrade head        # apply migrations
 uv run uvicorn app.main:app --reload --port 8000

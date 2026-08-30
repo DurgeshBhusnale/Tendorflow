@@ -7,8 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.pool import NullPool
 
 from app.config import get_settings
-from app.database import get_db_session
+from app.core.auth import hash_password
+from app.core.deps import get_db_session
 from app.main import create_app
+from app.models.user import User
 
 
 def _test_database_url() -> str:
@@ -21,7 +23,13 @@ def _test_database_url() -> str:
     return f"{scheme_and_host}/{db_name}_test{sep}{query}"
 
 
-test_engine = create_async_engine(_test_database_url(), poolclass=NullPool)
+test_engine = create_async_engine(
+    _test_database_url(),
+    poolclass=NullPool,
+    # Supabase's Supavisor pooler runs in transaction mode, which doesn't
+    # support asyncpg's server-side prepared statement cache.
+    connect_args={"statement_cache_size": 0},
+)
 
 
 @pytest.fixture
@@ -55,3 +63,48 @@ async def db_session(app: FastAPI) -> AsyncGenerator[AsyncSession, None]:
             app.dependency_overrides.pop(get_db_session, None)
             await session.close()
             await transaction.rollback()
+
+
+@pytest.fixture
+def make_user(db_session: AsyncSession):
+    """Factory fixture: creates and commits a user, returns (user, plaintext_password)."""
+
+    async def _make_user(
+        *,
+        email: str = "user@example.com",
+        password: str = "Password123",
+        role: str = "employee",
+        full_name: str = "Test User",
+        is_active: bool = True,
+    ) -> tuple[User, str]:
+        user = User(
+            full_name=full_name,
+            email=email,
+            password_hash=hash_password(password),
+            role=role,
+            is_active=is_active,
+        )
+        db_session.add(user)
+        await db_session.commit()
+        await db_session.refresh(user)
+        return user, password
+
+    return _make_user
+
+
+async def _login_headers(client: AsyncClient, email: str, password: str) -> dict[str, str]:
+    resp = await client.post("/api/auth/login", json={"email": email, "password": password})
+    token = resp.json()["data"]["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+async def admin_headers(client: AsyncClient, make_user) -> dict[str, str]:
+    user, password = await make_user(email="admin@example.com", role="admin")
+    return await _login_headers(client, user.email, password)
+
+
+@pytest.fixture
+async def employee_headers(client: AsyncClient, make_user) -> dict[str, str]:
+    user, password = await make_user(email="employee@example.com", role="employee")
+    return await _login_headers(client, user.email, password)

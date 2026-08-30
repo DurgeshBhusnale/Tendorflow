@@ -9,9 +9,8 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from app.config import get_settings
 from app.models import Base
 
-# Import every model module here so it registers on Base.metadata before
-# autogenerate runs. Add a line per new model file, e.g.:
-#   from app.models import user  # noqa: F401
+# Importing app.models registers every model module on Base.metadata
+# (see app/models/__init__.py) so autogenerate can see them.
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -74,6 +73,9 @@ async def run_async_migrations() -> None:
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        # Supabase's Supavisor pooler runs in transaction mode, which doesn't
+        # support asyncpg's server-side prepared statement cache.
+        connect_args={"statement_cache_size": 0},
     )
 
     async with connectable.connect() as connection:
