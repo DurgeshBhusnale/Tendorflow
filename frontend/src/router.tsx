@@ -6,6 +6,7 @@ import PortalsPage from "@/pages/admin/PortalsPage";
 import TenderNamesPage from "@/pages/admin/TenderNamesPage";
 import UsersPage from "@/pages/admin/UsersPage";
 import ClientsPage from "@/pages/clients/ClientsPage";
+import CredentialsPage from "@/pages/credentials/CredentialsPage";
 import DashboardPage from "@/pages/DashboardPage";
 import LoginPage from "@/pages/LoginPage";
 
@@ -19,6 +20,7 @@ export const router = createBrowserRouter([
         children: [
           { path: "/dashboard", element: <DashboardPage /> },
           { path: "/clients", element: <ClientsPage /> },
+          { path: "/credentials", element: <CredentialsPage /> },
           {
             element: <AdminRoute />,
             children: [
