@@ -2,7 +2,10 @@ import { NavLink } from "react-router-dom";
 import { useAuth } from "@/auth/AuthContext";
 import { cn } from "@/lib/utils";
 
-const navItems = [{ to: "/dashboard", label: "Dashboard" }];
+const navItems = [
+  { to: "/dashboard", label: "Dashboard" },
+  { to: "/clients", label: "Clients" },
+];
 const adminNavItems = [{ to: "/admin/users", label: "Users" }];
 
 export function Sidebar() {
