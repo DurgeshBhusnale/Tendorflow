@@ -572,6 +572,21 @@ Authenticated (any role).
 }
 ```
 
+Identical for both roles — there is no admin-only variant.
+
+Metric definitions, so the dashboard and the module pages can't disagree:
+
+| Field | Definition |
+|---|---|
+| `total_active_clients` | Count of all `clients`. "Active" means "exists": the table has no status column and deletion is a hard cascade. |
+| `pending_tenders_count` | Count of tenders with `status = 'Pending'`. Same value as `pending_count` from `GET /api/tenders/summary` unfiltered. |
+| `total_paid_tender_value` | Sum of the stored `total_amount` over tenders with `status = 'Paid'`. Same value as that endpoint's `total_paid_value`. |
+| `dsc_keys_in_office` | Count of DSC keys whose `key_status` is `Key Created` **or** `Key Returned` — the two states meaning the key is physically present. `Key Issued` and `Key Lost` are excluded. |
+
+`recent_tenders` and `recent_clients` are the newest five by `created_at`, in the same shape and order as the first page of their list endpoints (they are produced by the same service functions). Both are shorter than five when fewer rows exist.
+
+**Errors:** `401 UNAUTHENTICATED`.
+
 ---
 
 ## 10. Health
