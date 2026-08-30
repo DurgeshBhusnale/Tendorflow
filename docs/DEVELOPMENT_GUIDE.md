@@ -257,6 +257,7 @@ Vercel → project settings → Domains → add your domain, follow DNS instruct
 - **`asyncpg` connection issues on Vercel** → make sure `DATABASE_URL` uses the Supabase **Transaction pooler** endpoint (port 6543) and SQLAlchemy is configured with `poolclass=NullPool`. See `backend/app/database.py`.
 - **`asyncpg.exceptions.DuplicatePreparedStatementError`** → you created an async engine without `connect_args={"statement_cache_size": 0}`. Supavisor's transaction-mode pooler doesn't support asyncpg's prepared statement cache. Every engine construction in this repo already handles this (`app/database.py`, `app/db/migrations/env.py`, `tests/conftest.py`) — if you add a new one (a script, a one-off tool), copy the pattern.
 - **`passlib`/`bcrypt` warning: `module 'bcrypt' has no attribute '__about__'`** → `passlib` 1.7.4 probes an attribute `bcrypt` removed in 4.1+. `pyproject.toml` pins `bcrypt<4.1.0` to avoid it; if you see this, your venv has a stale/mismatched bcrypt install — `uv sync --reinstall-package bcrypt` (stop anything holding the `.venv` file lock first, e.g. a running `uvicorn`).
+- **`422 VALIDATION_ERROR` on an email that looks fine** → Pydantic's `EmailStr` (via `email-validator`) rejects reserved/special-use TLDs: `.test`, `.local`, `.example`, `.invalid`. Use a real-looking domain in seed/demo data (e.g. `@tenderflow-demo.com`), not `@something.test`. This is correct behavior for an app whose clients have real email addresses — don't relax it.
 
 ---
 
