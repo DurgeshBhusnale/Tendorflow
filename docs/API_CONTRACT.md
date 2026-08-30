@@ -65,6 +65,8 @@ Missing or invalid → `401 UNAUTHENTICATED`. Expired → `401 TOKEN_EXPIRED` (f
 | 422 | `VALIDATION_ERROR` | Request body failed schema validation |
 | 500 | `INTERNAL_ERROR` | Unhandled server error |
 
+Resource-specific `409` codes are used in place of the generic `CONFLICT` so the frontend can attach an error to the right field: `EMAIL_EXISTS` (users, clients), `PORTAL_EXISTS`, `TENDER_NAME_EXISTS`.
+
 ---
 
 ## 1. Auth
@@ -248,7 +250,14 @@ Owner or admin. Cascades to credentials, tenders, and DSC keys (see DB schema).
 
 Authenticated (any role). Query params: `active_only` (bool, default false).
 
-Each item: `{ "id", "name", "is_active", "created_at" }`
+**Not paginated** — master lists are bounded dropdown sources, so `data` is a plain array rather than the `{ items, total_count, page, page_size }` envelope used by the record modules. This is the documented exception to PRD §5's "all list endpoints paginate."
+
+**Success 200:**
+```json
+{ "success": true, "data": [ { "id": "uuid", "name": "GeM Portal", "is_active": true, "created_at": "..." } ] }
+```
+
+Results are ordered by `name`. `created_by` is stored server-side but not returned.
 
 ---
 
@@ -258,7 +267,7 @@ Admin only.
 
 **Request:** `{ "name": "GeM Portal" }`
 **Success 201:** created portal.
-**Errors:** `403 FORBIDDEN`, `409 PORTAL_EXISTS`.
+**Errors:** `403 FORBIDDEN`, `409 PORTAL_EXISTS`, `422 VALIDATION_ERROR` (empty name, or over 120 chars).
 
 ---
 
@@ -266,6 +275,9 @@ Admin only.
 
 Admin only. **Request:** `{ "name"?, "is_active"? }`
 **Success 200:** updated portal.
+**Errors:** `403 FORBIDDEN`, `404 NOT_FOUND`, `409 PORTAL_EXISTS`.
+
+Deactivating (`is_active: false`) removes a portal from `?active_only=true` results but leaves it resolvable by id, so existing `credentials` rows that reference it keep working. Portals are never hard-deleted (`DATABASE_SCHEMA.md` §2).
 
 ---
 
@@ -326,17 +338,32 @@ Owner or admin.
 
 ## 6. Tender Names (Admin-managed master list)
 
+Identical in shape and behavior to Portals above — same non-paginated array response, same admin-only writes, same deactivate-don't-delete rule.
+
 ### `GET /api/tender-names`
 
-Authenticated. Query: `active_only`.
+Authenticated (any role). Query params: `active_only` (bool, default false).
+
+**Not paginated**, same rationale as Portals.
+
+**Success 200:**
+```json
+{ "success": true, "data": [ { "id": "uuid", "name": "Civil-Works", "is_active": true, "created_at": "..." } ] }
+```
+
+Ordered by `name`. Seeded with `PMC`, `Civil-Works`, `Govt-Supply` by the table-creation migration (`DATABASE_SCHEMA.md` §6).
 
 ### `POST /api/tender-names`
 
 Admin only. **Request:** `{ "name": "PWD-Roads" }`
+**Success 201:** created tender name.
+**Errors:** `403 FORBIDDEN`, `409 TENDER_NAME_EXISTS`, `422 VALIDATION_ERROR`.
 
 ### `PATCH /api/tender-names/:id`
 
-Admin only.
+Admin only. **Request:** `{ "name"?, "is_active"? }`
+**Success 200:** updated tender name.
+**Errors:** `403 FORBIDDEN`, `404 NOT_FOUND`, `409 TENDER_NAME_EXISTS`.
 
 ---
 

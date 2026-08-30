@@ -192,7 +192,7 @@ Landing page after login. Same for both roles.
 ## 5. Non-Functional Requirements
 
 - **Timezone:** all timestamps stored as `timestamptz` (UTC). Frontend renders in Asia/Kolkata (`Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata' })`).
-- **Pagination:** all list endpoints support `?page=&page_size=` from day one. Default page size 25, max 100.
+- **Pagination:** all list endpoints support `?page=&page_size=` from day one. Default page size 25, max 100. **Exception:** the two admin-managed master lists (`GET /api/portals`, `GET /api/tender-names`) return a plain array — they're bounded dropdown sources consumed whole by select inputs, so paging them would only complicate both sides. See `API_CONTRACT.md` §4.
 - **Currency:** rupees, displayed as `₹1,25,000.00` (Indian grouping). Use `Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' })`.
 - **Password policy for user accounts:** minimum 8 chars, at least one letter and one number. Enforced by Pydantic validator on `POST /api/admin/users`.
 - **Response times:** internal tool, low traffic. No specific latency targets beyond "feels snappy" — sub-500ms for reads on the free Postgres tier is fine.

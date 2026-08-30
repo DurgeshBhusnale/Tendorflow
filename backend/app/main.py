@@ -10,7 +10,7 @@ from app.core.exceptions import (
     validation_exception_handler,
 )
 from app.core.logging import configure_logging
-from app.routers import auth, clients, health, users
+from app.routers import auth, clients, health, portals, tender_names, users
 
 
 def create_app() -> FastAPI:
@@ -35,6 +35,8 @@ def create_app() -> FastAPI:
     app.include_router(auth.router)
     app.include_router(users.router)
     app.include_router(clients.router)
+    app.include_router(portals.router)
+    app.include_router(tender_names.router)
 
     return app
 
