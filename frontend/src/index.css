@@ -2,72 +2,120 @@
 @tailwind components;
 @tailwind utilities;
 
+/**
+ * Design tokens — Elevated Minimalism (docs/DESIGN_SYSTEM.md).
+ * Values are HSL triplets because tailwind.config.ts wraps them in hsl().
+ * The hex each one encodes is noted alongside; the spec is the source of truth.
+ */
 @layer base {
   :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --radius: 0.5rem;
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.708 0 0)
+    --background: 210 17% 98%; /* #F8F9FA — primary surface */
+    --foreground: 221 39% 11%; /* #111827 — rich black, headings */
+
+    --card: 0 0% 100%; /* #FFFFFF — containers, sidebar, drawers */
+    --card-foreground: 221 39% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 221 39% 11%;
+
+    --primary: 227 77% 53%; /* #2952E3 — indigo, primary actions */
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 227 100% 78%; /* readable indigo on the navy sign-in panel */
+
+    --secondary: 220 14% 96%; /* #F3F4F6 */
+    --secondary-foreground: 221 39% 11%;
+
+    --muted: 220 14% 96%; /* #F3F4F6 */
+    --muted-foreground: 220 9% 46%; /* #6B7280 — body/secondary text */
+
+    --accent: 210 9% 96%; /* #F3F4F5 — hover tint */
+    --accent-foreground: 221 39% 11%;
+
+    --destructive: 0 72% 51%; /* #DC2626 */
+    --destructive-foreground: 0 0% 100%;
+
+    --ink: 0 0% 10%; /* #1A1A1A — deep charcoal accent */
+    --border: 220 13% 91%; /* #E5E7EB — 1px structural borders */
+    --input: 220 13% 91%;
+    --ring: 227 77% 53%;
+    --divider: 220 14% 96%; /* #F3F4F6 — table row dividers */
+
+    --sidebar: 0 0% 100%;
+    --sidebar-foreground: 221 39% 11%;
+    --sidebar-accent: 220 14% 96%;
+    --sidebar-border: 220 13% 91%;
   }
-  .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0)
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background font-sans text-sm text-foreground antialiased;
+    font-feature-settings: "cv11", "ss01";
+  }
+
+  /* Editorial serif carries every level of heading hierarchy. */
+  h1,
+  h2,
+  h3 {
+    @apply font-display font-semibold tracking-tight text-foreground;
+  }
+
+  ::selection {
+    @apply bg-primary/15;
+  }
+
+  /* Slim, monochrome scrollbars — they read as structure, not chrome. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border));
+  }
+  *::-webkit-scrollbar-track {
+    background-color: transparent;
+  }
+}
+
+@layer components {
+  /* Shared shell for every bordered white container: cards, tables, drawers. */
+  .surface {
+    @apply border border-border bg-card shadow-card;
+  }
+
+  /**
+   * Sign-in backdrop — the brand artwork at `public/login-bg.svg`, over a wash
+   * matching its own navy gradient. The wash is a fallback layer, not decoration:
+   * if the asset is ever missing the browser drops that layer and the panel still
+   * renders as intended rather than showing an error state.
+   *
+   * The editorial copy sits on top of this, so it is set in white.
+   */
+  .login-backdrop {
+    background-color: #0a1130;
+    background-image:
+      linear-gradient(
+        90deg,
+        rgb(10 17 48 / 0.92) 0%,
+        rgb(10 17 48 / 0.55) 45%,
+        rgb(10 17 48 / 0) 75%
+      ),
+      url("/login-bg.svg"), linear-gradient(135deg, #0a1130 0%, #0e1a43 60%, #152a63 100%);
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position:
+      center,
+      left center,
+      center;
+  }
+
+  /* Small caps label used for table headers and section eyebrows. */
+  .eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground;
   }
 }

@@ -1,11 +1,16 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Plus, Tags } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { DataTable, type Column } from "@/components/shared/DataTable";
+import { Drawer, DrawerBody, DrawerFooter } from "@/components/shared/Drawer";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { StatusPill } from "@/components/shared/StatusPill";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FieldError, Label } from "@/components/ui/label";
 import { formatDate } from "@/lib/format";
 import { ApiError } from "@/types/api";
 
@@ -61,17 +66,30 @@ export function MasterListManager({
     }
   });
 
+  function closeForm() {
+    reset();
+    setFormError(null);
+    setShowForm(false);
+  }
+
   const columns: Column<MasterListItem>[] = [
-    { header: "Name", cell: (item) => item.name },
+    {
+      header: "Name",
+      cell: (item) => <span className="font-medium text-foreground">{item.name}</span>,
+    },
     {
       header: "Status",
       cell: (item) => (
-        <span className={item.is_active ? "text-green-700" : "text-muted-foreground"}>
-          {item.is_active ? "Active" : "Inactive"}
-        </span>
+        <StatusPill
+          label={item.is_active ? "Active" : "Inactive"}
+          tone={item.is_active ? "green" : "slate"}
+        />
       ),
     },
-    { header: "Date Added", cell: (item) => formatDate(item.created_at) },
+    {
+      header: "Date Added",
+      cell: (item) => <span className="text-muted-foreground">{formatDate(item.created_at)}</span>,
+    },
     {
       header: "Actions",
       cell: (item) => (
@@ -83,57 +101,67 @@ export function MasterListManager({
   ];
 
   const addButton = (
-    <Button onClick={() => setShowForm(true)}>+ Add {entityLabel}</Button>
+    <Button onClick={() => setShowForm(true)}>
+      <Plus />
+      Add {entityLabel}
+    </Button>
   );
 
   return (
-    <div className="space-y-4 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">{title}</h1>
-        {!showForm && addButton}
+    <div className="space-y-8 px-8 py-8">
+      <PageHeader
+        title={title}
+        description="Inactive entries disappear from employee-facing dropdowns, but existing records that reference them are unaffected."
+        actions={addButton}
+      />
+
+      <div className="surface">
+        <DataTable
+          columns={columns}
+          rows={items}
+          rowKey={(item) => item.id}
+          isLoading={isLoading}
+          empty={
+            <EmptyState
+              icon={Tags}
+              title={`No ${entityLabel.toLowerCase()}s yet`}
+              description={`Add a ${entityLabel.toLowerCase()} to make it selectable across the app.`}
+              action={addButton}
+            />
+          }
+        />
       </div>
 
-      <p className="text-sm text-muted-foreground">
-        Inactive entries disappear from employee-facing dropdowns, but existing records that
-        reference them are unaffected.
-      </p>
+      <Drawer
+        open={showForm}
+        onClose={closeForm}
+        title={`Add ${entityLabel}`}
+        description={`New entries are active immediately and appear in every ${entityLabel.toLowerCase()} dropdown.`}
+      >
+        <form onSubmit={onSubmit} className="flex h-full flex-col">
+          <DrawerBody>
+            <div className="space-y-1.5">
+              <Label htmlFor="master_list_name">{entityLabel} Name</Label>
+              <Input id="master_list_name" {...register("name")} />
+              <FieldError>{errors.name?.message}</FieldError>
+            </div>
+            {formError && (
+              <p className="border border-red-100 bg-red-50 px-3 py-2 text-sm text-destructive">
+                {formError}
+              </p>
+            )}
+          </DrawerBody>
 
-      {showForm && (
-        <form onSubmit={onSubmit} className="max-w-md space-y-3 rounded-lg border p-4">
-          <div className="space-y-1">
-            <label className="text-sm font-medium">{entityLabel} Name</label>
-            <Input {...register("name")} />
-            {errors.name && <p className="text-sm text-red-600">{errors.name.message}</p>}
-          </div>
-          {formError && <p className="text-sm text-red-600">{formError}</p>}
-          <div className="flex gap-2">
+          <DrawerFooter>
+            <Button type="button" variant="outline" onClick={closeForm}>
+              Cancel
+            </Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Saving…" : `Add ${entityLabel}`}
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                reset();
-                setFormError(null);
-                setShowForm(false);
-              }}
-            >
-              Cancel
-            </Button>
-          </div>
+          </DrawerFooter>
         </form>
-      )}
-
-      <DataTable
-        columns={columns}
-        rows={items}
-        rowKey={(item) => item.id}
-        isLoading={isLoading}
-        empty={
-          <EmptyState title={`No ${entityLabel.toLowerCase()}s yet`} action={addButton} />
-        }
-      />
+      </Drawer>
     </div>
   );
 }

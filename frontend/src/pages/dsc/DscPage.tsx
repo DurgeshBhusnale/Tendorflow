@@ -1,6 +1,11 @@
+import { Plus } from "lucide-react";
 import { useState } from "react";
+import { Drawer } from "@/components/shared/Drawer";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { Pagination } from "@/components/shared/Pagination";
+import { SearchInput } from "@/components/shared/SearchInput";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { useClients } from "@/hooks/useClients";
 import { useDeleteDscKey, useDscKeys } from "@/hooks/useDsc";
 import { DscForm } from "@/pages/dsc/DscForm";
@@ -41,92 +46,89 @@ export default function DscPage() {
     await deleteDscKey.mutateAsync(dscKey.id);
   }
 
-  const addButton = <Button onClick={() => setFormState({ open: true })}>+ Log Key</Button>;
+  const addButton = (
+    <Button onClick={() => setFormState({ open: true })}>
+      <Plus />
+      Log Key
+    </Button>
+  );
 
   return (
-    <div className="space-y-4 p-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">DSC Keys</h1>
-          <p className="text-sm text-muted-foreground">
-            Visible to all employees — find any client's key at a glance.
-          </p>
+    <div className="space-y-8 px-8 py-8">
+      <PageHeader
+        title="DSC Keys"
+        description="Visible to all employees — find any client's key at a glance."
+        actions={addButton}
+      />
+
+      <div className="surface">
+        <div className="flex flex-wrap items-center gap-3 border-b border-border px-6 py-4">
+          <SearchInput
+            value={search}
+            onChange={(value) => changeFilter(() => setSearch(value))}
+            placeholder="Search by client or storage location…"
+            className="w-full max-w-xs"
+          />
+          <Select
+            aria-label="Filter by client"
+            className="w-auto min-w-[11rem]"
+            value={clientFilter}
+            onChange={(e) => changeFilter(() => setClientFilter(e.target.value))}
+          >
+            <option value="">All clients</option>
+            {clientsPage?.items.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.company_name}
+              </option>
+            ))}
+          </Select>
+          <Select
+            aria-label="Filter by status"
+            className="w-auto min-w-[11rem]"
+            value={statusFilter}
+            onChange={(e) =>
+              changeFilter(() => setStatusFilter(e.target.value as "" | DscKeyStatus))
+            }
+          >
+            <option value="">All statuses</option>
+            {DSC_KEY_STATUSES.map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+          </Select>
         </div>
-        {!formState.open && addButton}
+
+        <DscTable
+          dscKeys={data?.items ?? []}
+          isLoading={isLoading}
+          onEdit={(dscKey) => setFormState({ open: true, dscKey })}
+          onDelete={handleDelete}
+          emptyAction={addButton}
+        />
+
+        {totalCount > PAGE_SIZE && (
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            totalCount={totalCount}
+            onPageChange={setPage}
+          />
+        )}
       </div>
 
-      {formState.open && (
+      <Drawer
+        open={formState.open}
+        onClose={() => setFormState({ open: false })}
+        title={formState.dscKey ? "Edit DSC Key" : "Log DSC Key"}
+        description="Record where the physical key lives so the next person can find it."
+      >
         <DscForm
           dscKey={formState.dscKey}
           onSuccess={() => setFormState({ open: false })}
           onCancel={() => setFormState({ open: false })}
         />
-      )}
-
-      <div className="flex flex-wrap gap-3">
-        <Input
-          placeholder="Search by client or storage location…"
-          value={search}
-          onChange={(e) => changeFilter(() => setSearch(e.target.value))}
-          className="max-w-xs"
-        />
-        <select
-          className="rounded-md border px-3 py-2 text-sm"
-          value={clientFilter}
-          onChange={(e) => changeFilter(() => setClientFilter(e.target.value))}
-        >
-          <option value="">All clients</option>
-          {clientsPage?.items.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.company_name}
-            </option>
-          ))}
-        </select>
-        <select
-          className="rounded-md border px-3 py-2 text-sm"
-          value={statusFilter}
-          onChange={(e) => changeFilter(() => setStatusFilter(e.target.value as "" | DscKeyStatus))}
-        >
-          <option value="">All statuses</option>
-          {DSC_KEY_STATUSES.map((status) => (
-            <option key={status} value={status}>
-              {status}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <DscTable
-        dscKeys={data?.items ?? []}
-        isLoading={isLoading}
-        onEdit={(dscKey) => setFormState({ open: true, dscKey })}
-        onDelete={handleDelete}
-        emptyAction={addButton}
-      />
-
-      {totalCount > PAGE_SIZE && (
-        <div className="flex items-center gap-3 text-sm">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page <= 1}
-            onClick={() => setPage((p) => p - 1)}
-          >
-            Previous
-          </Button>
-          <span className="text-muted-foreground">
-            Page {page} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page >= totalPages}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            Next
-          </Button>
-        </div>
-      )}
+      </Drawer>
     </div>
   );
 }

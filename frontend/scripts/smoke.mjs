@@ -68,7 +68,7 @@ await shot("01-login");
 
 console.log("2. Signing in as", EMAIL);
 await page.getByLabel("Email").fill(EMAIL);
-await page.getByLabel("Password").fill(PASSWORD);
+await page.getByLabel("Password", { exact: true }).fill(PASSWORD);
 await page.getByRole("button", { name: "Sign In" }).click();
 await page.waitForURL("**/dashboard", { timeout: 20000 });
 await waitForLoaded();

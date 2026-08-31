@@ -2,8 +2,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { DrawerBody, DrawerFooter } from "@/components/shared/Drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FieldError, Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { useClients } from "@/hooks/useClients";
 import { useCreateCredential, useUpdateCredential } from "@/hooks/useCredentials";
 import { usePortals } from "@/hooks/usePortals";
@@ -69,58 +72,66 @@ export function CredentialForm({ credential, onSuccess, onCancel }: CredentialFo
   });
 
   return (
-    <form onSubmit={onSubmit} className="max-w-md space-y-3 rounded-lg border p-4">
-      <h2 className="font-medium">{credential ? "Edit Credential" : "Add Credential"}</h2>
+    <form onSubmit={onSubmit} className="flex h-full flex-col">
+      <DrawerBody>
+        <div className="space-y-1.5">
+          <Label htmlFor="credential_client_id">Client</Label>
+          <Select id="credential_client_id" {...register("client_id")}>
+            <option value="">Select a client…</option>
+            {clientsPage?.items.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.company_name}
+              </option>
+            ))}
+          </Select>
+          <FieldError>{errors.client_id?.message}</FieldError>
+        </div>
 
-      <div className="space-y-1">
-        <label className="text-sm font-medium">Client</label>
-        <select className="w-full rounded-md border px-3 py-2 text-sm" {...register("client_id")}>
-          <option value="">Select a client…</option>
-          {clientsPage?.items.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.company_name}
-            </option>
-          ))}
-        </select>
-        {errors.client_id && <p className="text-sm text-red-600">{errors.client_id.message}</p>}
-      </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="credential_portal_id">Portal</Label>
+          <Select id="credential_portal_id" {...register("portal_id")}>
+            <option value="">Select a portal…</option>
+            {portals?.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </Select>
+          <FieldError>{errors.portal_id?.message}</FieldError>
+        </div>
 
-      <div className="space-y-1">
-        <label className="text-sm font-medium">Portal</label>
-        <select className="w-full rounded-md border px-3 py-2 text-sm" {...register("portal_id")}>
-          <option value="">Select a portal…</option>
-          {portals?.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-        {errors.portal_id && <p className="text-sm text-red-600">{errors.portal_id.message}</p>}
-      </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="login_identifier">Username / Email / Phone (optional)</Label>
+          <Input id="login_identifier" {...register("login_identifier")} />
+          <FieldError>{errors.login_identifier?.message}</FieldError>
+        </div>
 
-      <div className="space-y-1">
-        <label className="text-sm font-medium">Username / Email / Phone (optional)</label>
-        <Input {...register("login_identifier")} />
-        {errors.login_identifier && (
-          <p className="text-sm text-red-600">{errors.login_identifier.message}</p>
+        <div className="space-y-1.5">
+          <Label htmlFor="credential_password">Password</Label>
+          <Input
+            id="credential_password"
+            type="password"
+            autoComplete="new-password"
+            {...register("password")}
+          />
+          <FieldError>{errors.password?.message}</FieldError>
+        </div>
+
+        {formError && (
+          <p className="border border-red-100 bg-red-50 px-3 py-2 text-sm text-destructive">
+            {formError}
+          </p>
         )}
-      </div>
+      </DrawerBody>
 
-      <div className="space-y-1">
-        <label className="text-sm font-medium">Password</label>
-        <Input type="password" autoComplete="new-password" {...register("password")} />
-        {errors.password && <p className="text-sm text-red-600">{errors.password.message}</p>}
-      </div>
-
-      {formError && <p className="text-sm text-red-600">{formError}</p>}
-      <div className="flex gap-2">
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Saving…" : credential ? "Save Changes" : "Add Credential"}
-        </Button>
+      <DrawerFooter>
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-      </div>
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "Saving…" : credential ? "Save Changes" : "Add Credential"}
+        </Button>
+      </DrawerFooter>
     </form>
   );
 }

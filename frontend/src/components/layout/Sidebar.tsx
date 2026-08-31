@@ -1,43 +1,90 @@
+import { LogOut } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "@/auth/AuthContext";
+import { Button } from "@/components/ui/button";
+import { navGroups } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 
-const navItems = [
-  { to: "/dashboard", label: "Dashboard" },
-  { to: "/clients", label: "Clients" },
-  { to: "/credentials", label: "Credentials" },
-  { to: "/tenders", label: "Tenders" },
-  { to: "/dsc", label: "DSC Keys" },
-];
-const adminNavItems = [
-  { to: "/admin/users", label: "Users" },
-  { to: "/admin/portals", label: "Portals" },
-  { to: "/admin/tender-names", label: "Tender Names" },
-];
+/** Two initials from a full name, e.g. "Priya Nair" → "PN". */
+function initials(fullName: string | undefined): string {
+  if (!fullName) return "—";
+  return fullName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+}
 
 export function Sidebar() {
-  const { isAdmin } = useAuth();
-  const items = isAdmin ? [...navItems, ...adminNavItems] : navItems;
+  const { user, logout, isAdmin } = useAuth();
+  const groups = navGroups.filter((group) => !group.adminOnly || isAdmin);
 
   return (
-    <nav className="w-48 shrink-0 border-r p-4">
-      <ul className="space-y-1">
-        {items.map((item) => (
-          <li key={item.to}>
-            <NavLink
-              to={item.to}
-              className={({ isActive }) =>
-                cn(
-                  "block rounded px-2 py-1 text-sm",
-                  isActive ? "bg-muted font-medium" : "hover:bg-muted/50",
-                )
-              }
-            >
-              {item.label}
-            </NavLink>
-          </li>
+    <aside className="flex h-screen w-60 shrink-0 flex-col border-r border-border bg-sidebar">
+      <div className="flex h-16 items-center border-b border-border px-6">
+        <span className="font-display text-lg font-bold tracking-tight text-ink">
+          Tender<span className="text-primary">Flow</span>
+        </span>
+      </div>
+
+      <nav className="flex-1 overflow-y-auto py-6">
+        {groups.map((group) => (
+          <div key={group.label ?? "primary"} className="mb-6 last:mb-0">
+            {group.label && <p className="eyebrow px-6 pb-2">{group.label}</p>}
+            <ul>
+              {group.items.map((item) => (
+                <li key={item.to}>
+                  <NavLink
+                    to={item.to}
+                    className={({ isActive }) =>
+                      cn(
+                        "relative flex items-center gap-3 px-6 py-2.5 text-sm transition-colors",
+                        isActive
+                          ? "bg-sidebar-accent font-semibold text-foreground"
+                          : "font-medium text-muted-foreground hover:bg-accent hover:text-foreground",
+                      )
+                    }
+                  >
+                    {({ isActive }) => (
+                      <>
+                        <item.icon
+                          className={cn(
+                            "size-4 shrink-0",
+                            isActive ? "text-foreground" : "text-muted-foreground",
+                          )}
+                        />
+                        <span className="truncate">{item.label}</span>
+                        {/* 2px indicator on the right edge marks the active route. */}
+                        {isActive && (
+                          <span aria-hidden className="absolute inset-y-0 right-0 w-0.5 bg-ink" />
+                        )}
+                      </>
+                    )}
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
+          </div>
         ))}
-      </ul>
-    </nav>
+      </nav>
+
+      {/* Signed-in identity and sign-out live at the foot of the rail. */}
+      <div className="border-t border-border p-4">
+        <div className="flex items-center gap-3">
+          <span className="flex size-9 shrink-0 items-center justify-center bg-ink text-xs font-semibold text-white">
+            {initials(user?.full_name)}
+          </span>
+          <div className="min-w-0 leading-tight">
+            <p className="truncate text-sm font-medium text-foreground">{user?.full_name}</p>
+            <p className="text-xs capitalize text-muted-foreground">{user?.role}</p>
+          </div>
+        </div>
+        <Button variant="outline" size="sm" className="mt-3 w-full" onClick={() => void logout()}>
+          <LogOut />
+          Log out
+        </Button>
+      </div>
+    </aside>
   );
 }

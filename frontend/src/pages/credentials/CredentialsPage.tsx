@@ -1,6 +1,11 @@
+import { Plus } from "lucide-react";
 import { useState } from "react";
+import { Drawer } from "@/components/shared/Drawer";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { Pagination } from "@/components/shared/Pagination";
+import { SearchInput } from "@/components/shared/SearchInput";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { useClients } from "@/hooks/useClients";
 import { useCredentials, useDeleteCredential } from "@/hooks/useCredentials";
 import { usePortals } from "@/hooks/usePortals";
@@ -52,88 +57,90 @@ export default function CredentialsPage() {
   }
 
   const addButton = (
-    <Button onClick={() => setFormState({ open: true })}>+ Add Credential</Button>
+    <Button onClick={() => setFormState({ open: true })}>
+      <Plus />
+      Add Credential
+    </Button>
   );
 
   return (
-    <div className="space-y-4 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Credentials</h1>
-        {!formState.open && addButton}
+    <div className="space-y-8 px-8 py-8">
+      <PageHeader
+        title="Credentials"
+        description="Portal logins for every client. Any employee can reveal a password; only the owner or an admin can change one."
+        actions={addButton}
+      />
+
+      <div className="surface">
+        <div className="flex flex-wrap items-center gap-3 border-b border-border px-6 py-4">
+          <SearchInput
+            value={search}
+            onChange={resetToFirstPage(setSearch)}
+            placeholder="Search by client or portal…"
+            className="w-full max-w-xs"
+          />
+          <Select
+            aria-label="Filter by client"
+            className="w-auto min-w-[11rem]"
+            value={clientFilter}
+            onChange={(e) => resetToFirstPage(setClientFilter)(e.target.value)}
+          >
+            <option value="">All clients</option>
+            {clientsPage?.items.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.company_name}
+              </option>
+            ))}
+          </Select>
+          <Select
+            aria-label="Filter by portal"
+            className="w-auto min-w-[11rem]"
+            value={portalFilter}
+            onChange={(e) => resetToFirstPage(setPortalFilter)(e.target.value)}
+          >
+            <option value="">All portals</option>
+            {portals?.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </Select>
+        </div>
+
+        <CredentialsTable
+          credentials={data?.items ?? []}
+          isLoading={isLoading}
+          onEdit={(credential) => setFormState({ open: true, credential })}
+          onDelete={handleDelete}
+          emptyAction={addButton}
+        />
+
+        {totalCount > PAGE_SIZE && (
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            totalCount={totalCount}
+            onPageChange={setPage}
+          />
+        )}
       </div>
 
-      {formState.open && (
+      <Drawer
+        open={formState.open}
+        onClose={() => setFormState({ open: false })}
+        title={formState.credential ? "Edit Credential" : "Add Credential"}
+        description={
+          formState.credential
+            ? "Re-enter the password to change it; leaving the other fields untouched keeps them as they are."
+            : "Store a portal login against a client."
+        }
+      >
         <CredentialForm
           credential={formState.credential}
           onSuccess={() => setFormState({ open: false })}
           onCancel={() => setFormState({ open: false })}
         />
-      )}
-
-      <div className="flex flex-wrap gap-3">
-        <Input
-          placeholder="Search by client or portal…"
-          value={search}
-          onChange={(e) => resetToFirstPage(setSearch)(e.target.value)}
-          className="max-w-xs"
-        />
-        <select
-          className="rounded-md border px-3 py-2 text-sm"
-          value={clientFilter}
-          onChange={(e) => resetToFirstPage(setClientFilter)(e.target.value)}
-        >
-          <option value="">All clients</option>
-          {clientsPage?.items.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.company_name}
-            </option>
-          ))}
-        </select>
-        <select
-          className="rounded-md border px-3 py-2 text-sm"
-          value={portalFilter}
-          onChange={(e) => resetToFirstPage(setPortalFilter)(e.target.value)}
-        >
-          <option value="">All portals</option>
-          {portals?.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <CredentialsTable
-        credentials={data?.items ?? []}
-        isLoading={isLoading}
-        onEdit={(credential) => setFormState({ open: true, credential })}
-        onDelete={handleDelete}
-        emptyAction={addButton}
-      />
-
-      {totalCount > PAGE_SIZE && (
-        <div className="flex items-center gap-3 text-sm">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page <= 1}
-            onClick={() => setPage((p) => p - 1)}
-          >
-            Previous
-          </Button>
-          <span className="text-muted-foreground">
-            Page {page} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page >= totalPages}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            Next
-          </Button>
-        </div>
-      )}
+      </Drawer>
     </div>
   );
 }

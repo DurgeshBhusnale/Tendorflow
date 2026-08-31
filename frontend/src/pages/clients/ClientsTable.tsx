@@ -1,7 +1,8 @@
+import { Building2 } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
 import { DataTable, type Column } from "@/components/shared/DataTable";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { Button } from "@/components/ui/button";
+import { NoActions, RowActions } from "@/components/shared/RowActions";
 import { formatDate } from "@/lib/format";
 import type { Client } from "@/types/client";
 
@@ -29,25 +30,31 @@ export function ClientsTable({
 
   const columns: Column<Client>[] = [
     { header: "Contact Person", cell: (c) => c.contact_person_name },
-    { header: "Company Name", cell: (c) => c.company_name },
-    { header: "Contact Number", cell: (c) => c.contact_number },
-    { header: "Email", cell: (c) => c.email },
-    { header: "Onboarded By", cell: (c) => c.created_by?.full_name ?? "—" },
-    { header: "Date Added", cell: (c) => formatDate(c.created_at) },
+    {
+      header: "Company Name",
+      cell: (c) => <span className="font-medium text-foreground">{c.company_name}</span>,
+    },
+    {
+      header: "Contact Number",
+      cell: (c) => <span className="tabular-nums">{c.contact_number}</span>,
+    },
+    { header: "Email", cell: (c) => <span className="text-muted-foreground">{c.email}</span> },
+    {
+      header: "Onboarded By",
+      cell: (c) => <span className="text-muted-foreground">{c.created_by?.full_name ?? "—"}</span>,
+    },
+    {
+      header: "Date Added",
+      cell: (c) => <span className="text-muted-foreground">{formatDate(c.created_at)}</span>,
+    },
     {
       header: "Actions",
+      align: "right",
       cell: (c) =>
         canModify(c) ? (
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => onEdit(c)}>
-              Edit
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => onDelete(c)}>
-              Delete
-            </Button>
-          </div>
+          <RowActions onEdit={() => onEdit(c)} onDelete={() => onDelete(c)} />
         ) : (
-          <span className="text-muted-foreground">—</span>
+          <NoActions />
         ),
     },
   ];
@@ -58,7 +65,14 @@ export function ClientsTable({
       rows={clients}
       rowKey={(c) => c.id}
       isLoading={isLoading}
-      empty={<EmptyState title="No clients yet" action={emptyAction} />}
+      empty={
+        <EmptyState
+          icon={Building2}
+          title="No clients yet"
+          description="Onboard your first client to start logging credentials, DSC keys, and tenders against them."
+          action={emptyAction}
+        />
+      }
     />
   );
 }

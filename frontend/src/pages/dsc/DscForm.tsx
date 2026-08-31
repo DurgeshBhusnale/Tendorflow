@@ -2,8 +2,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { DrawerBody, DrawerFooter } from "@/components/shared/Drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FieldError, Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { useClients } from "@/hooks/useClients";
 import { useCreateDscKey, useUpdateDscKey } from "@/hooks/useDsc";
 import { ApiError } from "@/types/api";
@@ -62,53 +65,57 @@ export function DscForm({ dscKey, onSuccess, onCancel }: DscFormProps) {
   });
 
   return (
-    <form onSubmit={onSubmit} className="max-w-md space-y-3 rounded-lg border p-4">
-      <h2 className="font-medium">{dscKey ? "Edit DSC Key" : "Log DSC Key"}</h2>
+    <form onSubmit={onSubmit} className="flex h-full flex-col">
+      <DrawerBody>
+        <div className="space-y-1.5">
+          <Label htmlFor="dsc_client_id">Client</Label>
+          <Select id="dsc_client_id" {...register("client_id")}>
+            <option value="">Select a client…</option>
+            {clientsPage?.items.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.company_name}
+              </option>
+            ))}
+          </Select>
+          <FieldError>{errors.client_id?.message}</FieldError>
+        </div>
 
-      <div className="space-y-1">
-        <label className="text-sm font-medium">Client</label>
-        <select className="w-full rounded-md border px-3 py-2 text-sm" {...register("client_id")}>
-          <option value="">Select a client…</option>
-          {clientsPage?.items.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.company_name}
-            </option>
-          ))}
-        </select>
-        {errors.client_id && <p className="text-sm text-red-600">{errors.client_id.message}</p>}
-      </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="dsc_key_status">Key Status</Label>
+          <Select id="dsc_key_status" {...register("key_status")}>
+            {DSC_KEY_STATUSES.map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+          </Select>
+        </div>
 
-      <div className="space-y-1">
-        <label className="text-sm font-medium">Key Status</label>
-        <select
-          className="w-full rounded-md border px-3 py-2 text-sm"
-          {...register("key_status")}
-        >
-          {DSC_KEY_STATUSES.map((status) => (
-            <option key={status} value={status}>
-              {status}
-            </option>
-          ))}
-        </select>
-      </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="storage_location_notes">Storage Location Notes</Label>
+          <Input
+            id="storage_location_notes"
+            placeholder="Drawer 3 / Box B"
+            {...register("storage_location_notes")}
+          />
+          <FieldError>{errors.storage_location_notes?.message}</FieldError>
+        </div>
 
-      <div className="space-y-1">
-        <label className="text-sm font-medium">Storage Location Notes</label>
-        <Input placeholder="Drawer 3 / Box B" {...register("storage_location_notes")} />
-        {errors.storage_location_notes && (
-          <p className="text-sm text-red-600">{errors.storage_location_notes.message}</p>
+        {formError && (
+          <p className="border border-red-100 bg-red-50 px-3 py-2 text-sm text-destructive">
+            {formError}
+          </p>
         )}
-      </div>
+      </DrawerBody>
 
-      {formError && <p className="text-sm text-red-600">{formError}</p>}
-      <div className="flex gap-2">
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Saving…" : dscKey ? "Save Changes" : "Log Key"}
-        </Button>
+      <DrawerFooter>
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-      </div>
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "Saving…" : dscKey ? "Save Changes" : "Log Key"}
+        </Button>
+      </DrawerFooter>
     </form>
   );
 }

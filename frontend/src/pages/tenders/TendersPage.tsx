@@ -1,14 +1,14 @@
+import { Plus } from "lucide-react";
 import { useState } from "react";
+import { Drawer } from "@/components/shared/Drawer";
 import { MetricCard } from "@/components/shared/MetricCard";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { Pagination } from "@/components/shared/Pagination";
+import { SearchInput } from "@/components/shared/SearchInput";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { useClients } from "@/hooks/useClients";
-import {
-  useDeleteTender,
-  useTenderSummary,
-  useTenders,
-  useUpdateTender,
-} from "@/hooks/useTenders";
+import { useDeleteTender, useTenderSummary, useTenders, useUpdateTender } from "@/hooks/useTenders";
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { TenderForm } from "@/pages/tenders/TenderForm";
@@ -54,104 +54,109 @@ export default function TendersPage() {
     await deleteTender.mutateAsync(tender.id);
   }
 
-  const addButton = <Button onClick={() => setFormState({ open: true })}>+ Log Tender</Button>;
+  const addButton = (
+    <Button onClick={() => setFormState({ open: true })}>
+      <Plus />
+      Log Tender
+    </Button>
+  );
 
   return (
-    <div className="space-y-4 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Tenders</h1>
-        {!formState.open && addButton}
-      </div>
+    <div className="space-y-8 px-8 py-8">
+      <PageHeader
+        title="Tenders"
+        description="Every submission logged against a client, with pending and paid value totalled for the current filter."
+        actions={addButton}
+      />
 
-      <div className="grid max-w-2xl grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:max-w-3xl">
         <MetricCard
-          label={`Total Pending Value (${summary?.pending_count ?? 0})`}
+          label="Total Pending Value"
           value={formatCurrency(summary?.total_pending_value ?? "0")}
+          hint={`${summary?.pending_count ?? 0} tender(s) awaiting payment`}
         />
         <MetricCard
-          label={`Total Paid Value (${summary?.paid_count ?? 0})`}
+          label="Total Paid Value"
           value={formatCurrency(summary?.total_paid_value ?? "0")}
+          hint={`${summary?.paid_count ?? 0} tender(s) settled`}
         />
       </div>
 
-      {formState.open && (
+      <div className="surface">
+        <div className="flex flex-wrap items-center gap-3 border-b border-border px-6 py-4">
+          <SearchInput
+            value={search}
+            onChange={(value) => changeFilter(() => setSearch(value))}
+            placeholder="Search by client or tender name…"
+            className="w-full max-w-xs"
+          />
+          <Select
+            aria-label="Filter by client"
+            className="w-auto min-w-[11rem]"
+            value={clientFilter}
+            onChange={(e) => changeFilter(() => setClientFilter(e.target.value))}
+          >
+            <option value="">All clients</option>
+            {clientsPage?.items.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.company_name}
+              </option>
+            ))}
+          </Select>
+
+          <div className="flex border border-border" role="group" aria-label="Filter by status">
+            {STATUS_OPTIONS.map((option) => (
+              <button
+                key={option}
+                type="button"
+                aria-pressed={statusFilter === option}
+                onClick={() => changeFilter(() => setStatusFilter(option))}
+                className={cn(
+                  "h-10 border-r border-border px-4 text-sm transition-colors last:border-r-0",
+                  statusFilter === option
+                    ? "bg-ink font-semibold text-white"
+                    : "bg-card text-muted-foreground hover:bg-accent hover:text-foreground",
+                )}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <TendersTable
+          tenders={data?.items ?? []}
+          isLoading={isLoading}
+          onEdit={(tender) => setFormState({ open: true, tender })}
+          onDelete={handleDelete}
+          onMarkPaid={(tender) =>
+            updateTender.mutate({ id: tender.id, payload: { status: "Paid" } })
+          }
+          emptyAction={addButton}
+        />
+
+        {totalCount > PAGE_SIZE && (
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            totalCount={totalCount}
+            onPageChange={setPage}
+          />
+        )}
+      </div>
+
+      <Drawer
+        open={formState.open}
+        onClose={() => setFormState({ open: false })}
+        title={formState.tender ? "Edit Tender" : "Log Tender"}
+        description="Total amount is calculated from quantity and price; the server is the source of truth."
+      >
         <TenderForm
           tender={formState.tender}
           onSuccess={() => setFormState({ open: false })}
           onCancel={() => setFormState({ open: false })}
         />
-      )}
-
-      <div className="flex flex-wrap items-center gap-3">
-        <Input
-          placeholder="Search by client or tender name…"
-          value={search}
-          onChange={(e) => changeFilter(() => setSearch(e.target.value))}
-          className="max-w-xs"
-        />
-        <select
-          className="rounded-md border px-3 py-2 text-sm"
-          value={clientFilter}
-          onChange={(e) => changeFilter(() => setClientFilter(e.target.value))}
-        >
-          <option value="">All clients</option>
-          {clientsPage?.items.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.company_name}
-            </option>
-          ))}
-        </select>
-        <div className="flex overflow-hidden rounded-md border">
-          {STATUS_OPTIONS.map((option) => (
-            <button
-              key={option}
-              type="button"
-              onClick={() => changeFilter(() => setStatusFilter(option))}
-              className={cn(
-                "px-3 py-2 text-sm",
-                statusFilter === option ? "bg-muted font-medium" : "hover:bg-muted/50",
-              )}
-            >
-              {option}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <TendersTable
-        tenders={data?.items ?? []}
-        isLoading={isLoading}
-        onEdit={(tender) => setFormState({ open: true, tender })}
-        onDelete={handleDelete}
-        onMarkPaid={(tender) =>
-          updateTender.mutate({ id: tender.id, payload: { status: "Paid" } })
-        }
-        emptyAction={addButton}
-      />
-
-      {totalCount > PAGE_SIZE && (
-        <div className="flex items-center gap-3 text-sm">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page <= 1}
-            onClick={() => setPage((p) => p - 1)}
-          >
-            Previous
-          </Button>
-          <span className="text-muted-foreground">
-            Page {page} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page >= totalPages}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            Next
-          </Button>
-        </div>
-      )}
+      </Drawer>
     </div>
   );
 }

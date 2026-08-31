@@ -5,7 +5,11 @@ export function ProtectedRoute() {
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
-    return <div className="p-6">Loading…</div>;
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      </div>
+    );
   }
   if (!isAuthenticated) {
     return <Navigate to="/" replace />;

@@ -1,5 +1,7 @@
+import { ArrowRight, Building2, Fingerprint, FileText, Wallet } from "lucide-react";
 import { Link } from "react-router-dom";
 import { MetricCard } from "@/components/shared/MetricCard";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusPill } from "@/components/shared/StatusPill";
 import { useDashboardSummary } from "@/hooks/useDashboard";
 import { formatCurrency, formatDate } from "@/lib/format";
@@ -20,17 +22,21 @@ function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-lg border">
-      <header className="flex items-center justify-between border-b px-4 py-3">
-        <h2 className="font-medium">{title}</h2>
-        <Link to={href} className="text-sm text-muted-foreground underline">
+    <section className="surface flex flex-col">
+      <header className="flex items-center justify-between border-b border-border px-6 py-4">
+        <h2 className="text-base">{title}</h2>
+        <Link
+          to={href}
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary transition-colors hover:text-primary/80"
+        >
           View all
+          <ArrowRight className="size-3.5" />
         </Link>
       </header>
       {isEmpty ? (
-        <p className="px-4 py-6 text-sm text-muted-foreground">{emptyLabel}</p>
+        <p className="px-6 py-12 text-center text-sm text-muted-foreground">{emptyLabel}</p>
       ) : (
-        <div className="divide-y">{children}</div>
+        <div className="divide-y divide-divider">{children}</div>
       )}
     </section>
   );
@@ -38,19 +44,18 @@ function Panel({
 
 function RecentTenderRow({ tender }: { tender: Tender }) {
   return (
-    <div className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
+    <div className="flex items-center justify-between gap-4 px-6 py-4">
       <div className="min-w-0">
-        <p className="truncate font-medium">{tender.client.company_name}</p>
-        <p className="text-muted-foreground">
+        <p className="truncate text-sm font-medium text-foreground">{tender.client.company_name}</p>
+        <p className="mt-0.5 truncate text-xs text-muted-foreground">
           {tender.tender_name.name} · {formatDate(tender.created_at)}
         </p>
       </div>
-      <div className="flex shrink-0 items-center gap-3">
-        <span className="tabular-nums">{formatCurrency(tender.total_amount)}</span>
-        <StatusPill
-          label={tender.status}
-          tone={tender.status === "Paid" ? "green" : "amber"}
-        />
+      <div className="flex shrink-0 items-center gap-4">
+        <span className="text-sm font-semibold tabular-nums text-foreground">
+          {formatCurrency(tender.total_amount)}
+        </span>
+        <StatusPill label={tender.status} tone={tender.status === "Paid" ? "green" : "amber"} />
       </div>
     </div>
   );
@@ -58,14 +63,18 @@ function RecentTenderRow({ tender }: { tender: Tender }) {
 
 function RecentClientRow({ client }: { client: Client }) {
   return (
-    <div className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
+    <div className="flex items-center justify-between gap-4 px-6 py-4">
       <div className="min-w-0">
-        <p className="truncate font-medium">{client.company_name}</p>
-        <p className="truncate text-muted-foreground">{client.contact_person_name}</p>
+        <p className="truncate text-sm font-medium text-foreground">{client.company_name}</p>
+        <p className="mt-0.5 truncate text-xs text-muted-foreground">
+          {client.contact_person_name}
+        </p>
       </div>
-      <div className="shrink-0 text-right text-muted-foreground">
-        <p>{formatDate(client.created_at)}</p>
-        <p className="text-xs">by {client.created_by?.full_name ?? "—"}</p>
+      <div className="shrink-0 text-right">
+        <p className="text-xs text-muted-foreground">{formatDate(client.created_at)}</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          by {client.created_by?.full_name ?? "—"}
+        </p>
       </div>
     </div>
   );
@@ -75,28 +84,42 @@ export default function DashboardPage() {
   const { data, isLoading, error } = useDashboardSummary();
 
   if (isLoading) {
-    return <div className="p-6">Loading…</div>;
+    return <div className="px-8 py-16 text-center text-sm text-muted-foreground">Loading…</div>;
   }
   if (error) {
-    return <div className="p-6 text-red-600">{error.message}</div>;
+    return (
+      <div className="p-8">
+        <p className="border border-red-100 bg-red-50 px-4 py-3 text-sm text-destructive">
+          {error.message}
+        </p>
+      </div>
+    );
   }
   if (!data) return null;
 
   return (
-    <div className="space-y-6 p-6">
-      <h1 className="text-xl font-semibold">Dashboard</h1>
+    <div className="space-y-8 px-8 py-8">
+      <PageHeader
+        title="Dashboard"
+        description="A snapshot of active clients, outstanding tender value, and the keys currently in the office."
+      />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard label="Total Active Clients" value={data.total_active_clients} />
-        <MetricCard label="Pending Tenders" value={data.pending_tenders_count} />
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          label="Total Active Clients"
+          value={data.total_active_clients}
+          icon={Building2}
+        />
+        <MetricCard label="Pending Tenders" value={data.pending_tenders_count} icon={FileText} />
         <MetricCard
           label="Total Tender Value (Paid)"
           value={formatCurrency(data.total_paid_tender_value)}
+          icon={Wallet}
         />
-        <MetricCard label="DSC Keys in Office" value={data.dsc_keys_in_office} />
+        <MetricCard label="DSC Keys in Office" value={data.dsc_keys_in_office} icon={Fingerprint} />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Panel
           title="Recent Tenders"
           href="/tenders"

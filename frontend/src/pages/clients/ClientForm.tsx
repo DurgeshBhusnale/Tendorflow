@@ -2,8 +2,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { DrawerBody, DrawerFooter } from "@/components/shared/Drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FieldError, Label } from "@/components/ui/label";
 import { useCreateClient, useUpdateClient } from "@/hooks/useClients";
 import { ApiError } from "@/types/api";
 import type { Client } from "@/types/client";
@@ -59,43 +61,43 @@ export function ClientForm({ client, onSuccess, onCancel }: ClientFormProps) {
   });
 
   return (
-    <form onSubmit={onSubmit} className="max-w-md space-y-3 rounded-lg border p-4">
-      <h2 className="font-medium">{client ? "Edit Client" : "Add Client"}</h2>
-      <div className="space-y-1">
-        <label className="text-sm font-medium">Contact Person</label>
-        <Input {...register("contact_person_name")} />
-        {errors.contact_person_name && (
-          <p className="text-sm text-red-600">{errors.contact_person_name.message}</p>
+    <form onSubmit={onSubmit} className="flex h-full flex-col">
+      <DrawerBody>
+        <div className="space-y-1.5">
+          <Label htmlFor="contact_person_name">Contact Person</Label>
+          <Input id="contact_person_name" {...register("contact_person_name")} />
+          <FieldError>{errors.contact_person_name?.message}</FieldError>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="company_name">Company Name</Label>
+          <Input id="company_name" {...register("company_name")} />
+          <FieldError>{errors.company_name?.message}</FieldError>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="contact_number">Contact Number</Label>
+          <Input id="contact_number" {...register("contact_number")} />
+          <FieldError>{errors.contact_number?.message}</FieldError>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="email">Email</Label>
+          <Input id="email" type="email" {...register("email")} />
+          <FieldError>{errors.email?.message}</FieldError>
+        </div>
+        {formError && (
+          <p className="border border-red-100 bg-red-50 px-3 py-2 text-sm text-destructive">
+            {formError}
+          </p>
         )}
-      </div>
-      <div className="space-y-1">
-        <label className="text-sm font-medium">Company Name</label>
-        <Input {...register("company_name")} />
-        {errors.company_name && (
-          <p className="text-sm text-red-600">{errors.company_name.message}</p>
-        )}
-      </div>
-      <div className="space-y-1">
-        <label className="text-sm font-medium">Contact Number</label>
-        <Input {...register("contact_number")} />
-        {errors.contact_number && (
-          <p className="text-sm text-red-600">{errors.contact_number.message}</p>
-        )}
-      </div>
-      <div className="space-y-1">
-        <label className="text-sm font-medium">Email</label>
-        <Input type="email" {...register("email")} />
-        {errors.email && <p className="text-sm text-red-600">{errors.email.message}</p>}
-      </div>
-      {formError && <p className="text-sm text-red-600">{formError}</p>}
-      <div className="flex gap-2">
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Saving…" : client ? "Save Changes" : "Add Client"}
-        </Button>
+      </DrawerBody>
+
+      <DrawerFooter>
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-      </div>
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "Saving…" : client ? "Save Changes" : "Add Client"}
+        </Button>
+      </DrawerFooter>
     </form>
   );
 }

@@ -1,7 +1,8 @@
+import { KeyRound } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
 import { DataTable, type Column } from "@/components/shared/DataTable";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { Button } from "@/components/ui/button";
+import { NoActions, RowActions } from "@/components/shared/RowActions";
 import { formatDate } from "@/lib/format";
 import { PasswordCell } from "@/pages/credentials/PasswordCell";
 import type { Credential } from "@/types/credential";
@@ -25,30 +26,35 @@ export function CredentialsTable({
 
   // Mirrors the backend ownership rule; the server enforces it regardless.
   // Note this gates *writes* only — any employee may reveal any password.
-  const canModify = (credential: Credential) =>
-    isAdmin || credential.created_by?.id === user?.id;
+  const canModify = (credential: Credential) => isAdmin || credential.created_by?.id === user?.id;
 
   const columns: Column<Credential>[] = [
-    { header: "Client", cell: (c) => c.client.company_name },
+    {
+      header: "Client",
+      cell: (c) => <span className="font-medium text-foreground">{c.client.company_name}</span>,
+    },
     { header: "Portal", cell: (c) => c.portal.name },
-    { header: "Login Identifier", cell: (c) => c.login_identifier ?? "—" },
+    {
+      header: "Login Identifier",
+      cell: (c) => c.login_identifier ?? <span className="text-muted-foreground">—</span>,
+    },
     { header: "Password", cell: (c) => <PasswordCell credential={c} /> },
-    { header: "Added By", cell: (c) => c.created_by?.full_name ?? "—" },
-    { header: "Date", cell: (c) => formatDate(c.created_at) },
+    {
+      header: "Added By",
+      cell: (c) => <span className="text-muted-foreground">{c.created_by?.full_name ?? "—"}</span>,
+    },
+    {
+      header: "Date",
+      cell: (c) => <span className="text-muted-foreground">{formatDate(c.created_at)}</span>,
+    },
     {
       header: "Actions",
+      align: "right",
       cell: (c) =>
         canModify(c) ? (
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => onEdit(c)}>
-              Edit
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => onDelete(c)}>
-              Delete
-            </Button>
-          </div>
+          <RowActions onEdit={() => onEdit(c)} onDelete={() => onDelete(c)} />
         ) : (
-          <span className="text-muted-foreground">—</span>
+          <NoActions />
         ),
     },
   ];
@@ -59,7 +65,14 @@ export function CredentialsTable({
       rows={credentials}
       rowKey={(c) => c.id}
       isLoading={isLoading}
-      empty={<EmptyState title="No credentials yet" action={emptyAction} />}
+      empty={
+        <EmptyState
+          icon={KeyRound}
+          title="No credentials yet"
+          description="Store a portal login against a client so anyone on the team can find it when a tender is due."
+          action={emptyAction}
+        />
+      }
     />
   );
 }

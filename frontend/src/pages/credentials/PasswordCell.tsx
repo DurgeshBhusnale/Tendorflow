@@ -1,3 +1,4 @@
+import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useRevealPassword } from "@/hooks/useCredentials";
@@ -21,7 +22,9 @@ export function PasswordCell({ credential }: { credential: Credential }) {
 
   return (
     <div className="flex items-center gap-2">
-      <span className="font-mono">{revealed ?? credential.password}</span>
+      <span className="bg-muted px-2 py-1 font-mono text-xs tracking-tight text-foreground">
+        {revealed ?? credential.password}
+      </span>
       {revealed === null ? (
         <Button
           variant="outline"
@@ -29,10 +32,12 @@ export function PasswordCell({ credential }: { credential: Credential }) {
           onClick={() => void handleReveal()}
           disabled={revealPassword.isPending}
         >
+          <Eye />
           {revealPassword.isPending ? "…" : "Reveal"}
         </Button>
       ) : (
         <Button variant="outline" size="sm" onClick={() => setRevealed(null)}>
+          <EyeOff />
           Hide
         </Button>
       )}

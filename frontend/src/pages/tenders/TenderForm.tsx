@@ -2,8 +2,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { DrawerBody, DrawerFooter } from "@/components/shared/Drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FieldError, Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { useClients } from "@/hooks/useClients";
 import { useCreateTender, useUpdateTender } from "@/hooks/useTenders";
 import { useTenderNames } from "@/hooks/useTenderNames";
@@ -59,8 +62,7 @@ export function TenderForm({ tender, onSuccess, onCancel }: TenderFormProps) {
   // total while typing. Never submitted — the server computes the real value.
   const quantity = Number(watch("quantity"));
   const price = Number(watch("price"));
-  const previewTotal =
-    Number.isFinite(quantity) && Number.isFinite(price) ? quantity * price : 0;
+  const previewTotal = Number.isFinite(quantity) && Number.isFinite(price) ? quantity * price : 0;
 
   const onSubmit = handleSubmit(async (values) => {
     setFormError(null);
@@ -77,77 +79,87 @@ export function TenderForm({ tender, onSuccess, onCancel }: TenderFormProps) {
   });
 
   return (
-    <form onSubmit={onSubmit} className="max-w-md space-y-3 rounded-lg border p-4">
-      <h2 className="font-medium">{tender ? "Edit Tender" : "Log Tender"}</h2>
+    <form onSubmit={onSubmit} className="flex h-full flex-col">
+      <DrawerBody>
+        <div className="space-y-1.5">
+          <Label htmlFor="tender_client_id">Client</Label>
+          <Select id="tender_client_id" {...register("client_id")}>
+            <option value="">Select a client…</option>
+            {clientsPage?.items.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.company_name}
+              </option>
+            ))}
+          </Select>
+          <FieldError>{errors.client_id?.message}</FieldError>
+        </div>
 
-      <div className="space-y-1">
-        <label className="text-sm font-medium">Client</label>
-        <select className="w-full rounded-md border px-3 py-2 text-sm" {...register("client_id")}>
-          <option value="">Select a client…</option>
-          {clientsPage?.items.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.company_name}
-            </option>
-          ))}
-        </select>
-        {errors.client_id && <p className="text-sm text-red-600">{errors.client_id.message}</p>}
-      </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="tender_name_id">Tender Name</Label>
+          <Select id="tender_name_id" {...register("tender_name_id")}>
+            <option value="">Select a tender name…</option>
+            {tenderNames?.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </Select>
+          <FieldError>{errors.tender_name_id?.message}</FieldError>
+        </div>
 
-      <div className="space-y-1">
-        <label className="text-sm font-medium">Tender Name</label>
-        <select
-          className="w-full rounded-md border px-3 py-2 text-sm"
-          {...register("tender_name_id")}
-        >
-          <option value="">Select a tender name…</option>
-          {tenderNames?.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name}
-            </option>
-          ))}
-        </select>
-        {errors.tender_name_id && (
-          <p className="text-sm text-red-600">{errors.tender_name_id.message}</p>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="tender_quantity">Quantity</Label>
+            <Input id="tender_quantity" type="number" min={1} step={1} {...register("quantity")} />
+            <FieldError>{errors.quantity?.message}</FieldError>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="tender_price">Price</Label>
+            <Input
+              id="tender_price"
+              type="text"
+              inputMode="decimal"
+              placeholder="2500.00"
+              {...register("price")}
+            />
+            <FieldError>{errors.price?.message}</FieldError>
+          </div>
+        </div>
+
+        {/* Calculated field — visibly inert, never submitted. */}
+        <div className="space-y-1.5 border border-border bg-muted p-4">
+          <p className="eyebrow">Total Amount</p>
+          <p className="text-2xl font-semibold tabular-nums text-foreground">
+            {formatCurrency(previewTotal)}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Calculated automatically — the server is the source of truth.
+          </p>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="tender_status">Status</Label>
+          <Select id="tender_status" {...register("status")}>
+            <option value="Pending">Pending</option>
+            <option value="Paid">Paid</option>
+          </Select>
+        </div>
+
+        {formError && (
+          <p className="border border-red-100 bg-red-50 px-3 py-2 text-sm text-destructive">
+            {formError}
+          </p>
         )}
-      </div>
+      </DrawerBody>
 
-      <div className="space-y-1">
-        <label className="text-sm font-medium">Quantity</label>
-        <Input type="number" min={1} step={1} {...register("quantity")} />
-        {errors.quantity && <p className="text-sm text-red-600">{errors.quantity.message}</p>}
-      </div>
-
-      <div className="space-y-1">
-        <label className="text-sm font-medium">Price</label>
-        <Input type="text" inputMode="decimal" placeholder="2500.00" {...register("price")} />
-        {errors.price && <p className="text-sm text-red-600">{errors.price.message}</p>}
-      </div>
-
-      <div className="space-y-1">
-        <label className="text-sm font-medium">Total Amount</label>
-        <Input readOnly disabled value={formatCurrency(previewTotal)} />
-        <p className="text-xs text-muted-foreground">
-          Calculated automatically — the server is the source of truth.
-        </p>
-      </div>
-
-      <div className="space-y-1">
-        <label className="text-sm font-medium">Status</label>
-        <select className="w-full rounded-md border px-3 py-2 text-sm" {...register("status")}>
-          <option value="Pending">Pending</option>
-          <option value="Paid">Paid</option>
-        </select>
-      </div>
-
-      {formError && <p className="text-sm text-red-600">{formError}</p>}
-      <div className="flex gap-2">
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Saving…" : tender ? "Save Changes" : "Log Tender"}
-        </Button>
+      <DrawerFooter>
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-      </div>
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "Saving…" : tender ? "Save Changes" : "Log Tender"}
+        </Button>
+      </DrawerFooter>
     </form>
   );
 }

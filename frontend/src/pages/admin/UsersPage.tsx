@@ -1,11 +1,21 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Plus, Users } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { DataTable, type Column } from "@/components/shared/DataTable";
+import { Drawer, DrawerBody, DrawerFooter } from "@/components/shared/Drawer";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { StatusPill } from "@/components/shared/StatusPill";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FieldError, Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { useCreateUser, useUpdateUser, useUsers } from "@/hooks/useUsers";
+import { formatDate } from "@/lib/format";
 import { ApiError } from "@/types/api";
+import type { User } from "@/types/user";
 
 const createUserSchema = z.object({
   full_name: z.string().min(1, "Required"),
@@ -48,87 +58,130 @@ export default function UsersPage() {
     }
   });
 
-  return (
-    <div className="p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Users</h1>
-        <Button onClick={() => setShowForm((v) => !v)}>
-          {showForm ? "Cancel" : "Onboard User"}
+  function closeForm() {
+    reset();
+    setFormError(null);
+    setShowForm(false);
+  }
+
+  const columns: Column<User>[] = [
+    {
+      header: "Name",
+      cell: (u) => <span className="font-medium text-foreground">{u.full_name}</span>,
+    },
+    { header: "Email", cell: (u) => <span className="text-muted-foreground">{u.email}</span> },
+    { header: "Role", cell: (u) => <span className="capitalize">{u.role}</span> },
+    {
+      header: "Date Added",
+      cell: (u) => <span className="text-muted-foreground">{formatDate(u.created_at)}</span>,
+    },
+    {
+      header: "Status",
+      cell: (u) => (
+        <StatusPill
+          label={u.is_active ? "Active" : "Inactive"}
+          tone={u.is_active ? "green" : "slate"}
+        />
+      ),
+    },
+    {
+      header: "Actions",
+      cell: (u) => (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => updateUser.mutate({ id: u.id, payload: { is_active: !u.is_active } })}
+        >
+          {u.is_active ? "Deactivate" : "Reactivate"}
         </Button>
+      ),
+    },
+  ];
+
+  const addButton = (
+    <Button onClick={() => setShowForm(true)}>
+      <Plus />
+      Onboard User
+    </Button>
+  );
+
+  return (
+    <div className="space-y-8 px-8 py-8">
+      <PageHeader
+        title="Users"
+        description="Admins and employees with access to this workspace. Deactivating a user revokes their sign-in without deleting their records."
+        actions={addButton}
+      />
+
+      <div className="surface">
+        <DataTable
+          columns={columns}
+          rows={data?.items ?? []}
+          rowKey={(u) => u.id}
+          isLoading={isLoading}
+          empty={
+            <EmptyState
+              icon={Users}
+              title="No users yet"
+              description="Onboard a teammate to give them access to the workspace."
+              action={addButton}
+            />
+          }
+        />
       </div>
 
-      {showForm && (
-        <form onSubmit={onSubmit} className="mt-4 max-w-md space-y-3 rounded-lg border p-4">
-          <div className="space-y-1">
-            <label className="text-sm font-medium">Full Name</label>
-            <Input {...register("full_name")} />
-            {errors.full_name && (
-              <p className="text-sm text-red-600">{errors.full_name.message}</p>
+      <Drawer
+        open={showForm}
+        onClose={closeForm}
+        title="Onboard User"
+        description="The user signs in with the temporary password you set here."
+      >
+        <form onSubmit={onSubmit} className="flex h-full flex-col">
+          <DrawerBody>
+            <div className="space-y-1.5">
+              <Label htmlFor="user_full_name">Full Name</Label>
+              <Input id="user_full_name" {...register("full_name")} />
+              <FieldError>{errors.full_name?.message}</FieldError>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="user_email">Email</Label>
+              <Input id="user_email" type="email" {...register("email")} />
+              <FieldError>{errors.email?.message}</FieldError>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="user_password">Temporary Password</Label>
+              <Input
+                id="user_password"
+                type="password"
+                autoComplete="new-password"
+                {...register("password")}
+              />
+              <FieldError>{errors.password?.message}</FieldError>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="user_role">Role</Label>
+              <Select id="user_role" {...register("role")}>
+                <option value="employee">Employee</option>
+                <option value="admin">Admin</option>
+              </Select>
+            </div>
+            {formError && (
+              <p className="border border-red-100 bg-red-50 px-3 py-2 text-sm text-destructive">
+                {formError}
+              </p>
             )}
-          </div>
-          <div className="space-y-1">
-            <label className="text-sm font-medium">Email</label>
-            <Input type="email" {...register("email")} />
-            {errors.email && <p className="text-sm text-red-600">{errors.email.message}</p>}
-          </div>
-          <div className="space-y-1">
-            <label className="text-sm font-medium">Temporary Password</label>
-            <Input type="password" {...register("password")} />
-            {errors.password && <p className="text-sm text-red-600">{errors.password.message}</p>}
-          </div>
-          <div className="space-y-1">
-            <label className="text-sm font-medium">Role</label>
-            <select className="w-full rounded-md border px-3 py-2 text-sm" {...register("role")}>
-              <option value="employee">Employee</option>
-              <option value="admin">Admin</option>
-            </select>
-          </div>
-          {formError && <p className="text-sm text-red-600">{formError}</p>}
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Creating…" : "Create User"}
-          </Button>
-        </form>
-      )}
+          </DrawerBody>
 
-      <table className="mt-6 w-full text-sm">
-        <thead>
-          <tr className="border-b text-left">
-            <th className="p-2">Name</th>
-            <th className="p-2">Email</th>
-            <th className="p-2">Role</th>
-            <th className="p-2">Date Added</th>
-            <th className="p-2">Active</th>
-          </tr>
-        </thead>
-        <tbody>
-          {isLoading && (
-            <tr>
-              <td className="p-2" colSpan={5}>
-                Loading…
-              </td>
-            </tr>
-          )}
-          {data?.items.map((u) => (
-            <tr key={u.id} className="border-b">
-              <td className="p-2">{u.full_name}</td>
-              <td className="p-2">{u.email}</td>
-              <td className="p-2">{u.role}</td>
-              <td className="p-2">{new Date(u.created_at).toLocaleDateString()}</td>
-              <td className="p-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    updateUser.mutate({ id: u.id, payload: { is_active: !u.is_active } })
-                  }
-                >
-                  {u.is_active ? "Active" : "Inactive"}
-                </Button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+          <DrawerFooter>
+            <Button type="button" variant="outline" onClick={closeForm}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Creating…" : "Create User"}
+            </Button>
+          </DrawerFooter>
+        </form>
+      </Drawer>
     </div>
   );
 }

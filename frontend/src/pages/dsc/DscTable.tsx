@@ -1,8 +1,9 @@
+import { Fingerprint } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
 import { DataTable, type Column } from "@/components/shared/DataTable";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { NoActions, RowActions } from "@/components/shared/RowActions";
 import { StatusPill, type PillTone } from "@/components/shared/StatusPill";
-import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/format";
 import type { DscKey, DscKeyStatus } from "@/types/dsc";
 
@@ -21,13 +22,7 @@ interface DscTableProps {
   emptyAction?: React.ReactNode;
 }
 
-export function DscTable({
-  dscKeys,
-  isLoading,
-  onEdit,
-  onDelete,
-  emptyAction,
-}: DscTableProps) {
+export function DscTable({ dscKeys, isLoading, onEdit, onDelete, emptyAction }: DscTableProps) {
   const { user, isAdmin } = useAuth();
 
   // Mirrors the backend ownership rule; the server enforces it regardless.
@@ -35,7 +30,10 @@ export function DscTable({
   const canModify = (dscKey: DscKey) => isAdmin || dscKey.created_by?.id === user?.id;
 
   const columns: Column<DscKey>[] = [
-    { header: "Client", cell: (k) => k.client.company_name },
+    {
+      header: "Client",
+      cell: (k) => <span className="font-medium text-foreground">{k.client.company_name}</span>,
+    },
     {
       header: "Key Status",
       cell: (k) => <StatusPill label={k.key_status} tone={STATUS_TONES[k.key_status]} />,
@@ -45,27 +43,27 @@ export function DscTable({
       // The reason this module exists — kept visually prominent.
       cell: (k) =>
         k.storage_location_notes ? (
-          <span className="font-medium">{k.storage_location_notes}</span>
+          <span className="font-medium text-foreground">{k.storage_location_notes}</span>
         ) : (
           <span className="text-muted-foreground">No location recorded</span>
         ),
     },
-    { header: "Created By", cell: (k) => k.created_by?.full_name ?? "—" },
-    { header: "Created At", cell: (k) => formatDate(k.created_at) },
+    {
+      header: "Created By",
+      cell: (k) => <span className="text-muted-foreground">{k.created_by?.full_name ?? "—"}</span>,
+    },
+    {
+      header: "Created At",
+      cell: (k) => <span className="text-muted-foreground">{formatDate(k.created_at)}</span>,
+    },
     {
       header: "Actions",
+      align: "right",
       cell: (k) =>
         canModify(k) ? (
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => onEdit(k)}>
-              Edit
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => onDelete(k)}>
-              Delete
-            </Button>
-          </div>
+          <RowActions onEdit={() => onEdit(k)} onDelete={() => onDelete(k)} />
         ) : (
-          <span className="text-muted-foreground">—</span>
+          <NoActions />
         ),
     },
   ];
@@ -76,7 +74,14 @@ export function DscTable({
       rows={dscKeys}
       rowKey={(k) => k.id}
       isLoading={isLoading}
-      empty={<EmptyState title="No DSC keys logged yet" action={emptyAction} />}
+      empty={
+        <EmptyState
+          icon={Fingerprint}
+          title="No DSC keys logged yet"
+          description="Log a key so the whole team knows its status and where it is stored."
+          action={emptyAction}
+        />
+      }
     />
   );
 }
