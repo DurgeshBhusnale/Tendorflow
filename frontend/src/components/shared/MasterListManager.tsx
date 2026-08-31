@@ -75,6 +75,7 @@ export function MasterListManager({
   const columns: Column<MasterListItem>[] = [
     {
       header: "Name",
+      mobile: "title",
       cell: (item) => <span className="font-medium text-foreground">{item.name}</span>,
     },
     {
@@ -92,6 +93,8 @@ export function MasterListManager({
     },
     {
       header: "Actions",
+      align: "right",
+      mobile: "actions",
       cell: (item) => (
         <Button variant="outline" size="sm" onClick={() => void onToggleActive(item)}>
           {item.is_active ? "Deactivate" : "Reactivate"}
@@ -108,7 +111,7 @@ export function MasterListManager({
   );
 
   return (
-    <div className="space-y-8 px-8 py-8">
+    <div className="page">
       <PageHeader
         title={title}
         description="Inactive entries disappear from employee-facing dropdowns, but existing records that reference them are unaffected."

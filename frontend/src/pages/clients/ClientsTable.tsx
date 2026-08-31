@@ -32,6 +32,7 @@ export function ClientsTable({
     { header: "Contact Person", cell: (c) => c.contact_person_name },
     {
       header: "Company Name",
+      mobile: "title",
       cell: (c) => <span className="font-medium text-foreground">{c.company_name}</span>,
     },
     {
@@ -50,6 +51,7 @@ export function ClientsTable({
     {
       header: "Actions",
       align: "right",
+      mobile: "actions",
       cell: (c) =>
         canModify(c) ? (
           <RowActions onEdit={() => onEdit(c)} onDelete={() => onDelete(c)} />

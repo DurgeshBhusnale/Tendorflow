@@ -325,7 +325,10 @@ Every type mirrors the response shape from `API_CONTRACT.md`. If the API contrac
 8. [ ] Sidebar nav entry added if the page needs top-level nav.
 9. [ ] Uses `PageHeader`, `DataTable`, `Drawer`, `EmptyState`, `MetricCard` primitives where applicable.
 10. [ ] Matches `docs/DESIGN_SYSTEM.md`: token colours, 0px radius, pill statuses, `formatCurrency` / `formatDate`.
-11. [ ] Manual smoke test: create, list, edit, delete flow works end-to-end (`node scripts/smoke.mjs`).
+11. [ ] Smoke tests pass with both dev servers up:
+    - `node scripts/smoke.mjs` — desktop at 1440px; create, list, edit, delete end to end.
+    - `node scripts/smoke-mobile.mjs` — iPhone 12 profile; also asserts nothing overflows the
+      viewport and the document never scrolls horizontally.
 
 ---
 
@@ -365,5 +368,9 @@ component. The short version:
   a `<StatusPill>`, never plain text.
 - Loading states: `Loading…` in muted text (the smoke test keys off that string). Error states: a
   bordered `bg-red-50` block in `text-destructive`. Toasts still to come.
-- Mobile responsiveness: not required. Design for desktop 1440px; every table is expected to fit
-  that width without horizontal scrolling.
+- **Responsive is required.** Desktop-first at 1440px, usable down to 360px, nothing scrolling
+  horizontally at any width. Use the `.page` and `.toolbar` classes instead of hand-rolling the
+  padding ladder, and give each new table column a `mobile` role so it lands correctly in the
+  stacked card layout `DataTable` renders below `md`. `scripts/smoke-mobile.mjs` is the check —
+  it fails on any element that overflows the viewport, which is the failure mode that is hardest
+  to spot by eye.

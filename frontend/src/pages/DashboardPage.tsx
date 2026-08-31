@@ -23,7 +23,7 @@ function Panel({
 }) {
   return (
     <section className="surface flex flex-col">
-      <header className="flex items-center justify-between border-b border-border px-6 py-4">
+      <header className="flex items-center justify-between border-b border-border px-4 py-4 sm:px-6">
         <h2 className="text-base">{title}</h2>
         <Link
           to={href}
@@ -34,7 +34,7 @@ function Panel({
         </Link>
       </header>
       {isEmpty ? (
-        <p className="px-6 py-12 text-center text-sm text-muted-foreground">{emptyLabel}</p>
+        <p className="px-4 py-12 text-center text-sm text-muted-foreground sm:px-6">{emptyLabel}</p>
       ) : (
         <div className="divide-y divide-divider">{children}</div>
       )}
@@ -44,14 +44,14 @@ function Panel({
 
 function RecentTenderRow({ tender }: { tender: Tender }) {
   return (
-    <div className="flex items-center justify-between gap-4 px-6 py-4">
+    <div className="flex flex-col gap-2 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-6">
       <div className="min-w-0">
         <p className="truncate text-sm font-medium text-foreground">{tender.client.company_name}</p>
         <p className="mt-0.5 truncate text-xs text-muted-foreground">
           {tender.tender_name.name} · {formatDate(tender.created_at)}
         </p>
       </div>
-      <div className="flex shrink-0 items-center gap-4">
+      <div className="flex shrink-0 items-center gap-3 sm:gap-4">
         <span className="text-sm font-semibold tabular-nums text-foreground">
           {formatCurrency(tender.total_amount)}
         </span>
@@ -63,14 +63,14 @@ function RecentTenderRow({ tender }: { tender: Tender }) {
 
 function RecentClientRow({ client }: { client: Client }) {
   return (
-    <div className="flex items-center justify-between gap-4 px-6 py-4">
+    <div className="flex flex-col gap-2 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-6">
       <div className="min-w-0">
         <p className="truncate text-sm font-medium text-foreground">{client.company_name}</p>
         <p className="mt-0.5 truncate text-xs text-muted-foreground">
           {client.contact_person_name}
         </p>
       </div>
-      <div className="shrink-0 text-right">
+      <div className="shrink-0 sm:text-right">
         <p className="text-xs text-muted-foreground">{formatDate(client.created_at)}</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
           by {client.created_by?.full_name ?? "—"}
@@ -84,11 +84,11 @@ export default function DashboardPage() {
   const { data, isLoading, error } = useDashboardSummary();
 
   if (isLoading) {
-    return <div className="px-8 py-16 text-center text-sm text-muted-foreground">Loading…</div>;
+    return <div className="px-4 py-16 text-center text-sm text-muted-foreground">Loading…</div>;
   }
   if (error) {
     return (
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
         <p className="border border-red-100 bg-red-50 px-4 py-3 text-sm text-destructive">
           {error.message}
         </p>
@@ -98,7 +98,7 @@ export default function DashboardPage() {
   if (!data) return null;
 
   return (
-    <div className="space-y-8 px-8 py-8">
+    <div className="page">
       <PageHeader
         title="Dashboard"
         description="A snapshot of active clients, outstanding tender value, and the keys currently in the office."

@@ -114,6 +114,16 @@
       center;
   }
 
+  /* Standard page wrapper: the responsive padding ladder, in one place. */
+  .page {
+    @apply space-y-6 px-4 py-6 sm:px-6 lg:space-y-8 lg:px-8 lg:py-8;
+  }
+
+  /* Filter strip at the head of a table card. */
+  .toolbar {
+    @apply flex flex-wrap items-center gap-3 border-b border-border px-4 py-4 sm:px-6;
+  }
+
   /* Small caps label used for table headers and section eyebrows. */
   .eyebrow {
     @apply text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground;

@@ -32,6 +32,7 @@ export function DscTable({ dscKeys, isLoading, onEdit, onDelete, emptyAction }: 
   const columns: Column<DscKey>[] = [
     {
       header: "Client",
+      mobile: "title",
       cell: (k) => <span className="font-medium text-foreground">{k.client.company_name}</span>,
     },
     {
@@ -59,6 +60,7 @@ export function DscTable({ dscKeys, isLoading, onEdit, onDelete, emptyAction }: 
     {
       header: "Actions",
       align: "right",
+      mobile: "actions",
       cell: (k) =>
         canModify(k) ? (
           <RowActions onEdit={() => onEdit(k)} onDelete={() => onDelete(k)} />

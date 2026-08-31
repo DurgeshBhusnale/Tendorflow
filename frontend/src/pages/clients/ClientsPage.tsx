@@ -50,7 +50,7 @@ export default function ClientsPage() {
   );
 
   return (
-    <div className="space-y-8 px-8 py-8">
+    <div className="page">
       <PageHeader
         title="Clients"
         description="Everyone onboarded to the workspace. Employees can edit the clients they added; admins can edit any."
@@ -62,12 +62,12 @@ export default function ClientsPage() {
       </div>
 
       <div className="surface">
-        <div className="flex flex-wrap items-center gap-3 border-b border-border px-6 py-4">
+        <div className="toolbar">
           <SearchInput
             value={search}
             onChange={handleSearchChange}
             placeholder="Search by contact person, company, or email…"
-            className="w-full max-w-sm"
+            className="w-full sm:max-w-sm"
           />
         </div>
 

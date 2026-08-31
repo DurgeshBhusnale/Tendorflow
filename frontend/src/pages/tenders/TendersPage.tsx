@@ -62,7 +62,7 @@ export default function TendersPage() {
   );
 
   return (
-    <div className="space-y-8 px-8 py-8">
+    <div className="page">
       <PageHeader
         title="Tenders"
         description="Every submission logged against a client, with pending and paid value totalled for the current filter."
@@ -83,16 +83,16 @@ export default function TendersPage() {
       </div>
 
       <div className="surface">
-        <div className="flex flex-wrap items-center gap-3 border-b border-border px-6 py-4">
+        <div className="toolbar">
           <SearchInput
             value={search}
             onChange={(value) => changeFilter(() => setSearch(value))}
             placeholder="Search by client or tender name…"
-            className="w-full max-w-xs"
+            className="w-full sm:max-w-xs"
           />
           <Select
             aria-label="Filter by client"
-            className="w-auto min-w-[11rem]"
+            className="w-full sm:w-auto sm:min-w-[11rem]"
             value={clientFilter}
             onChange={(e) => changeFilter(() => setClientFilter(e.target.value))}
           >

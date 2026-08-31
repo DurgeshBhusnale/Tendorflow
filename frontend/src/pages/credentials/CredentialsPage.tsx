@@ -64,7 +64,7 @@ export default function CredentialsPage() {
   );
 
   return (
-    <div className="space-y-8 px-8 py-8">
+    <div className="page">
       <PageHeader
         title="Credentials"
         description="Portal logins for every client. Any employee can reveal a password; only the owner or an admin can change one."
@@ -72,16 +72,16 @@ export default function CredentialsPage() {
       />
 
       <div className="surface">
-        <div className="flex flex-wrap items-center gap-3 border-b border-border px-6 py-4">
+        <div className="toolbar">
           <SearchInput
             value={search}
             onChange={resetToFirstPage(setSearch)}
             placeholder="Search by client or portal…"
-            className="w-full max-w-xs"
+            className="w-full sm:max-w-xs"
           />
           <Select
             aria-label="Filter by client"
-            className="w-auto min-w-[11rem]"
+            className="w-full sm:w-auto sm:min-w-[11rem]"
             value={clientFilter}
             onChange={(e) => resetToFirstPage(setClientFilter)(e.target.value)}
           >
@@ -94,7 +94,7 @@ export default function CredentialsPage() {
           </Select>
           <Select
             aria-label="Filter by portal"
-            className="w-auto min-w-[11rem]"
+            className="w-full sm:w-auto sm:min-w-[11rem]"
             value={portalFilter}
             onChange={(e) => resetToFirstPage(setPortalFilter)(e.target.value)}
           >

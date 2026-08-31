@@ -33,6 +33,7 @@ export function TendersTable({
   const columns: Column<Tender>[] = [
     {
       header: "Client",
+      mobile: "title",
       cell: (t) => <span className="font-medium text-foreground">{t.client.company_name}</span>,
     },
     { header: "Tender Name", cell: (t) => t.tender_name.name },
@@ -58,6 +59,7 @@ export function TendersTable({
     {
       header: "Actions",
       align: "right",
+      mobile: "actions",
       cell: (t) =>
         canModify(t) ? (
           <RowActions onEdit={() => onEdit(t)} onDelete={() => onDelete(t)}>

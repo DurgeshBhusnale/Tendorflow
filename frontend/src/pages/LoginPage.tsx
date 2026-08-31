@@ -58,10 +58,10 @@ export default function LoginPage() {
       </div>
 
       {/* Right: the sign-in card. */}
-      <div className="flex flex-1 items-center justify-center bg-background p-6">
+      <div className="flex flex-1 items-center justify-center bg-background p-4 sm:p-6">
         <form
           onSubmit={onSubmit}
-          className="w-full max-w-[400px] border border-border bg-card p-10 shadow-card"
+          className="w-full max-w-[400px] border border-border bg-card p-6 shadow-card sm:p-10"
         >
           <h1 className="sr-only">Sign in</h1>
 

@@ -31,6 +31,7 @@ export function CredentialsTable({
   const columns: Column<Credential>[] = [
     {
       header: "Client",
+      mobile: "title",
       cell: (c) => <span className="font-medium text-foreground">{c.client.company_name}</span>,
     },
     { header: "Portal", cell: (c) => c.portal.name },
@@ -50,6 +51,7 @@ export function CredentialsTable({
     {
       header: "Actions",
       align: "right",
+      mobile: "actions",
       cell: (c) =>
         canModify(c) ? (
           <RowActions onEdit={() => onEdit(c)} onDelete={() => onDelete(c)} />

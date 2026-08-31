@@ -10,12 +10,12 @@ interface MetricCardProps {
 
 export function MetricCard({ label, value, icon: Icon, hint }: MetricCardProps) {
   return (
-    <div className="surface p-6">
+    <div className="surface p-5 sm:p-6">
       <div className="flex items-start justify-between gap-4">
         <p className="eyebrow">{label}</p>
         {Icon && <Icon className="size-4 shrink-0 text-muted-foreground" />}
       </div>
-      <p className="mt-3 text-3xl font-semibold tabular-nums tracking-tight text-foreground">
+      <p className="mt-3 text-2xl font-semibold tabular-nums tracking-tight text-foreground sm:text-3xl">
         {value}
       </p>
       {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}

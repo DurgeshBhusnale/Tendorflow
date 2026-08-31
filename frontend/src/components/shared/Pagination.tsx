@@ -11,7 +11,7 @@ interface PaginationProps {
 /** Footer pager shared by every paginated list page. */
 export function Pagination({ page, totalPages, totalCount, onPageChange }: PaginationProps) {
   return (
-    <div className="flex items-center justify-between border-t border-border px-6 py-4">
+    <div className="flex flex-col gap-3 border-t border-border px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
       <p className="text-xs text-muted-foreground">
         Page <span className="font-medium text-foreground">{page}</span> of {totalPages} ·{" "}
         <span className="font-medium text-foreground">{totalCount}</span> records

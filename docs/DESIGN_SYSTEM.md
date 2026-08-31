@@ -105,6 +105,18 @@ Revisit only if a genuine cross-entity search endpoint is added.
 - **Every in-table action is an `outline` button, never `ghost`.** A ghost button in a table cell
   reads as static text until hovered; the 1px border is what makes it legible as pressable.
 
+Below `md` the table is not a table. Nine columns on a 390px screen means either horizontal
+scrolling to reach the actions or text too small to read, so each row renders as a card: one value
+as the heading, the row actions opposite it, and the rest as labelled pairs. Both renderings come
+from the same `columns` array — a column declares its mobile behaviour with `mobile`:
+
+| `mobile` | Effect |
+| --- | --- |
+| `"title"` | Heads the card. Defaults to the first column if none is marked. |
+| `"actions"` | Sits opposite the title instead of in the detail list. |
+| `"hide"` | Dropped on mobile — for columns the title already implies. |
+| *(unset)* | Becomes a label/value pair. |
+
 ### Forms & Drawers
 
 All data entry happens in a right-side slide-over (`components/shared/Drawer.tsx`), 480px wide,
@@ -155,7 +167,32 @@ at KPI size. The serif is for headings; numbers are data.
 
 ---
 
-## 4. Functional Display Rules
+## 4. Responsive Behaviour
+
+Desktop-first — this is an ops tool used mostly at a desk — but fully usable on a phone. Two
+breakpoints carry almost all of it: `md` (768px) switches tables between card and table form, and
+`lg` (1024px) switches the navigation between off-canvas and fixed rail.
+
+- **Navigation.** From `lg` the 240px rail is part of the layout. Below it the rail slides
+  off-canvas behind a scrim, opened from a slim 56px bar that carries the wordmark and a menu
+  button. That bar is the mobile counterpart to the rail, not a reinstated top bar — it never shows
+  the page title. The rail closes on navigation, on Escape, and on scrim tap.
+- **Page padding** climbs `px-4` → `px-6` → `px-8`. Use the `.page` class rather than repeating the
+  ladder; `.toolbar` does the same for a table card's filter strip.
+- **Drawers** are full-bleed below `sm` and 480px above it.
+- **Filter controls** are full-width on phones and auto-width from `sm`.
+- **Page headers** stack the title above its actions below `sm`.
+- Shell height uses `h-dvh`, not `h-screen`, so mobile browser chrome doesn't cut off the sidebar
+  footer.
+
+Verify with `frontend/scripts/smoke-mobile.mjs`, which drives a real device profile rather than a
+narrowed desktop window. It walks every page, opens the rail and a drawer, and fails on any element
+whose right edge passes the viewport or on any page that scrolls horizontally — the failure mode
+that is easy to miss visually and breaks the whole layout.
+
+---
+
+## 5. Functional Display Rules
 
 - **Currency.** Always rupees with Indian digit grouping via `formatCurrency`. Whole amounts drop
   the paise (`₹45,200`); anything with paise always shows both decimals (`₹8,753.50`). Never
@@ -164,5 +201,5 @@ at KPI size. The serif is for headings; numbers are data.
 - **Statuses.** Always a `StatusPill`, never plain text.
 - **Calculated fields.** Read-only and visibly inert: muted background, bordered block, with a
   line explaining that the server computes the real value (see the tender total).
-- **Viewport.** Designed for desktop at 1440px. Every table fits that width without horizontal
-  scrolling.
+- **Viewport.** Desktop-first at 1440px, usable down to 360px. Nothing scrolls horizontally at any
+  width.

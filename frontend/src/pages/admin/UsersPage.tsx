@@ -67,6 +67,7 @@ export default function UsersPage() {
   const columns: Column<User>[] = [
     {
       header: "Name",
+      mobile: "title",
       cell: (u) => <span className="font-medium text-foreground">{u.full_name}</span>,
     },
     { header: "Email", cell: (u) => <span className="text-muted-foreground">{u.email}</span> },
@@ -86,6 +87,8 @@ export default function UsersPage() {
     },
     {
       header: "Actions",
+      align: "right",
+      mobile: "actions",
       cell: (u) => (
         <Button
           variant="outline"
@@ -106,7 +109,7 @@ export default function UsersPage() {
   );
 
   return (
-    <div className="space-y-8 px-8 py-8">
+    <div className="page">
       <PageHeader
         title="Users"
         description="Admins and employees with access to this workspace. Deactivating a user revokes their sign-in without deleting their records."
