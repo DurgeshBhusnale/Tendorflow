@@ -43,9 +43,11 @@ frontend/
 │   │   ├── ProtectedRoute.tsx
 │   │   └── AdminRoute.tsx
 │   ├── components/
-│   │   ├── ui/               # shadcn/ui primitives (button, input, dialog, ...)
-│   │   ├── layout/           # AppShell, Sidebar, Topbar
-│   │   └── shared/           # DataTable, EmptyState, StatusPill, MetricCard
+│   │   ├── ui/               # form primitives (button, input, select, label)
+│   │   ├── layout/           # AppShell, Sidebar (no top bar — see design system)
+│   │   └── shared/           # DataTable, Drawer, PageHeader, Pagination,
+│   │                         # SearchInput, RowActions, EmptyState,
+│   │                         # StatusPill, MetricCard, MasterListManager
 │   ├── pages/
 │   │   ├── LoginPage.tsx
 │   │   ├── DashboardPage.tsx
@@ -66,6 +68,7 @@ frontend/
 │   │   └── ...
 │   ├── lib/
 │   │   ├── format.ts         # currency, date, number formatters
+│   │   ├── nav.ts            # sidebar nav groups
 │   │   ├── validation.ts     # shared Zod primitives (email, phone, etc.)
 │   │   └── utils.ts          # cn(), classnames helpers
 │   └── types/                # shared TS types mirroring API responses
@@ -287,6 +290,10 @@ Every type mirrors the response shape from `API_CONTRACT.md`. If the API contrac
 - **Always invalidate the relevant query key(s) after a successful mutation** — this is how the UI stays in sync.
 - **Use the shared formatters** (`formatCurrency`, `formatDate`) from `lib/format.ts` for all money and date rendering.
 - **Use the shared `DataTable` and `EmptyState` components** rather than reinventing per page.
+- **Put every data-entry form in a `<Drawer>`** with `<DrawerBody>` / `<DrawerFooter>`, and start
+  every page with a `<PageHeader>`. Consistency across modules is the point of these.
+- **Style with the semantic tokens** (`bg-card`, `text-muted-foreground`, `border-border`,
+  `bg-primary`) defined in `docs/DESIGN_SYSTEM.md` — never a raw hex or an ad-hoc gray.
 - **Use path aliases** (`@/api/clients`, `@/hooks/useClients`) — Vite is configured with `@` → `src/`.
 
 ---
@@ -299,7 +306,8 @@ Every type mirrors the response shape from `API_CONTRACT.md`. If the API contrac
 - **Don't store any user-editable data in `localStorage` except the refresh token.** All other state lives in React state or React Query cache.
 - **Don't use `any`.** Type it or say why in a comment. `unknown` is fine when narrowing follows.
 - **Don't skip Zod on a form.** Even trivial forms get validation — it's cheap and it catches copy-paste bugs.
-- **Don't build a custom design system.** Prototype phase. Reach for shadcn/ui primitives and Tailwind utilities. UI polish is a separate pass.
+- **Don't invent new visual language.** The design system is `docs/DESIGN_SYSTEM.md`. If a screen needs something it doesn't cover, add it there first, then build it.
+- **Don't use `rounded-*`, a raw hex colour, or a font stack of your own.** Radius is globally 0, colours are tokens, and the two typefaces are set in the base layer.
 - **Don't put business logic in components.** If a computation is more than a one-liner, move it to a `lib/` util and unit test it.
 - **Don't hardcode the API URL.** Always `import.meta.env.VITE_API_BASE_URL`.
 
@@ -315,8 +323,9 @@ Every type mirrors the response shape from `API_CONTRACT.md`. If the API contrac
 6. [ ] Form (if any) uses React Hook Form + Zod.
 7. [ ] Route registered in `src/router.tsx`, wrapped correctly with `<ProtectedRoute>` / `<AdminRoute>`.
 8. [ ] Sidebar nav entry added if the page needs top-level nav.
-9. [ ] Uses `DataTable`, `EmptyState`, `MetricCard` primitives where applicable.
-10. [ ] Manual smoke test: create, list, edit, delete flow works end-to-end.
+9. [ ] Uses `PageHeader`, `DataTable`, `Drawer`, `EmptyState`, `MetricCard` primitives where applicable.
+10. [ ] Matches `docs/DESIGN_SYSTEM.md`: token colours, 0px radius, pill statuses, `formatCurrency` / `formatDate`.
+11. [ ] Manual smoke test: create, list, edit, delete flow works end-to-end (`node scripts/smoke.mjs`).
 
 ---
 
@@ -333,13 +342,28 @@ CI runs `pnpm lint && pnpm typecheck` — both must pass.
 
 ---
 
-## Prototype-Phase UI Notes
+## UI — Elevated Minimalism
 
-- Use shadcn/ui primitives as-is. Don't restyle.
-- Use Tailwind utility classes directly in components. Don't extract into `styled` components or SCSS.
-- Loading states: a simple `<div>Loading…</div>` is fine. Skeletons come later.
-- Error states: a simple `<div className="text-red-600">{error.message}</div>`. Toasts come later.
-- Empty states: `<EmptyState title="No clients yet" action={<Button>Add Client</Button>} />`. That's it.
-- Mobile responsiveness: not required. Design for desktop 1440px width. Tablet is a bonus.
+The visual language is specified in **`docs/DESIGN_SYSTEM.md`**. Read it before touching any
+component. The short version:
 
-The point of the prototype is to prove the workflow end-to-end. Visual design is a follow-up pass with a designer or a dedicated Claude session focused on UI.
+- **Tokens, not values.** Colours come from the CSS variables in `src/index.css`, surfaced as
+  Tailwind names (`bg-background`, `bg-card`, `text-foreground`, `text-muted-foreground`,
+  `border-border`, `bg-primary`, `bg-ink`). No raw hex in components.
+- **Zero border-radius.** The whole `borderRadius` scale is overridden to `0` in
+  `tailwind.config.ts`, so `rounded-*` classes are inert by design. Don't fight it.
+- **Type pairing.** Playfair Display for `h1`–`h3` (applied in the base layer, so a bare heading
+  is already right) and `.font-display`; Plus Jakarta Sans for everything else.
+- **Page skeleton.** `<div className="space-y-8 px-8 py-8">` → `<PageHeader>` → optional
+  `<MetricCard>` grid → a `.surface` card wrapping toolbar + `<DataTable>` + `<Pagination>`.
+  There is no top bar — `<PageHeader>` is the only place a page names itself.
+- **Buttons inside table cells are `variant="outline"`**, never `ghost` — ghost reads as plain
+  text until hovered. Numbers (KPIs, totals) stay in the sans face, not the display serif.
+- **Forms live in drawers.** `<Drawer>` + `<DrawerBody>` + `<DrawerFooter>`; the form is
+  `flex h-full flex-col` so its action bar pins to the bottom.
+- **Money and dates** always go through `formatCurrency` / `formatDate`. **Statuses** are always
+  a `<StatusPill>`, never plain text.
+- Loading states: `Loading…` in muted text (the smoke test keys off that string). Error states: a
+  bordered `bg-red-50` block in `text-destructive`. Toasts still to come.
+- Mobile responsiveness: not required. Design for desktop 1440px; every table is expected to fit
+  that width without horizontal scrolling.

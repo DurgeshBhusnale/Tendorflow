@@ -30,6 +30,7 @@ Before doing any non-trivial work, load these:
 3. **`docs/DATABASE_SCHEMA.md`** — the data model.
 4. **`docs/ARCHITECTURE.md`** — stack rationale, deployment specifics, hardening backlog.
 5. **`docs/DEVELOPMENT_GUIDE.md`** — how to run, test, migrate, deploy.
+6. **`docs/DESIGN_SYSTEM.md`** — the UI specification: tokens, typography, component patterns.
 
 **These files are not decoration.** They're the coordination artifact between the two sides. If you change behavior, update the relevant doc in the same commit as the code. If a doc is silent on something you need, update the doc *first*, get a nod, then implement both sides against it. The failure mode we're most avoiding: backend and frontend drifting because someone shipped code without touching the contract.
 
