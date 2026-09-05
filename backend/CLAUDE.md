@@ -209,16 +209,25 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
 
 Session is per-request. Never share sessions across requests. Never store a session on a global.
 
-For Vercel serverless, the engine is configured with `poolclass=NullPool`:
+The engine keeps a small pool so a warm serverless instance reuses its connection
+instead of re-running the TCP + TLS + SCRAM handshake on every request:
 
 ```python
 # app/database.py
 engine = create_async_engine(
     settings.DATABASE_URL,
-    poolclass=NullPool,
     echo=settings.SQLALCHEMY_ECHO,
+    pool_size=1,          # one in-flight request per instance
+    max_overflow=2,
+    pool_recycle=280,     # inside Supavisor's idle timeout
+    pool_pre_ping=True,   # instances get frozen; check liveness on checkout
+    connect_args={"statement_cache_size": 0},
 )
 ```
+
+This reversed an earlier `poolclass=NullPool` setting — see `docs/ARCHITECTURE.md` §2 for the
+measurements, and for the event-loop caveat that would send it back to `NullPool`. Alembic's
+`env.py` and `tests/conftest.py` still use `NullPool`, correctly: both are one-shot processes.
 
 ---
 

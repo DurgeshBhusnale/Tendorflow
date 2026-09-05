@@ -15,7 +15,7 @@ Each phase ends with a working, demoable slice — not just passing tests. "Defi
 Backend:
 - `backend/pyproject.toml` (deps: fastapi, uvicorn, sqlalchemy[asyncio], asyncpg, alembic, pydantic v2, pydantic-settings, python-jose[cryptography], passlib[bcrypt], pytest, pytest-asyncio, httpx, ruff)
 - `backend/app/config.py` — pydantic-settings reading `.env`
-- `backend/app/database.py` — async engine (`NullPool`), `async_session_maker`
+- `backend/app/database.py` — async engine (pooled; see `docs/ARCHITECTURE.md` §2), `async_session_maker`
 - `backend/app/main.py` — FastAPI app factory, CORS middleware, empty router registration, central exception handler wired to `app/core/exceptions.py`
 - `backend/app/core/exceptions.py` — `NotFoundError`, `ForbiddenError`, `ValidationError`, `ConflictError` + handler mapping to the envelope
 - `backend/app/schemas/common.py` — `Envelope`, `ok()`, `paginated()`

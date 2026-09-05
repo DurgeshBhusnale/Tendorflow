@@ -96,11 +96,25 @@ the two must not be split across continents.
 **Known limitations on Vercel Python:**
 - Cold starts on first request after inactivity (~2–3s measured, not the ~500ms once assumed here).
 - 10-second execution timeout on the Hobby tier, 60 seconds on Pro. Fine for our workload.
-- No long-lived connections. Every function invocation is a fresh Python process, so **do not rely on SQLAlchemy connection pooling across requests.**
-- To handle this cleanly, we use SQLAlchemy with `poolclass=NullPool` in the production config, so each request opens and closes its own connection. Yes, this is slower than pooling — but pooling in serverless is broken, not slow.
 - Use Supabase's **Transaction pooler** (Supavisor) endpoint. Set `DATABASE_URL` to the *pooled* endpoint (port 6543) in Vercel env vars, not the direct connection.
-
 - Supavisor's transaction mode doesn't support asyncpg's prepared statement cache — `connect_args={"statement_cache_size": 0}` is required wherever an async engine is created. See §1 above.
+
+**Connection pooling — reversal of an earlier decision.** This document previously asserted that
+"every function invocation is a fresh Python process, so do not rely on SQLAlchemy connection
+pooling across requests", and configured `poolclass=NullPool` on that basis. The premise is wrong:
+warm invocations demonstrably reuse the process (2.88s cold vs 0.29s warm on `/api/health`), so a
+pooled connection does survive into the next request. `app/database.py` now uses the default async
+queue pool with `pool_size=1, max_overflow=2, pool_recycle=280, pool_pre_ping=True` — sized for one
+in-flight request per instance, recycled well inside Supavisor's idle timeout, and liveness-checked
+on checkout because Vercel freezes idle instances.
+
+**This carries a real risk, and it is unverified in production.** Process reuse is necessary but not
+sufficient: a pooled asyncpg connection is bound to the asyncio event loop that created it. If the
+runtime starts a fresh event loop per invocation, a reused connection will fail on the next request
+rather than merely being slow. Watch the function logs after deploying — loop-affinity failures
+surface as `InterfaceError` or "attached to a different loop". The change is isolated to one commit
+so reverting to `NullPool` is a clean revert. Note that with the region pinned, the handshake this
+saves is worth tens of milliseconds, not seconds; the region fix is what mattered.
 
 **If Vercel Python becomes painful** (cold starts unbearable, cost surprises, tooling frustration), the backend is trivially portable to Railway, Render, or Fly.io — none of the code changes, only the deploy config. `docs/DEVELOPMENT_GUIDE.md` covers this.
 
