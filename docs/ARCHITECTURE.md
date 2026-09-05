@@ -64,6 +64,7 @@ Configuration (`backend/vercel.json`):
 ```json
 {
   "version": 2,
+  "regions": ["sin1"],
   "builds": [
     { "src": "api/index.py", "use": "@vercel/python" }
   ],
@@ -73,12 +74,32 @@ Configuration (`backend/vercel.json`):
 }
 ```
 
+**The function must run in the same region as the database.** `"regions": ["sin1"]` (Singapore)
+pins it next to the Supabase project, which lives in `ap-southeast-1`. Vercel's default is `iad1`
+(Washington DC), and that default is expensive here: Virginia↔Singapore is a ~230ms round trip, a
+fresh Postgres connection costs roughly ten of them (TCP, TLS, SCRAM auth) before a single query
+runs, and the request pays it again for every query it issues.
+
+Measured against production on 2026-09-05, before the region was pinned:
+
+| Request | TTFB |
+|---|---|
+| `/api/health`, warm, touches no database | 0.29–0.51s |
+| `GET /api/clients` rejected at the auth header, before any database access | 0.27–0.44s |
+| `POST /api/auth/login`, warm, opens a connection | 3.80–4.00s |
+| `POST /api/auth/login`, cold | 5.97s |
+
+The ~3.5s gap between "touches the database" and "doesn't" was entirely geography. If a region pin
+is ever rejected by the plan tier, the alternative is moving the Supabase project to `us-east-1` —
+the two must not be split across continents.
+
 **Known limitations on Vercel Python:**
-- Cold starts on first request after inactivity (~500ms–2s).
+- Cold starts on first request after inactivity (~2–3s measured, not the ~500ms once assumed here).
 - 10-second execution timeout on the Hobby tier, 60 seconds on Pro. Fine for our workload.
 - No long-lived connections. Every function invocation is a fresh Python process, so **do not rely on SQLAlchemy connection pooling across requests.**
 - To handle this cleanly, we use SQLAlchemy with `poolclass=NullPool` in the production config, so each request opens and closes its own connection. Yes, this is slower than pooling — but pooling in serverless is broken, not slow.
 - Use Supabase's **Transaction pooler** (Supavisor) endpoint. Set `DATABASE_URL` to the *pooled* endpoint (port 6543) in Vercel env vars, not the direct connection.
+
 - Supavisor's transaction mode doesn't support asyncpg's prepared statement cache — `connect_args={"statement_cache_size": 0}` is required wherever an async engine is created. See §1 above.
 
 **If Vercel Python becomes painful** (cold starts unbearable, cost surprises, tooling frustration), the backend is trivially portable to Railway, Render, or Fly.io — none of the code changes, only the deploy config. `docs/DEVELOPMENT_GUIDE.md` covers this.
