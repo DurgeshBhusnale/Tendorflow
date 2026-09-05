@@ -1,6 +1,12 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { authApi } from "@/api/auth";
-import { clearAuth, getRefreshToken, setAccessToken, setRefreshToken } from "@/auth/tokenStore";
+import {
+  clearAuth,
+  getRefreshToken,
+  isAccessTokenUsable,
+  setAccessToken,
+  setRefreshToken,
+} from "@/auth/tokenStore";
 import type { AuthUser } from "@/types/user";
 
 interface AuthContextValue {
@@ -26,8 +32,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       try {
-        const { access_token } = await authApi.refresh(refreshToken);
-        setAccessToken(access_token);
+        // Every API call costs a round trip to a database in another region, and
+        // nothing renders until this finishes — so don't spend one re-minting an
+        // access token that is usually still valid from the previous page view.
+        // If the server disagrees, the response interceptor refreshes and retries.
+        if (!isAccessTokenUsable()) {
+          const { access_token } = await authApi.refresh(refreshToken);
+          setAccessToken(access_token);
+        }
         const me = await authApi.me();
         setUser(me);
       } catch {
