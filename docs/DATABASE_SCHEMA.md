@@ -283,7 +283,21 @@ The scaffold in this repo already has this done — the `alembic.ini`, `env.py`,
 
 ### Production deploy
 
-Migrations run automatically on backend deploy — see the `postbuild` step in `backend/vercel.json` (documented in `DEVELOPMENT_GUIDE.md`). If you'd rather run migrations manually, unset that step and run `uv run alembic upgrade head` against the production `DATABASE_URL` from your local machine.
+Migrations are **not** run automatically on deploy. There is no `postbuild` step
+in `backend/vercel.json` — this section previously claimed there was, which is
+wrong and is the kind of mistake that takes production down: deploying code that
+expects a column the database has not got yet.
+
+Run them from your machine against the production URL **before** the deploy that
+needs them, exactly as `DEVELOPMENT_GUIDE.md` §6.2 sets out:
+
+```bash
+cd backend
+DATABASE_URL="<prod URL>" uv run alembic upgrade head
+```
+
+Note that dev and production are **separate Supabase projects**. `backend/.env`
+points at dev, so `alembic upgrade head` with no override migrates dev only.
 
 ---
 
