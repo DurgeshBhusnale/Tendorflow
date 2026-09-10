@@ -84,6 +84,7 @@ def make_user(db_session: AsyncSession, uniq: str):
 
     async def _make_user(
         *,
+        username: str | None = None,
         email: str | None = None,
         password: str = "Password123",
         role: str = "employee",
@@ -91,8 +92,12 @@ def make_user(db_session: AsyncSession, uniq: str):
         is_active: bool = True,
     ) -> tuple[User, str]:
         email = email or f"user-{uniq}@example.com"
+        # Usernames are unique and are what login takes, so they track the
+        # email's local part unless a test needs something specific.
+        username = username or email.split("@")[0]
         user = User(
             full_name=full_name,
+            username=username,
             email=email,
             password_hash=hash_password(password),
             role=role,
@@ -106,8 +111,8 @@ def make_user(db_session: AsyncSession, uniq: str):
     return _make_user
 
 
-async def _login_headers(client: AsyncClient, email: str, password: str) -> dict[str, str]:
-    resp = await client.post("/api/auth/login", json={"email": email, "password": password})
+async def _login_headers(client: AsyncClient, username: str, password: str) -> dict[str, str]:
+    resp = await client.post("/api/auth/login", json={"username": username, "password": password})
     token = resp.json()["data"]["access_token"]
     return {"Authorization": f"Bearer {token}"}
 
@@ -120,7 +125,7 @@ async def admin_user(make_user, uniq: str) -> tuple[User, str]:
 @pytest.fixture
 async def admin_headers(client: AsyncClient, admin_user: tuple[User, str]) -> dict[str, str]:
     user, password = admin_user
-    return await _login_headers(client, user.email, password)
+    return await _login_headers(client, user.username, password)
 
 
 @pytest.fixture
@@ -131,7 +136,7 @@ async def employee_user(make_user, uniq: str) -> tuple[User, str]:
 @pytest.fixture
 async def employee_headers(client: AsyncClient, employee_user: tuple[User, str]) -> dict[str, str]:
     user, password = employee_user
-    return await _login_headers(client, user.email, password)
+    return await _login_headers(client, user.username, password)
 
 
 @pytest.fixture
@@ -140,4 +145,4 @@ async def other_employee_headers(client: AsyncClient, make_user, uniq: str) -> d
     user, password = await make_user(
         email=f"other-employee-{uniq}@example.com", role="employee", full_name="Other Employee"
     )
-    return await _login_headers(client, user.email, password)
+    return await _login_headers(client, user.username, password)

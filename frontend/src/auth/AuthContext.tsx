@@ -14,7 +14,7 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   isAdmin: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -51,8 +51,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void hydrate();
   }, []);
 
-  async function login(email: string, password: string) {
-    const data = await authApi.login({ email, password });
+  async function login(username: string, password: string) {
+    const data = await authApi.login({ username, password });
     setAccessToken(data.access_token);
     setRefreshToken(data.refresh_token);
     setUser(data.user);

@@ -1,10 +1,13 @@
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    # Username, not email (CH-02). Deliberately unvalidated beyond being a
+    # string: a login endpoint that rejects a malformed username with a
+    # different error than a wrong one leaks which accounts exist.
+    username: str
     password: str
 
 
@@ -17,6 +20,7 @@ class AuthUser(BaseModel):
 
     id: UUID
     full_name: str
+    username: str
     email: str
     role: str
 
@@ -26,6 +30,7 @@ class MeResponse(BaseModel):
 
     id: UUID
     full_name: str
+    username: str
     email: str
     role: str
     is_active: bool

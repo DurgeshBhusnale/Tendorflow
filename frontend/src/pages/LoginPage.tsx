@@ -10,8 +10,11 @@ import { Input } from "@/components/ui/input";
 import { FieldError, Label } from "@/components/ui/label";
 import { ApiError } from "@/types/api";
 
+// Sign-in is by username (CH-02). No format rule beyond "not empty": a login
+// form that rejects a malformed username differently from a wrong one tells an
+// attacker which names are worth guessing.
 const loginSchema = z.object({
-  email: z.string().email("Enter a valid email address."),
+  username: z.string().min(1, "Username is required."),
   password: z.string().min(1, "Password is required."),
 });
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -33,7 +36,7 @@ export default function LoginPage() {
   const onSubmit = handleSubmit(async (values) => {
     setFormError(null);
     try {
-      await login(values.email, values.password);
+      await login(values.username, values.password);
     } catch (err) {
       setFormError(err instanceof ApiError ? err.message : "Something went wrong.");
     }
@@ -67,15 +70,17 @@ export default function LoginPage() {
 
           <div className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="email">Email Address</Label>
+              <Label htmlFor="username">Username</Label>
               <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                placeholder="name@company.com"
-                {...register("email")}
+                id="username"
+                type="text"
+                autoComplete="username"
+                autoCapitalize="none"
+                spellCheck={false}
+                placeholder="asha.patil"
+                {...register("username")}
               />
-              <FieldError>{errors.email?.message}</FieldError>
+              <FieldError>{errors.username?.message}</FieldError>
             </div>
 
             <div className="space-y-2">
