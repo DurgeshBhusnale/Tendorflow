@@ -2,7 +2,7 @@ import { KeyRound } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
 import { DataTable, type Column } from "@/components/shared/DataTable";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { NoActions, RowActions } from "@/components/shared/RowActions";
+import { RowActions } from "@/components/shared/RowActions";
 import { formatDate } from "@/lib/format";
 import { PasswordCell } from "@/pages/credentials/PasswordCell";
 import type { Credential } from "@/types/credential";
@@ -22,17 +22,22 @@ export function CredentialsTable({
   onDelete,
   emptyAction,
 }: CredentialsTableProps) {
-  const { user, isAdmin } = useAuth();
-
-  // Mirrors the backend ownership rule; the server enforces it regardless.
-  // Note this gates *writes* only — any employee may reveal any password.
-  const canModify = (credential: Credential) => isAdmin || credential.created_by?.id === user?.id;
+  const { isAdmin } = useAuth();
 
   const columns: Column<Credential>[] = [
     {
       header: "Client",
       mobile: "title",
-      cell: (c) => <span className="font-medium text-foreground">{c.client.company_name}</span>,
+      cell: (c) => (
+        <div className="min-w-0">
+          <span className="block font-medium text-foreground">
+            {c.client.contact_person_name}
+          </span>
+          <span className="block truncate text-xs text-muted-foreground">
+            {c.client.company_name}
+          </span>
+        </div>
+      ),
     },
     { header: "Portal", cell: (c) => c.portal.name },
     {
@@ -41,23 +46,23 @@ export function CredentialsTable({
     },
     { header: "Password", cell: (c) => <PasswordCell credential={c} /> },
     {
-      header: "Added By",
+      // Both columns report the latest change, not the original entry (CH-13):
+      // when a password is rotated, who did it and when is what matters.
+      header: "Added/Updated By",
       cell: (c) => <span className="text-muted-foreground">{c.created_by?.full_name ?? "—"}</span>,
     },
     {
       header: "Date",
-      cell: (c) => <span className="text-muted-foreground">{formatDate(c.created_at)}</span>,
+      cell: (c) => <span className="text-muted-foreground">{formatDate(c.updated_at)}</span>,
     },
     {
       header: "Actions",
       align: "right",
       mobile: "actions",
-      cell: (c) =>
-        canModify(c) ? (
-          <RowActions onEdit={() => onEdit(c)} onDelete={() => onDelete(c)} />
-        ) : (
-          <NoActions />
-        ),
+      // Anyone may edit any credential (CH-19); only admins may delete one.
+      cell: (c) => (
+        <RowActions onEdit={() => onEdit(c)} onDelete={isAdmin ? () => onDelete(c) : undefined} />
+      ),
     },
   ];
 

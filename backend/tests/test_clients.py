@@ -1,4 +1,8 @@
-"""Client CRUD + the PRD section 3.3 ownership matrix.
+"""Client CRUD and permissions.
+
+Clients are open-edit (CH-19): any signed-in user may change any client, and
+the row then reports whoever touched it last. Deletion stays admin-only,
+because deleting a client cascades to their credentials, tenders and DSC keys.
 
 These run against a database that already holds committed demo data, so every
 row a test creates is uniquely named and assertions check membership rather
@@ -49,6 +53,29 @@ async def test_create_client_validation_error(client, employee_headers, uniq):
 
 async def test_create_client_rejects_bad_contact_number(client, employee_headers, uniq):
     resp = await _create_client(client, employee_headers, uniq, contact_number="abc")
+
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+async def test_contact_number_is_normalized_to_ten_digits(client, employee_headers, uniq):
+    """+91, spaces and dashes are stripped; the stored value is canonical (CH-17)."""
+    resp = await _create_client(client, employee_headers, uniq, contact_number="+91 98765-43210")
+
+    assert resp.status_code == 201
+    assert resp.json()["data"]["contact_number"] == "9876543210"
+
+
+async def test_contact_number_rejects_a_landline_style_number(client, employee_headers, uniq):
+    """Indian mobiles start 6-9; a number starting 2 is not one."""
+    resp = await _create_client(client, employee_headers, uniq, contact_number="2212345678")
+
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+async def test_contact_number_rejects_a_short_number(client, employee_headers, uniq):
+    resp = await _create_client(client, employee_headers, uniq, contact_number="98765")
 
     assert resp.status_code == 422
     assert resp.json()["error"]["code"] == "VALIDATION_ERROR"
@@ -129,7 +156,7 @@ async def test_update_own_client(client, employee_headers, uniq):
     assert resp.json()["data"]["company_name"] == f"Mehta Constructions Pvt Ltd {uniq}"
 
 
-async def test_employee_cannot_update_others_client(
+async def test_any_employee_can_update_any_client(
     client, employee_headers, other_employee_headers, uniq
 ):
     created = await _create_client(client, employee_headers, uniq)
@@ -137,27 +164,47 @@ async def test_employee_cannot_update_others_client(
 
     resp = await client.patch(
         f"/api/clients/{client_id}",
-        json={"company_name": "Hijacked"},
+        json={"company_name": f"Edited By Someone Else {uniq}"},
         headers=other_employee_headers,
     )
 
-    assert resp.status_code == 403
-    assert resp.json()["error"]["code"] == "FORBIDDEN"
+    assert resp.status_code == 200
+    assert resp.json()["data"]["company_name"] == f"Edited By Someone Else {uniq}"
 
 
-async def test_employee_cannot_delete_others_client(
+async def test_editing_moves_the_attribution_to_the_editor(
     client, employee_headers, other_employee_headers, uniq
 ):
+    """The by-column names the latest hand, not the original onboarder (CH-19)."""
     created = await _create_client(client, employee_headers, uniq)
+    assert created.json()["data"]["created_by"]["full_name"] == "Test User"
     client_id = created.json()["data"]["id"]
 
-    resp = await client.delete(f"/api/clients/{client_id}", headers=other_employee_headers)
+    resp = await client.patch(
+        f"/api/clients/{client_id}",
+        json={"company_name": f"Edited {uniq}"},
+        headers=other_employee_headers,
+    )
 
-    assert resp.status_code == 403
-    assert resp.json()["error"]["code"] == "FORBIDDEN"
+    assert resp.json()["data"]["created_by"]["full_name"] == "Other Employee"
 
 
-async def test_admin_can_update_others_client(client, employee_headers, admin_headers, uniq):
+async def test_updated_at_moves_with_the_edit(client, employee_headers, uniq):
+    """The Date column reads updated_at, so the trigger has to be doing its job."""
+    created = await _create_client(client, employee_headers, uniq)
+    client_id = created.json()["data"]["id"]
+    original = created.json()["data"]["updated_at"]
+
+    resp = await client.patch(
+        f"/api/clients/{client_id}",
+        json={"company_name": f"Edited {uniq}"},
+        headers=employee_headers,
+    )
+
+    assert resp.json()["data"]["updated_at"] >= original
+
+
+async def test_admin_can_update_any_client(client, employee_headers, admin_headers, uniq):
     created = await _create_client(client, employee_headers, uniq)
     client_id = created.json()["data"]["id"]
 
@@ -169,14 +216,25 @@ async def test_admin_can_update_others_client(client, employee_headers, admin_he
     assert resp.json()["data"]["company_name"] == "Admin Edited"
 
 
-async def test_delete_own_client(client, employee_headers, uniq):
+async def test_employee_cannot_delete_a_client(client, employee_headers, uniq):
+    """Deleting cascades to tenders, credentials and keys — admins only."""
     created = await _create_client(client, employee_headers, uniq)
     client_id = created.json()["data"]["id"]
 
     resp = await client.delete(f"/api/clients/{client_id}", headers=employee_headers)
 
+    assert resp.status_code == 403
+    assert resp.json()["error"]["code"] == "FORBIDDEN"
+
+
+async def test_admin_can_delete_a_client(client, employee_headers, admin_headers, uniq):
+    created = await _create_client(client, employee_headers, uniq)
+    client_id = created.json()["data"]["id"]
+
+    resp = await client.delete(f"/api/clients/{client_id}", headers=admin_headers)
+
     assert resp.status_code == 200
     assert resp.json()["data"]["deleted"] is True
 
-    follow_up = await client.get(f"/api/clients/{client_id}", headers=employee_headers)
+    follow_up = await client.get(f"/api/clients/{client_id}", headers=admin_headers)
     assert follow_up.status_code == 404

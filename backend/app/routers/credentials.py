@@ -3,7 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.deps import get_current_user, get_db_session
+from app.core.deps import get_current_user, get_db_session, require_admin
 from app.models.user import User
 from app.schemas.common import ok, paginated
 from app.schemas.credential import (
@@ -71,7 +71,7 @@ async def update_credential(
 async def delete_credential(
     credential_id: UUID,
     session: AsyncSession = Depends(get_db_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ):
-    await credential_service.delete_credential(session, current_user, credential_id)
+    await credential_service.delete_credential(session, credential_id)
     return ok({"id": str(credential_id), "deleted": True})

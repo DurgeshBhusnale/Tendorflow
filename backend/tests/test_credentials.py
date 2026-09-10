@@ -19,7 +19,7 @@ async def client_id(client, employee_headers, uniq) -> str:
     resp = await client.post(
         "/api/clients",
         json={
-            "contact_person_name": "Rohan Mehta",
+            "contact_person_name": f"Rohan Mehta {uniq}",
             "company_name": f"Mehta Constructions {uniq}",
             "contact_number": "+91 98765 43210",
             "email": f"rohan-{uniq}@mehtaconstructions.com",
@@ -256,20 +256,41 @@ async def test_update_own_credential(client, employee_headers, client_id, portal
     assert revealed.json()["data"]["password"] == "rotatedPassword456"
 
 
-async def test_employee_cannot_update_others_credential(
+async def test_any_employee_can_update_any_credential(
     client, employee_headers, other_employee_headers, client_id, portal_id
 ):
+    """Credentials are open-edit (CH-19) — the point is a shared password store."""
     created = await _create_credential(client, employee_headers, client_id, portal_id)
     credential_id = created.json()["data"]["id"]
 
     resp = await client.patch(
         f"/api/credentials/{credential_id}",
-        json={"password": "hijacked"},
+        json={"login_identifier": "rotated.by.someone.else"},
         headers=other_employee_headers,
     )
 
-    assert resp.status_code == 403
-    assert resp.json()["error"]["code"] == "FORBIDDEN"
+    assert resp.status_code == 200
+    assert resp.json()["data"]["login_identifier"] == "rotated.by.someone.else"
+
+
+async def test_rotating_a_password_moves_the_attribution(
+    client, employee_headers, other_employee_headers, client_id, portal_id
+):
+    """Who last changed a password, and when, is the thing worth recording (CH-13)."""
+    created = await _create_credential(client, employee_headers, client_id, portal_id)
+    credential_id = created.json()["data"]["id"]
+    assert created.json()["data"]["created_by"]["full_name"] == "Test User"
+    original_updated_at = created.json()["data"]["updated_at"]
+
+    resp = await client.patch(
+        f"/api/credentials/{credential_id}",
+        json={"password": "rotatedPassword456"},
+        headers=other_employee_headers,
+    )
+
+    data = resp.json()["data"]
+    assert data["created_by"]["full_name"] == "Other Employee"
+    assert data["updated_at"] >= original_updated_at
 
 
 async def test_admin_can_update_others_credential(
@@ -288,38 +309,54 @@ async def test_admin_can_update_others_credential(
     assert resp.json()["data"]["login_identifier"] == "admin.edited"
 
 
-async def test_employee_cannot_delete_others_credential(
-    client, employee_headers, other_employee_headers, client_id, portal_id
-):
-    created = await _create_credential(client, employee_headers, client_id, portal_id)
-    credential_id = created.json()["data"]["id"]
-
-    resp = await client.delete(f"/api/credentials/{credential_id}", headers=other_employee_headers)
-
-    assert resp.status_code == 403
-    assert resp.json()["error"]["code"] == "FORBIDDEN"
-
-
-async def test_delete_own_credential(client, employee_headers, client_id, portal_id):
+async def test_employee_cannot_delete_a_credential(client, employee_headers, client_id, portal_id):
+    """Deletion is admin-only now that created_by names the last editor."""
     created = await _create_credential(client, employee_headers, client_id, portal_id)
     credential_id = created.json()["data"]["id"]
 
     resp = await client.delete(f"/api/credentials/{credential_id}", headers=employee_headers)
 
-    assert resp.status_code == 200
-    assert resp.json()["data"]["deleted"] is True
-
-    follow_up = await client.get(f"/api/credentials/{credential_id}", headers=employee_headers)
-    assert follow_up.status_code == 404
+    assert resp.status_code == 403
+    assert resp.json()["error"]["code"] == "FORBIDDEN"
 
 
-async def test_deleting_client_cascades_to_credentials(
-    client, employee_headers, client_id, portal_id
+async def test_admin_can_delete_a_credential(
+    client, admin_headers, employee_headers, client_id, portal_id
 ):
     created = await _create_credential(client, employee_headers, client_id, portal_id)
     credential_id = created.json()["data"]["id"]
 
-    await client.delete(f"/api/clients/{client_id}", headers=employee_headers)
+    resp = await client.delete(f"/api/credentials/{credential_id}", headers=admin_headers)
 
-    resp = await client.get(f"/api/credentials/{credential_id}", headers=employee_headers)
+    assert resp.status_code == 200
+    assert resp.json()["data"]["deleted"] is True
+
+    follow_up = await client.get(f"/api/credentials/{credential_id}", headers=admin_headers)
+    assert follow_up.status_code == 404
+
+
+async def test_deleting_client_cascades_to_credentials(
+    client, admin_headers, employee_headers, client_id, portal_id
+):
+    created = await _create_credential(client, employee_headers, client_id, portal_id)
+    credential_id = created.json()["data"]["id"]
+
+    await client.delete(f"/api/clients/{client_id}", headers=admin_headers)
+
+    resp = await client.get(f"/api/credentials/{credential_id}", headers=admin_headers)
     assert resp.status_code == 404
+
+
+async def test_search_matches_contact_person_name(
+    client, employee_headers, client_id, portal_id, uniq
+):
+    """Credential search covers the client's own name too (CH-07)."""
+    await _create_credential(client, employee_headers, client_id, portal_id)
+
+    resp = await client.get(
+        "/api/credentials", params={"search": f"Rohan Mehta {uniq}"}, headers=employee_headers
+    )
+
+    body = resp.json()["data"]
+    assert body["total_count"] == 1
+    assert body["items"][0]["client"]["contact_person_name"] == f"Rohan Mehta {uniq}"

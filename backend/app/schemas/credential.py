@@ -13,9 +13,16 @@ MASKED_PASSWORD = "•" * 6
 
 
 class ClientRef(BaseModel):
+    """The client as it appears nested in another resource.
+
+    Carries the contact person as well as the company because every table that
+    embeds a client now shows both, and both are searchable (CH-07).
+    """
+
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
+    contact_person_name: str
     company_name: str
 
 
@@ -48,8 +55,10 @@ class CredentialRead(BaseModel):
     portal: PortalRef
     login_identifier: str | None
     password: str
+    # Last editor, not original author — see the note on ClientRead (CH-13).
     created_by: CreatorRef | None = Field(validation_alias="creator")
     created_at: datetime
+    updated_at: datetime
 
 
 def serialize_credential(credential: "Credential", *, reveal: bool = False) -> CredentialRead:

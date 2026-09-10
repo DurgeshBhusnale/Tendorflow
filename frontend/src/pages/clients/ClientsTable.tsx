@@ -2,7 +2,7 @@ import { Building2 } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
 import { DataTable, type Column } from "@/components/shared/DataTable";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { NoActions, RowActions } from "@/components/shared/RowActions";
+import { RowActions } from "@/components/shared/RowActions";
 import { formatDate } from "@/lib/format";
 import type { Client } from "@/types/client";
 
@@ -21,12 +21,7 @@ export function ClientsTable({
   onDelete,
   emptyAction,
 }: ClientsTableProps) {
-  const { user, isAdmin } = useAuth();
-
-  // Mirrors the backend ownership rule (services/client_service.py): admins can
-  // modify anything, employees only what they created. The server enforces this
-  // regardless — this just avoids showing actions that would 403.
-  const canModify = (client: Client) => isAdmin || client.created_by?.id === user?.id;
+  const { isAdmin } = useAuth();
 
   const columns: Column<Client>[] = [
     { header: "Contact Person", cell: (c) => c.contact_person_name },
@@ -41,23 +36,24 @@ export function ClientsTable({
     },
     { header: "Email", cell: (c) => <span className="text-muted-foreground">{c.email}</span> },
     {
-      header: "Onboarded By",
+      // Every user may edit every client now, so both columns report the latest
+      // change rather than the original onboarding (CH-19).
+      header: "Onboarded/Updated By",
       cell: (c) => <span className="text-muted-foreground">{c.created_by?.full_name ?? "—"}</span>,
     },
     {
-      header: "Date Added",
-      cell: (c) => <span className="text-muted-foreground">{formatDate(c.created_at)}</span>,
+      header: "Date",
+      cell: (c) => <span className="text-muted-foreground">{formatDate(c.updated_at)}</span>,
     },
     {
       header: "Actions",
       align: "right",
       mobile: "actions",
-      cell: (c) =>
-        canModify(c) ? (
-          <RowActions onEdit={() => onEdit(c)} onDelete={() => onDelete(c)} />
-        ) : (
-          <NoActions />
-        ),
+      // Anyone may edit any client (CH-19); only admins may delete one, since
+      // deleting cascades to their credentials, tenders and DSC keys.
+      cell: (c) => (
+        <RowActions onEdit={() => onEdit(c)} onDelete={isAdmin ? () => onDelete(c) : undefined} />
+      ),
     },
   ];
 
