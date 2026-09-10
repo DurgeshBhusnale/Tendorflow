@@ -1,15 +1,15 @@
-export interface TenderName {
+export interface TenderDepartment {
   id: string;
   name: string;
   is_active: boolean;
   created_at: string;
 }
 
-export interface TenderNameCreate {
+export interface TenderDepartmentCreate {
   name: string;
 }
 
-export interface TenderNameUpdate {
+export interface TenderDepartmentUpdate {
   name?: string;
   is_active?: boolean;
 }

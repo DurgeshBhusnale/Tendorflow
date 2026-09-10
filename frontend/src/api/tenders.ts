@@ -12,6 +12,9 @@ export interface TenderFilters {
   client_id?: string;
   status?: TenderStatus;
   search?: string;
+  /** Inclusive IST calendar days, as YYYY-MM-DD. */
+  start_date?: string;
+  end_date?: string;
 }
 
 export const tendersApi = {
@@ -21,7 +24,7 @@ export const tendersApi = {
     });
     return data.data;
   },
-  /** Totals for the same filters as `list` — backs the summary strip. */
+  /** Totals for the same filters as `list` — backs the summary strip. Admin-only. */
   summary: async (params: TenderFilters) => {
     const { data } = await apiClient.get<ApiSuccess<TenderSummary>>("/api/tenders/summary", {
       params,

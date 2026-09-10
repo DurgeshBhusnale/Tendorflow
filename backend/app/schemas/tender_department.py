@@ -4,16 +4,16 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class TenderNameCreate(BaseModel):
+class TenderDepartmentCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
 
 
-class TenderNameUpdate(BaseModel):
+class TenderDepartmentUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
     is_active: bool | None = None
 
 
-class TenderNameRead(BaseModel):
+class TenderDepartmentRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID

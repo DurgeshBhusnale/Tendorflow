@@ -15,10 +15,15 @@ export function useTenders(params: TenderFilters & { page: number; page_size: nu
   });
 }
 
-export function useTenderSummary(params: TenderFilters) {
+/**
+ * The KPI strip's data. Admin-only (CH-12) — `enabled` keeps an employee's
+ * session from firing a request the API answers with 403 on every page view.
+ */
+export function useTenderSummary(params: TenderFilters, enabled = true) {
   return useQuery({
     queryKey: tendersKeys.summary(params),
     queryFn: () => tendersApi.summary(params),
+    enabled,
   });
 }
 
