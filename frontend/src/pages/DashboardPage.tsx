@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusPill } from "@/components/shared/StatusPill";
 import { useDashboardSummary } from "@/hooks/useDashboard";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import type { Client } from "@/types/client";
 import type { Tender } from "@/types/tender";
 
@@ -46,16 +47,24 @@ function RecentTenderRow({ tender }: { tender: Tender }) {
   return (
     <div className="flex flex-col gap-2 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-6">
       <div className="min-w-0">
-        <p className="truncate text-sm font-medium text-foreground">{tender.client.company_name}</p>
+        <p className="truncate text-sm font-medium text-foreground">
+          {tender.client.contact_person_name}
+        </p>
         <p className="mt-0.5 truncate text-xs text-muted-foreground">
-          {tender.tender_name.name} · {formatDate(tender.created_at)}
+          {tender.client.company_name} · {tender.tender_department.name} ·{" "}
+          {formatDate(tender.created_at)}
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-3 sm:gap-4">
         <span className="text-sm font-semibold tabular-nums text-foreground">
           {formatCurrency(tender.total_amount)}
         </span>
-        <StatusPill label={tender.status} tone={tender.status === "Paid" ? "green" : "amber"} />
+        <StatusPill
+          label={tender.status}
+          tone={
+            tender.status === "Paid" ? "green" : tender.status === "Partially Paid" ? "blue" : "amber"
+          }
+        />
       </div>
     </div>
   );
@@ -104,18 +113,27 @@ export default function DashboardPage() {
         description="A snapshot of active clients, outstanding tender value, and the keys currently in the office."
       />
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+      {/* Three cards for employees, four for admins: paid tender value comes
+          back null for anyone who is not an admin (CH-12). */}
+      <div
+        className={cn(
+          "grid grid-cols-1 gap-6 md:grid-cols-2",
+          data.total_paid_tender_value === null ? "xl:grid-cols-3" : "xl:grid-cols-4",
+        )}
+      >
         <MetricCard
           label="Total Active Clients"
           value={data.total_active_clients}
           icon={Building2}
         />
         <MetricCard label="Pending Tenders" value={data.pending_tenders_count} icon={FileText} />
-        <MetricCard
-          label="Total Tender Value (Paid)"
-          value={formatCurrency(data.total_paid_tender_value)}
-          icon={Wallet}
-        />
+        {data.total_paid_tender_value !== null && (
+          <MetricCard
+            label="Total Tender Value (Paid)"
+            value={formatCurrency(data.total_paid_tender_value)}
+            icon={Wallet}
+          />
+        )}
         <MetricCard label="DSC Keys in Office" value={data.dsc_keys_in_office} icon={Fingerprint} />
       </div>
 

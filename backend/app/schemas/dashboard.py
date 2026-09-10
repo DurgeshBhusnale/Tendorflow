@@ -9,12 +9,15 @@ from app.schemas.tender import TenderRead
 class DashboardSummary(BaseModel):
     total_active_clients: int
     pending_tenders_count: int
-    total_paid_tender_value: Decimal
+    # Admin-only (CH-12). Null for employees rather than absent, so the response
+    # shape stays uniform and the frontend renders one fewer card instead of
+    # branching on a missing key.
+    total_paid_tender_value: Decimal | None
     dsc_keys_in_office: int
     recent_tenders: list[TenderRead]
     recent_clients: list[ClientRead]
 
     @field_serializer("total_paid_tender_value")
-    def serialize_money(self, value: Decimal) -> str:
+    def serialize_money(self, value: Decimal | None) -> str | None:
         """Same fixed-2dp string treatment as everywhere else money crosses the wire."""
-        return f"{value:.2f}"
+        return None if value is None else f"{value:.2f}"
