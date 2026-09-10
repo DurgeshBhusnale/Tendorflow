@@ -36,18 +36,20 @@ frontend/
 │   │   ├── tenders.ts
 │   │   ├── dsc.ts
 │   │   ├── portals.ts
-│   │   ├── tender-names.ts
+│   │   ├── tender-departments.ts
 │   │   └── users.ts
 │   ├── auth/
 │   │   ├── AuthContext.tsx   # React context: user, tokens, login/logout
 │   │   ├── ProtectedRoute.tsx
 │   │   └── AdminRoute.tsx
 │   ├── components/
-│   │   ├── ui/               # form primitives (button, input, select, label)
+│   │   ├── ui/               # form primitives (button, input, select, label,
+│   │   │                     # combobox — the searchable dropdown)
 │   │   ├── layout/           # AppShell, Sidebar (no top bar — see design system)
 │   │   └── shared/           # DataTable, Drawer, PageHeader, Pagination,
 │   │                         # SearchInput, RowActions, EmptyState,
-│   │                         # StatusPill, MetricCard, MasterListManager
+│   │                         # StatusPill, MetricCard, MasterListManager,
+│   │                         # ClientPicker
 │   ├── pages/
 │   │   ├── LoginPage.tsx
 │   │   ├── DashboardPage.tsx
@@ -61,7 +63,7 @@ frontend/
 │   │   └── admin/
 │   │       ├── UsersPage.tsx
 │   │       ├── PortalsPage.tsx
-│   │       └── TenderNamesPage.tsx
+│   │       └── TenderDepartmentsPage.tsx
 │   ├── hooks/                # React Query hooks: useClients, useCreateClient, ...
 │   │   ├── useClients.ts
 │   │   ├── useTenders.ts
@@ -184,10 +186,12 @@ Every server data touchpoint uses React Query. No `useEffect` + `useState` + `fe
 React Hook Form + Zod:
 
 ```tsx
+import { phoneSchema } from "@/lib/validation";
+
 const clientSchema = z.object({
   contact_person_name: z.string().min(1, "Required").max(120),
   company_name: z.string().min(1, "Required").max(200),
-  contact_number: z.string().regex(/^[\d +\-]{7,20}$/, "Invalid phone number"),
+  contact_number: phoneSchema,   // shared: Indian mobile, normalized to 10 digits
   email: z.string().email("Invalid email"),
 });
 type ClientFormValues = z.infer<typeof clientSchema>;
@@ -216,6 +220,17 @@ export function ClientForm({ onSuccess }: { onSuccess: () => void }) {
 
 Every form has a Zod schema. Schema is defined co-located with the form or in `lib/validation.ts` if shared.
 
+`lib/validation.ts` mirrors `backend/app/schemas/validators.py`. The duplication
+is deliberate (root CLAUDE.md, monorepo split rules) — a rule changed on one
+side needs the same change on the other.
+
+**Dropdowns are `<Combobox>`, not `<select>`.** It takes `value` / `onChange`
+rather than a ref, so drive it with React Hook Form's `watch` + `setValue`
+instead of `register`. Where the option list can outgrow one API page — anything
+listing clients — pass `onSearchChange` so the query goes to the server. Pick a
+client with `<ClientPicker>`, which renders the paired contact-name and
+company-name fields over a single `client_id`.
+
 ### Auth Context
 
 `src/auth/AuthContext.tsx` provides `useAuth()` → `{ user, isAuthenticated, isAdmin, login, logout }`. The access token lives in a ref/state inside the context provider; the refresh token lives in `localStorage` for persistence across reloads.
@@ -242,7 +257,7 @@ export const router = createBrowserRouter([
         children: [
           { path: "/admin/users", element: <UsersPage /> },
           { path: "/admin/portals", element: <PortalsPage /> },
-          { path: "/admin/tender-names", element: <TenderNamesPage /> },
+          { path: "/admin/tender-departments", element: <TenderDepartmentsPage /> },
         ],
       },
     ],

@@ -2,7 +2,7 @@
 
 **Status:** Draft for review. Nothing in `backend/app/` or `frontend/src/` exists yet — this plan sequences everything from Phase 0 onward.
 
-This plan turns the modules in `PRD.md` §4 into a dependency-ordered build sequence. Auth (Module 0) is foundational because every route except login/refresh/health requires a valid JWT. Clients (Module 1) is the entry point because Credentials, Tenders, and DSC Keys all FK into it. Portals and Tender Names are small admin-managed master lists that gate Credentials and Tenders respectively, so they're pulled forward into their own phase rather than bundled into the modules that consume them.
+This plan turns the modules in `PRD.md` §4 into a dependency-ordered build sequence. Auth (Module 0) is foundational because every route except login/refresh/health requires a valid JWT. Clients (Module 1) is the entry point because Credentials, Tenders, and DSC Keys all FK into it. Portals and Tender Departments are small admin-managed master lists that gate Credentials and Tenders respectively, so they're pulled forward into their own phase rather than bundled into the modules that consume them.
 
 Each phase ends with a working, demoable slice — not just passing tests. "Definition of done" is written as an end-to-end user action, per root `CLAUDE.md`'s testing philosophy.
 
@@ -138,32 +138,32 @@ Frontend:
 
 ---
 
-## Phase 3 — Master Lists: Portals & Tender Names
+## Phase 3 — Master Lists: Portals & Tender Departments
 
 **Scope:**
 
 Backend:
-- `models/portal.py`, `models/tender_name.py`
-- Migration: create `portals` and `tender_names` tables; seed `tender_names` with `PMC`, `Civil-Works`, `Govt-Supply` in the migration itself (per `DATABASE_SCHEMA.md` §6 — seeding lives in Alembic, not a script)
-- `schemas/portal.py`, `schemas/tender_name.py` — `*Create` (`name` only), `*Update` (`name?`, `is_active?`), `*Read`
-- `services/portal_service.py`, `services/tender_name_service.py` — list (`active_only` filter), create (admin-only, unique name → `409 PORTAL_EXISTS` / equivalent), update (admin-only)
-- `routers/portals.py`, `routers/tender_names.py` — `GET` open to any authenticated role, `POST`/`PATCH` behind `require_admin`
+- `models/portal.py`, `models/tender_department.py`
+- Migration: create `portals` and `tender_departments` tables; seed `tender_departments` with `PMC`, `Civil-Works`, `Govt-Supply` in the migration itself (per `DATABASE_SCHEMA.md` §6 — seeding lives in Alembic, not a script)
+- `schemas/portal.py`, `schemas/tender_department.py` — `*Create` (`name` only), `*Update` (`name?`, `is_active?`), `*Read`
+- `services/portal_service.py`, `services/tender_department_service.py` — list (`active_only` filter), create (admin-only, unique name → `409 PORTAL_EXISTS` / equivalent), update (admin-only)
+- `routers/portals.py`, `routers/tender_departments.py` — `GET` open to any authenticated role, `POST`/`PATCH` behind `require_admin`
 - Tests for both resources: happy/non-admin-403/duplicate-name-409
 
 Frontend:
 - `src/types/portal.ts`, `src/types/tender-name.ts`
-- `src/api/portals.ts`, `src/api/tender-names.ts`
-- `src/hooks/usePortals.ts`, `src/hooks/useTenderNames.ts`
-- `src/pages/admin/PortalsPage.tsx`, `src/pages/admin/TenderNamesPage.tsx` — simple table + add form + active/inactive toggle, same shape as Users
-- Routes under `<AdminRoute>`: `/admin/portals`, `/admin/tender-names`; nav entries
+- `src/api/portals.ts`, `src/api/tender-departments.ts`
+- `src/hooks/usePortals.ts`, `src/hooks/useTenderDepartments.ts`
+- `src/pages/admin/PortalsPage.tsx`, `src/pages/admin/TenderDepartmentsPage.tsx` — simple table + add form + active/inactive toggle, same shape as Users
+- Routes under `<AdminRoute>`: `/admin/portals`, `/admin/tender-departments`; nav entries
 
 **Dependencies:** Phase 1 (admin gating pattern). Independent of Phase 2 (no client FK), but sequenced here — right before Phase 4/5 which consume these lists — rather than in Phase 1, to keep that phase scoped to auth itself.
 
 **Rough size:** S
 
 **Definition of done:**
-- As Admin, create a Portal and a Tender Name; both appear immediately in their admin tables.
-- As Employee, `GET /api/portals` and `GET /api/tender-names` succeed (read-only); `POST` to either as Employee → `403 FORBIDDEN`.
+- As Admin, create a Portal and a Tender Department; both appear immediately in their admin tables.
+- As Employee, `GET /api/portals` and `GET /api/tender-departments` succeed (read-only); `POST` to either as Employee → `403 FORBIDDEN`.
 - Deactivating a Portal (`is_active=false`) removes it from `?active_only=true` results but it still resolves by id.
 - Seed data confirms present after a fresh `alembic upgrade head` on an empty DB (the 3 seeded tender names).
 
@@ -208,10 +208,10 @@ Frontend:
 **Scope:**
 
 Backend:
-- `models/tender.py` — FKs to `clients` (cascade), `tender_names` (restrict); `total_amount` as `Computed("quantity * price", persisted=True)`
+- `models/tender.py` — FKs to `clients` (cascade), `tender_departments` (restrict); `total_amount` as `Computed("quantity * price", persisted=True)`
 - Migration: create `tenders` table **hand-edited** to include the generated column (autogenerate won't produce this — see `DATABASE_SCHEMA.md` §5) plus the `tender_status` enum usage and check constraints (`quantity > 0`, `price >= 0`)
 - `schemas/tender.py` — `TenderCreate` (no `total_amount`), `TenderUpdate`, `TenderRead` (`price`/`total_amount` serialized as strings)
-- `services/tender_service.py` — list (filters: `client_id`, `status`, search), create (validates client + tender_name exist), update (ownership; recompute is automatic via DB), delete (ownership)
+- `services/tender_service.py` — list (filters: `client_id`, `status`, search), create (validates client + tender_department exist), update (ownership; recompute is automatic via DB), delete (ownership)
 - `routers/tenders.py` — full CRUD; quick-action status flip is just `PATCH {status: "Paid"}`, no separate endpoint
 - Tests: happy/unauth/validation (`quantity<=0`, `price<0` → 422), FK-not-found 404s, and one test asserting `total_amount` is DB-computed (POST without it, assert it comes back correct)
 
@@ -221,15 +221,15 @@ Frontend:
 - `src/hooks/useTenders.ts`
 - `src/lib/format.ts` — `formatCurrency` (`Intl.NumberFormat('en-IN', {style:'currency', currency:'INR'})`), `formatDate` (Asia/Kolkata) — first real use, built here
 - `src/pages/tenders/TendersPage.tsx` — summary strip (Total Pending / Total Paid), filter bar (Client dropdown, Status segmented control), table with right-aligned currency columns, colored status pill, row-level Pending→Paid quick action
-- `src/pages/tenders/TenderForm.tsx` — Client select, Tender Name select, Quantity, Price, read-only auto-computed Total Amount (client-side mirror for UX only — never sent to the API)
+- `src/pages/tenders/TenderForm.tsx` — Client select, Tender Department select, Quantity, Price, read-only auto-computed Total Amount (client-side mirror for UX only — never sent to the API)
 - Route `/tenders`, nav entry
 
-**Dependencies:** Phase 2 (Clients), Phase 3 (Tender Names).
+**Dependencies:** Phase 2 (Clients), Phase 3 (Tender Departments).
 
 **Rough size:** M
 
 **Definition of done:**
-- As Employee, log a tender for a Client with a Tender Name, quantity, and price; `total_amount` appears correctly computed and matches `quantity × price` without ever being sent by the client.
+- As Employee, log a tender for a Client with a Tender Department, quantity, and price; `total_amount` appears correctly computed and matches `quantity × price` without ever being sent by the client.
 - Status defaults to Pending; the quick action flips it to Paid and the summary strip's Paid/Pending totals update.
 - Filtering by Client and by Status narrows the table correctly (verify via network tab).
 - Submitting `quantity=0` or negative `price` is rejected client-side (Zod) and server-side (422) if bypassed.
@@ -342,3 +342,66 @@ Raised here per root `CLAUDE.md`'s "flag it before proceeding" rule — none of 
 - **Auth stays custom FastAPI JWT**, explicitly reconfirmed against a proposal to switch to Supabase Auth.
 - **Alembic remains the only migration mechanism** — the Supabase MCP connector is used for inspection only, never `apply_migration`, so schema history stays in git and portable.
 - **Smoke-test data is intentionally left in the database** between phases so it can be inspected in the Supabase dashboard. One cleanup pass happens after all phases are done.
+- **Ownership was removed as a permission axis** (see Phase 8 below). The
+  earlier phases' "ownership" wording describes what was built at the time and
+  is left as written; `PRD.md` §3.3 and root `CLAUDE.md` invariant 6 are the
+  current rule.
+
+
+---
+
+## Phase 8 — Post-Launch Change Set
+
+Nineteen changes requested after the prototype was working end to end, grouped
+here so the sequence and its coupling stay recorded. The authoritative
+descriptions live in `PRD.md`, `API_CONTRACT.md` and `DATABASE_SCHEMA.md`; this
+is the map.
+
+### Migrations, in order
+
+Each is its own revision, and the order matters:
+
+| Revision | Does |
+|---|---|
+| `b1a7c3d9e410` | Adds `users.username`, backfilled from the email local-part, then made `not null unique`. |
+| `c2b8d4e0f521` | Renames `tender_names` → `tender_departments` and `tenders.tender_name_id` → `tender_department_id`, plus the constraints and indexes, which do not follow a table rename. |
+| `d3c9e5f1632a` | Adds `'Partially Paid'` to the `tender_status` enum — **and nothing else**. |
+| `e4d0f6a2743b` | Adds `paid_amount`, the generated `remaining_amount`, `payment_mode`, and the paid/status `CHECK`. |
+| `f5e1a7b3854c` | Creates `dsc_key_events` and backfills a `Created` event per existing key. |
+| `a3e9b2c7d541` | Adds `dsc_key_events.seq` and switches the history's ordering to it — `now()` is transaction-scoped, so same-transaction events tied on `created_at`. |
+
+`d3c9e5f1632a` is deliberately alone: Postgres forbids using a newly added enum
+value in the transaction that adds it, and the next revision's `CHECK` names
+`'Partially Paid'`. Combining them fails at runtime, not at review.
+
+### The changes
+
+| Ref | Change | Where it is specified |
+|---|---|---|
+| CH-01 | Admins can hard-delete users, with self-delete and last-admin guards | `API_CONTRACT.md` §2, `PRD.md` §4.1 |
+| CH-02 | Login by username; username and email both required at onboarding | `API_CONTRACT.md` §1–2, `PRD.md` §4.1 |
+| CH-03 | Searchable dropdowns everywhere, server-backed where the list can outgrow a page | `DESIGN_SYSTEM.md` §3 |
+| CH-04 | "Tender Name" renamed to "Tender Department", through the DB, API and UI | `DATABASE_SCHEMA.md` §1.5 |
+| CH-05 | `Partially Paid` status with a `paid_amount` | `API_CONTRACT.md` §7 |
+| CH-06 | `payment_mode` (Cash/Online), required whenever money changed hands; one-click *Mark Paid* removed | `API_CONTRACT.md` §7, `PRD.md` §4.4 |
+| CH-07 | Client contact name shown and searchable alongside the company | `API_CONTRACT.md` §7 |
+| CH-08 | Tender column order, and the client's name as the mobile card title | `PRD.md` §4.4 |
+| CH-09 | Remaining Amount as its own generated column and table column | `DATABASE_SCHEMA.md` §5 |
+| CH-10 | Filter-aware KPI strip; outstanding sums balances, not contract values | `API_CONTRACT.md` §7 |
+| CH-11 | IST date-range filter on the list and the summary alike | `API_CONTRACT.md` §7 |
+| CH-12 | Tender KPIs and the dashboard's paid value are admin-only | `API_CONTRACT.md` §7, §9 |
+| CH-13 | Credential edits move the attribution and the date | `API_CONTRACT.md` §5 |
+| CH-14 | Paired client-name / company-name pickers over one `client_id` | `PRD.md` §4.4 |
+| CH-15 | `Key Lost` retired at the application layer | `DATABASE_SCHEMA.md` §7 |
+| CH-16 | Issued keys shaded red across the whole row | `DESIGN_SYSTEM.md` §3 |
+| CH-17 | Issuance requires the holder's name and mobile; Indian-mobile rule applied to every phone field | `API_CONTRACT.md` §8 |
+| CH-18 | `dsc_key_events` history, opened from the row | `API_CONTRACT.md` §8, `PRD.md` §4.5 |
+| CH-19 | Open editing across all four modules; deletion becomes admin-only | `PRD.md` §3.3, root `CLAUDE.md` invariant 6 |
+
+### The one non-obvious coupling
+
+CH-19 is what forces deletion to become admin-only. Once `created_by` is re-set
+on every update, it names the last editor rather than an owner — so the old
+`created_by == current_user.id` check would have handed deletion rights to
+whoever edited a row most recently. That is worse than having no check, so the
+ownership check was replaced by `require_admin` rather than merely relaxed.
