@@ -46,9 +46,19 @@ Status pill palette (`StatusPill`, exact Tailwind defaults):
 | Tone | Background | Text |
 | --- | --- | --- |
 | `green` — Paid, Active, Key Created/Returned | `#ECFDF5` | `#059669` |
-| `amber` — Pending, Key Issued | `#FFFBEB` | `#D97706` |
-| `red` — Lost, error | `#FEF2F2` | `#DC2626` |
-| `slate` — neutral, Inactive | `#F3F4F6` | `#4B5563` |
+| `amber` — Pending | `#FFFBEB` | `#D97706` |
+| `blue` — part-way states (Partially Paid) | `#EFF6FF` | `#2563EB` |
+| `red` — Key Issued, error | `#FEF2F2` | `#DC2626` |
+| `slate` — neutral, Inactive, unknown | `#F3F4F6` | `#4B5563` |
+
+`blue` exists so *Partially Paid* is not another amber pill sitting next to
+*Pending*: they are different states and the eye has to separate them at a
+glance. Key Issued moved from amber to red because a key that has left the
+office is a live exposure, not a pending task.
+
+**Always give a status map a fallback tone.** A retired enum value can still
+come back from the API on an old row (`DATABASE_SCHEMA.md` §7), so index with
+`STATUS_TONES[value] ?? "slate"` rather than assuming the key exists.
 
 ### Typography
 
@@ -117,6 +127,18 @@ from the same `columns` array — a column declares its mobile behaviour with `m
 | `"hide"` | Dropped on mobile — for columns the title already implies. |
 | *(unset)* | Becomes a label/value pair. |
 
+Two optional props cover the cases a column config cannot express:
+
+- **`rowClassName(row)`** — classes applied to the whole row, in both the table
+  and the card rendering. For flagging a row's state in the row itself rather
+  than only in a pill: a DSC key that is out of the office is tinted
+  `bg-red-50/70` across its full width, because that is the one thing worth
+  spotting from across the room.
+- **`onRowClick(row)`** — makes rows activatable and adds `cursor-pointer`. Use
+  it only where a row has a detail view (DSC keys open their history). Any cell
+  containing its own buttons must wrap them in a `stopPropagation` handler, or
+  clicking Edit fires both.
+
 ### Forms & Drawers
 
 All data entry happens in a right-side slide-over (`components/shared/Drawer.tsx`), 480px wide,
@@ -125,8 +147,30 @@ closing on backdrop click or Escape, with background scroll locked while open. A
 Cancel then submit).
 
 Inputs: 1px border, 0px radius, 14px text, indigo focus ring. Every field has a `<Label htmlFor>`
-and a `<FieldError>`. Selects are the native element wearing the same chrome (`ui/select.tsx`), so
-`{...register()}` keeps working.
+and a `<FieldError>`.
+
+**Dropdowns come in two forms**, sharing the same field chrome:
+
+- **`ui/select.tsx`** — the native element. Correct for short, fixed lists where
+  every option fits on screen: a status, a role, cash-or-online.
+- **`ui/combobox.tsx`** — a searchable single-select. Correct for anything the
+  user might have to hunt through, which in practice means every list of
+  clients, portals and tender departments. The input doubles as the search box;
+  arrow keys and Enter work; `clearable` adds an × for filter dropdowns where
+  "no selection" is a valid state. It is controlled (`value` / `onChange`), so
+  in a form it is driven by `watch` + `setValue`, not `register`.
+
+  Pass `onSearchChange` when the option list can outgrow one API page, so the
+  query goes to the server rather than filtering a truncated snapshot. Always
+  seed the currently-selected item into the options when editing, or the field
+  blanks out mid-edit as soon as the search stops matching it.
+
+**Conditional fields.** A field that only applies to one state is rendered only
+in that state, never disabled-but-visible: the tender form shows Amount Paid
+solely for *Partially Paid*, and Payment Mode only once money has changed hands.
+Grouped capture (the DSC issued-to block) sits in a bordered `bg-muted` panel
+with an `.eyebrow` heading, so it reads as one unit rather than two loose
+fields.
 
 ### Sign-in Page (`pages/LoginPage.tsx`)
 
@@ -200,6 +244,10 @@ that is easy to miss visually and breaks the whole layout.
 - **Dates.** Always `formatDate` — `30 Aug 2026`, rendered in Asia/Kolkata per PRD §5.
 - **Statuses.** Always a `StatusPill`, never plain text.
 - **Calculated fields.** Read-only and visibly inert: muted background, bordered block, with a
-  line explaining that the server computes the real value (see the tender total).
+  line explaining that the server computes the real value (see the tender total,
+  which shows Paid and Remaining beneath it once a payment exists).
+- **Phone numbers.** Ten digits, Indian mobile, via the shared `phoneSchema`.
+  The backend normalizes and stores the bare ten digits, so what comes back may
+  not be what was typed — never assume the input's formatting survives.
 - **Viewport.** Desktop-first at 1440px, usable down to 360px. Nothing scrolls horizontally at any
   width.

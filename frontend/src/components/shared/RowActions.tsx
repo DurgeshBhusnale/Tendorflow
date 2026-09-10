@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 
 interface RowActionsProps {
   onEdit: () => void;
-  onDelete: () => void;
-  /** Module-specific actions rendered ahead of edit/delete (e.g. "Mark Paid"). */
+  /** Omit to render edit alone — deletion is admin-only across every module. */
+  onDelete?: () => void;
+  /** Module-specific actions rendered ahead of edit/delete. */
   children?: ReactNode;
 }
 
@@ -23,16 +24,18 @@ export function RowActions({ onEdit, onDelete, children }: RowActionsProps) {
       <Button variant="outline" size="icon" onClick={onEdit} aria-label="Edit" title="Edit">
         <Pencil />
       </Button>
-      <Button
-        variant="outline"
-        size="icon"
-        onClick={onDelete}
-        aria-label="Delete"
-        title="Delete"
-        className="hover:bg-red-50 hover:text-destructive"
-      >
-        <Trash2 />
-      </Button>
+      {onDelete && (
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={onDelete}
+          aria-label="Delete"
+          title="Delete"
+          className="hover:bg-red-50 hover:text-destructive"
+        >
+          <Trash2 />
+        </Button>
+      )}
     </div>
   );
 }
