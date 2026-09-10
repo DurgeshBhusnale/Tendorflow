@@ -1,6 +1,12 @@
 import { apiClient } from "@/api/client";
 import type { ApiSuccess, PaginatedResponse } from "@/types/api";
-import type { DscKey, DscKeyCreate, DscKeyStatus, DscKeyUpdate } from "@/types/dsc";
+import type {
+  DscKey,
+  DscKeyCreate,
+  DscKeyEvent,
+  DscKeyStatus,
+  DscKeyUpdate,
+} from "@/types/dsc";
 
 export const dscApi = {
   list: async (params: {
@@ -13,6 +19,11 @@ export const dscApi = {
     const { data } = await apiClient.get<ApiSuccess<PaginatedResponse<DscKey>>>("/api/dsc", {
       params,
     });
+    return data.data;
+  },
+  /** Creation, issuances and returns for one key, newest first. */
+  history: async (id: string) => {
+    const { data } = await apiClient.get<ApiSuccess<DscKeyEvent[]>>(`/api/dsc/${id}/history`);
     return data.data;
   },
   create: async (payload: DscKeyCreate) => {

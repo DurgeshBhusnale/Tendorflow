@@ -5,6 +5,7 @@ import type { DscKeyStatus, DscKeyUpdate } from "@/types/dsc";
 export const dscKeys = {
   all: ["dsc"] as const,
   list: (params: object) => [...dscKeys.all, "list", params] as const,
+  history: (id: string) => [...dscKeys.all, "history", id] as const,
 };
 
 export function useDscKeys(params: {
@@ -17,6 +18,15 @@ export function useDscKeys(params: {
   return useQuery({
     queryKey: dscKeys.list(params),
     queryFn: () => dscApi.list(params),
+  });
+}
+
+/** One key's creation/issuance/return trail. Fetched when the panel opens. */
+export function useDscKeyHistory(id: string | undefined) {
+  return useQuery({
+    queryKey: dscKeys.history(id ?? ""),
+    queryFn: () => dscApi.history(id as string),
+    enabled: Boolean(id),
   });
 }
 
