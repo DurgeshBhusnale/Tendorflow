@@ -14,5 +14,5 @@ async def dashboard_summary(
     session: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(get_current_user),
 ):
-    summary = await dashboard_service.get_dashboard_summary(session)
+    summary = await dashboard_service.get_dashboard_summary(session, current_user)
     return ok(summary)

@@ -14,7 +14,7 @@ import { FieldError, Label } from "@/components/ui/label";
 import { formatDate } from "@/lib/format";
 import { ApiError } from "@/types/api";
 
-/** The shape both admin-managed master lists (portals, tender names) share. */
+/** The shape both admin-managed master lists (portals, tender departments) share. */
 export interface MasterListItem {
   id: string;
   name: string;

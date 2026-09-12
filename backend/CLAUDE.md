@@ -40,7 +40,9 @@ backend/
 │   │   ├── portal.py
 │   │   ├── credential.py
 │   │   ├── tender.py
-│   │   └── dsc_key.py
+│   │   ├── tender_department.py
+│   │   ├── dsc_key.py
+│   │   └── dsc_key_event.py
 │   ├── schemas/         # Pydantic request/response schemas — one file per resource
 │   │   ├── auth.py
 │   │   ├── user.py
@@ -145,9 +147,11 @@ async def update_client(
     client = await session.get(Client, client_id)
     if client is None:
         raise NotFoundError(code="NOT_FOUND", message="Client not found")
-    if client.created_by != current_user.id and current_user.role != "admin":
-        raise ForbiddenError(code="FORBIDDEN", message="You can only edit clients you created")
+    # No ownership check: every record module is open-edit (root CLAUDE.md
+    # invariant 6). Deletion is the restricted operation, and it is gated with
+    # `Depends(require_admin)` at the router rather than checked here.
     # ... apply updates
+    client.created_by = current_user.id   # "last touched by", not an owner
 ```
 
 Services take `session`, `current_user`, and a validated payload. They raise domain exceptions, never `HTTPException`. The exception handler in `app/main.py` maps domain exceptions to HTTP responses.
@@ -250,7 +254,8 @@ measurements, and for the event-loop caveat that would send it back to `NullPool
 - **Don't create sessions inside services.** Sessions are dependencies passed in from the router.
 - **Don't `await session.commit()` inside a service that might be composed with other services.** Prefer having the router / a "unit of work" wrapper own commit boundaries. For now (prototype), each service owns its commit; note this as a refactor point if we grow.
 - **Don't return SQLAlchemy models directly from a router.** Always wrap in a Pydantic response model — otherwise lazy-load errors and accidental field exposure will bite you.
-- **Don't accept `created_by` in a request body.** Ever. It comes from `current_user.id` in the service.
+- **Don't accept `created_by` in a request body.** Ever. It comes from `current_user.id` in the service — on create *and* on every update, since it records the last person to touch the row.
+- **Don't authorize against `created_by`.** It is not an ownership column (root CLAUDE.md invariant 6). Role checks only.
 - **Don't skip Alembic** for a schema change, even a "quick tweak."
 - **Don't add a background task, worker, or cache.** Prototype scope. If you feel you need one, flag it — we'll discuss.
 - **Don't use `print()`.** Use the logger.

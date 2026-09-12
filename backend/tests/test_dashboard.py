@@ -24,9 +24,9 @@ async def client_id(client, employee_headers, uniq) -> str:
 
 
 @pytest.fixture
-async def tender_name_id(client, admin_headers, uniq) -> str:
+async def tender_department_id(client, admin_headers, uniq) -> str:
     resp = await client.post(
-        "/api/tender-names", json={"name": f"Civil-Works-{uniq}"}, headers=admin_headers
+        "/api/tender-departments", json={"name": f"Civil-Works-{uniq}"}, headers=admin_headers
     )
     return resp.json()["data"]["id"]
 
@@ -44,8 +44,8 @@ async def test_summary_requires_auth(client):
     assert resp.json()["error"]["code"] == "UNAUTHENTICATED"
 
 
-async def test_summary_shape(client, employee_headers):
-    data = await _summary(client, employee_headers)
+async def test_summary_shape(client, admin_headers):
+    data = await _summary(client, admin_headers)
 
     assert set(data) == {
         "total_active_clients",
@@ -59,10 +59,28 @@ async def test_summary_shape(client, employee_headers):
 
 
 async def test_employee_can_view_dashboard(client, employee_headers):
-    """Same dashboard for both roles (PRD 4.6)."""
     data = await _summary(client, employee_headers)
 
     assert isinstance(data["total_active_clients"], int)
+
+
+async def test_paid_tender_value_is_withheld_from_employees(client, employee_headers):
+    """Revenue is admin-only (CH-12).
+
+    The key stays present and null rather than disappearing, so the response
+    shape is the same for both roles and the UI drops a card instead of
+    branching on a missing field.
+    """
+    data = await _summary(client, employee_headers)
+
+    assert "total_paid_tender_value" in data
+    assert data["total_paid_tender_value"] is None
+
+
+async def test_paid_tender_value_is_visible_to_admins(client, admin_headers):
+    data = await _summary(client, admin_headers)
+
+    assert isinstance(data["total_paid_tender_value"], str)
 
 
 async def test_admin_can_view_dashboard(client, admin_headers):
@@ -79,7 +97,7 @@ async def test_adding_a_client_increments_the_client_count(client, employee_head
         json={
             "contact_person_name": "Second Person",
             "company_name": "Second Co",
-            "contact_number": "+91 90000 00001",
+            "contact_number": "9000000001",
             "email": "second-dashboard-check@example.com",
         },
         headers=employee_headers,
@@ -91,16 +109,20 @@ async def test_adding_a_client_increments_the_client_count(client, employee_head
 
 
 async def test_pending_tender_moves_between_metrics_when_paid(
-    client, employee_headers, client_id, tender_name_id
+    client, admin_headers, employee_headers, client_id, tender_department_id
 ):
-    """Marking a tender Paid must drop the pending count and raise the paid value."""
-    before = await _summary(client, employee_headers)
+    """Marking a tender Paid must drop the pending count and raise the paid value.
+
+    Read as an admin throughout, since the paid value is withheld from
+    employees.
+    """
+    before = await _summary(client, admin_headers)
 
     created = await client.post(
         "/api/tenders",
         json={
             "client_id": client_id,
-            "tender_name_id": tender_name_id,
+            "tender_department_id": tender_department_id,
             "quantity": 2,
             "price": "1000.00",
         },
@@ -108,19 +130,46 @@ async def test_pending_tender_moves_between_metrics_when_paid(
     )
     tender_id = created.json()["data"]["id"]
 
-    with_pending = await _summary(client, employee_headers)
+    with_pending = await _summary(client, admin_headers)
     assert with_pending["pending_tenders_count"] == before["pending_tenders_count"] + 1
     assert with_pending["total_paid_tender_value"] == before["total_paid_tender_value"]
 
     await client.patch(
-        f"/api/tenders/{tender_id}", json={"status": "Paid"}, headers=employee_headers
+        f"/api/tenders/{tender_id}",
+        json={"status": "Paid", "payment_mode": "Cash"},
+        headers=employee_headers,
     )
 
-    after = await _summary(client, employee_headers)
+    after = await _summary(client, admin_headers)
     assert after["pending_tenders_count"] == before["pending_tenders_count"]
     assert float(after["total_paid_tender_value"]) == pytest.approx(
         float(before["total_paid_tender_value"]) + 2000.00
     )
+
+
+async def test_partially_paid_tender_leaves_the_pending_count(
+    client, admin_headers, employee_headers, client_id, tender_department_id
+):
+    """Partially Paid is its own status: it is neither pending nor settled."""
+    before = await _summary(client, admin_headers)
+
+    await client.post(
+        "/api/tenders",
+        json={
+            "client_id": client_id,
+            "tender_department_id": tender_department_id,
+            "quantity": 2,
+            "price": "1000.00",
+            "status": "Partially Paid",
+            "paid_amount": "500.00",
+            "payment_mode": "Online",
+        },
+        headers=employee_headers,
+    )
+
+    after = await _summary(client, admin_headers)
+    assert after["pending_tenders_count"] == before["pending_tenders_count"]
+    assert after["total_paid_tender_value"] == before["total_paid_tender_value"]
 
 
 @pytest.mark.parametrize(
@@ -129,7 +178,6 @@ async def test_pending_tender_moves_between_metrics_when_paid(
         ("Key Created", True),
         ("Key Returned", True),
         ("Key Issued", False),
-        ("Key Lost", False),
     ],
 )
 async def test_dsc_in_office_metric_counts_only_present_keys(
@@ -149,7 +197,7 @@ async def test_dsc_in_office_metric_counts_only_present_keys(
 
 
 async def test_recent_lists_are_capped_at_five(
-    client, employee_headers, client_id, tender_name_id, uniq
+    client, employee_headers, client_id, tender_department_id, uniq
 ):
     """Create more than five of each so the cap has to engage.
 
@@ -161,7 +209,7 @@ async def test_recent_lists_are_capped_at_five(
             "/api/tenders",
             json={
                 "client_id": client_id,
-                "tender_name_id": tender_name_id,
+                "tender_department_id": tender_department_id,
                 "quantity": n + 1,
                 "price": "10.00",
             },
@@ -194,14 +242,14 @@ async def test_recent_lists_are_newest_first(client, employee_headers, client_id
 
 
 async def test_recent_rows_match_the_list_endpoint_shape(
-    client, employee_headers, client_id, tender_name_id
+    client, employee_headers, client_id, tender_department_id
 ):
     """Panels reuse the module list shapes, so both sides stay in sync."""
     await client.post(
         "/api/tenders",
         json={
             "client_id": client_id,
-            "tender_name_id": tender_name_id,
+            "tender_department_id": tender_department_id,
             "quantity": 2,
             "price": "1000.00",
         },

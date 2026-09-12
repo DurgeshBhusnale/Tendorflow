@@ -1,16 +1,9 @@
-import re
 from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
-CONTACT_NUMBER_RE = re.compile(r"^[\d +\-]{7,20}$")
-
-
-def _validate_contact_number(v: str) -> str:
-    if not CONTACT_NUMBER_RE.match(v):
-        raise ValueError("Contact number must be 7-20 characters of digits, spaces, '+' or '-'.")
-    return v
+from app.schemas.validators import normalize_phone
 
 
 class CreatorRef(BaseModel):
@@ -29,7 +22,7 @@ class ClientCreate(BaseModel):
     @field_validator("contact_number")
     @classmethod
     def validate_contact_number(cls, v: str) -> str:
-        return _validate_contact_number(v)
+        return normalize_phone(v)
 
 
 class ClientUpdate(BaseModel):
@@ -43,7 +36,7 @@ class ClientUpdate(BaseModel):
     def validate_contact_number(cls, v: str | None) -> str | None:
         if v is None:
             return v
-        return _validate_contact_number(v)
+        return normalize_phone(v)
 
 
 class ClientRead(BaseModel):
@@ -54,5 +47,9 @@ class ClientRead(BaseModel):
     company_name: str
     contact_number: str
     email: str
+    # Whoever last touched the row, not necessarily who first onboarded it —
+    # every module is open-edit and reports the latest hand (CH-19). Paired with
+    # `updated_at`, which the set_updated_at trigger maintains.
     created_by: CreatorRef | None = Field(validation_alias="creator")
     created_at: datetime
+    updated_at: datetime

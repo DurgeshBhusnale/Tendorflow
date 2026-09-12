@@ -8,7 +8,7 @@
 
 ## 1. Purpose
 
-An internal, authentication-gated web application for a tender-filling business. Employees onboard clients, store portal login credentials, log tender transactions with pricing and status, and track the physical location of client DSC (Digital Signature Certificate) USB keys stored in the office. Admins additionally manage the master dropdown lists (Portals, Tender Names) and onboard new user accounts.
+An internal, authentication-gated web application for a tender-filling business. Employees onboard clients, store portal login credentials, log tender transactions with pricing and status, and track the physical location of client DSC (Digital Signature Certificate) USB keys stored in the office. Admins additionally manage the master dropdown lists (Portals, Tender Departments), onboard and remove user accounts, and are the only role that can delete records or see revenue totals.
 
 Nothing about this app is public. There is no landing page, no self-signup, no SEO, no public API. Every route requires a valid session.
 
@@ -18,7 +18,7 @@ Nothing about this app is public. There is no landing page, no self-signup, no S
 
 | Persona | Description | Primary goals |
 |---|---|---|
-| **Admin** | Business owner / senior staff. | Manage master dropdown lists (Portals, Tender Names). Onboard new user accounts (Admin or Employee). View and edit all records across the app. |
+| **Admin** | Business owner / senior staff. | Manage master dropdown lists (Portals, Tender Departments). Onboard, deactivate and delete user accounts. Delete records. See revenue and receivables totals. |
 | **Employee** | Operational staff. | Onboard clients. Save portal credentials for each client. Log tender transactions and payment status. Log and locate DSC keys. |
 
 Both personas share full read access across every data module — this is a shared internal tool, not a per-user segregated system. Write access differs: Employees can create records and edit/delete records they created; Admins can edit/delete anything.
@@ -48,20 +48,35 @@ Both personas share full read access across every data module — this is a shar
 | Log in / log out | ✅ | ✅ |
 | View Clients / Credentials / Tenders / DSC data | ✅ (all) | ✅ (all) |
 | Create records in any module | ✅ | ✅ |
-| Edit / delete records **they created** | ✅ | ✅ |
-| Edit / delete records **created by others** | ✅ | 🚫 |
+| Edit **any** record, including others' | ✅ | ✅ |
+| Delete records in any module | ✅ | 🚫 |
+| View tender KPI totals (revenue / receivables) | ✅ | 🚫 |
 | Manage master **Portals** list | ✅ | 🚫 (read-only) |
-| Manage master **Tender Names** list | ✅ | 🚫 (read-only) |
-| Onboard new user accounts | ✅ | 🚫 |
+| Manage master **Tender Departments** list | ✅ | 🚫 (read-only) |
+| Onboard / delete user accounts | ✅ | 🚫 |
 
-Ownership is enforced in the service layer, not by database-level RLS (we're not using Supabase Auth, so `auth.uid()` is not available at the DB layer). The pattern is:
+**There is no ownership axis.** Editing is open to every signed-in user across
+all four record modules, and `created_by` is re-set to the acting user on each
+update — so it names *the last person to touch the row*, not its author. The UI
+labels the column "Added/Updated By" and pairs it with `updated_at`.
+
+Deletion is admin-only **as a direct consequence**: with `created_by` tracking
+the latest editor, an ownership check on delete would hand deletion rights to
+whoever edited a row most recently, which is worse than no check at all.
+Deleting a client also cascades to their credentials, tenders and DSC keys.
+
+Authorization is enforced in the service layer and by router dependencies, not
+by database-level RLS (we're not using Supabase Auth, so `auth.uid()` is not
+available at the DB layer). The pattern is now a role check at the router:
 
 ```python
-def update_client(client_id: UUID, payload: ClientUpdate, current_user: User):
-    client = repo.get_client(client_id)
-    if client.created_by != current_user.id and current_user.role != "admin":
-        raise ForbiddenError("You can only edit clients you created")
-    ...
+@router.delete("/{client_id}")
+async def delete_client(
+    client_id: UUID,
+    session: AsyncSession = Depends(get_db_session),
+    current_user: User = Depends(require_admin),   # not an ownership check
+):
+    await client_service.delete_client(session, client_id)
 ```
 
 ---
@@ -71,16 +86,27 @@ def update_client(client_id: UUID, payload: ClientUpdate, current_user: User):
 ### 4.1 Module 0 — Authentication & User Management
 
 **Login screen (`/`)**
-- Email + password inputs, "Sign In" button.
-- Inline error state on invalid credentials.
+- **Username** + password inputs, "Sign In" button. Sign-in is by username, not
+  email; email remains a required contact address but is not a credential.
+- Inline error state on invalid credentials. An unknown username and a wrong
+  password produce the same error, so the form cannot enumerate accounts.
 - Small helper text: "Access is provided by your administrator."
 
 **Admin user management (`/admin/users`)**
-- Table of all accounts: Name, Email, Role, Date Added.
-- "Onboard User" action opens a form: Full Name, Email, Temporary Password, Role (Admin / Employee).
-- Admins can toggle a user active/inactive (soft disable) but cannot delete users, since audit trails via `created_by` foreign keys would break.
+- Table of all accounts: Name, Username, Email, Role, Date Added, Status.
+- "Onboard User" action opens a form: Full Name, **Username**, Email, Temporary
+  Password, Role (Admin / Employee). Username and email are both required;
+  username is lowercased and limited to 3-30 chars of `a-z0-9._-`, and cannot be
+  changed afterwards.
+- Admins can toggle a user active/inactive (soft disable) **or delete them
+  outright**. Deletion is permanent: `created_by` foreign keys are
+  `ON DELETE SET NULL`, so the person's records survive but lose their
+  attribution. Deactivation is the option that preserves it, and the
+  confirmation dialog says so.
+- Two guards: an admin cannot delete their own account, and the last active
+  admin cannot be deleted, demoted or deactivated.
 
-**Bootstrap:** the very first Admin is created via a one-off Python script (`app/scripts/create_admin.py`) since there's no seed Admin to invite one through the UI. Script prompts for email/password/name and inserts directly.
+**Bootstrap:** the very first Admin is created via a one-off Python script (`app/scripts/create_admin.py`) since there's no seed Admin to invite one through the UI. Script prompts for name/username/email/password and inserts directly.
 
 ---
 
@@ -135,26 +161,53 @@ Flagged in `ARCHITECTURE.md` as a hardening item.
 
 **Purpose:** log every tender transaction filed for a client and track payment status.
 
-**Admin sub-workflow (`/admin/tender-names`):**
-- Manage master `tender_names` list.
+**Admin sub-workflow (`/admin/tender-departments`):**
+- Manage master `tender_departments` list. (Renamed from "Tender Names": the
+  list always held the department a tender is filed with, and the old label made
+  the tender form read wrong.)
 - Seed values: PMC, Civil-Works, Govt-Supply.
 - Fields: `name` (unique), `is_active` (boolean).
 
 **Employee sub-workflow — form fields:**
-1. Client (select)
-2. Tender Name (select — admin-managed)
+1. Client — picked by **contact name or company name**; two searchable fields,
+   one value. Choosing in either fills the other.
+2. Tender Department (searchable select — admin-managed)
 3. Quantity (integer, > 0)
 4. Price (decimal, ≥ 0, 2 decimal places, `numeric(12,2)`)
 5. **Total Amount** — derived. Never accepted from the client. Postgres generated column: `total_amount = quantity * price`, stored as `numeric(14,2)`. Frontend displays a read-only auto-updating field in the form for UX.
-6. Status — enum `Paid | Pending`, defaults to `Pending`.
+6. Status — enum `Pending | Partially Paid | Paid`, defaults to `Pending`.
+7. **Amount Paid So Far** — shown *only* when the status is `Partially Paid`.
+   Must be greater than zero and less than the total. For `Paid` the server
+   derives it as the full total, so there is nothing to type.
+8. **Payment Mode** — `Cash | Online`. Shown, and required, whenever money has
+   changed hands: both `Paid` and `Partially Paid`.
+9. **Remaining Amount** — derived, `total_amount - paid_amount`. A second
+   Postgres generated column.
 
 **UI:**
-- Table columns: Client, Tender Name, Quantity, Price, Total Amount (right-aligned, currency-formatted), Status (colored pill), Added By, Date, actions.
-- Summary strip above the table: "Total Pending Value" and "Total Paid Value".
-- Filter bar: Client dropdown, Status segmented control (All / Paid / Pending).
-- Row-level quick action to flip Status from Pending → Paid.
+- Table columns, in order: Date, Added/Updated By, Client Name, Company Name,
+  Tender Department, Quantity, Price, Total Amount, Paid Amount, Remaining
+  Amount, Status (coloured pill, with the payment mode beneath), actions. All
+  money right-aligned and currency-formatted.
+- Search matches the client's contact name, their company name, or the
+  department.
+- **KPI strip above the table is admin-only** — see §3.3. Which cards appear
+  follows the active filter: Total Outstanding, Partially Paid Value, Total Paid
+  Value.
+- Filter bar: searchable Client dropdown, Status segmented control
+  (All / Pending / Partially Paid / Paid), and a **From / To date range**.
+  Dates are IST calendar days and both ends are inclusive.
+- **No row-level "mark paid" quick action.** Marking a tender paid now requires
+  a payment mode, so it goes through the form.
 
-**Calculation formula:** `total_amount = quantity * price`. Computed and stored by Postgres via `GENERATED ALWAYS AS ... STORED`.
+**Calculation formulas:** `total_amount = quantity * price` and
+`remaining_amount = total_amount - paid_amount`. Both computed and stored by
+Postgres via `GENERATED ALWAYS AS ... STORED`.
+
+**Outstanding vs. pending.** "Total Outstanding" sums `remaining_amount` over
+`Pending` *and* `Partially Paid` rows — what is genuinely still owed. It is not
+the sum of those rows' contract values, which would over-report every partly
+settled tender.
 
 ---
 
@@ -166,10 +219,26 @@ Flagged in `ARCHITECTURE.md` as a hardening item.
 | Field | Type | Rules |
 |---|---|---|
 | `client_id` | uuid FK | required |
-| `key_status` | enum | `Key Created` (default), `Key Issued`, `Key Returned`, `Key Lost` — extended beyond spec's single default because the actual workflow needs lifecycle states |
+| `key_status` | enum | `Key Created` (default), `Key Issued`, `Key Returned`. `Key Lost` was retired — see `DATABASE_SCHEMA.md` §7 |
 | `storage_location_notes` | text | optional, free text ("Drawer 3 / Box B") |
-| `created_by` | uuid FK to users | server-set from JWT, never editable |
+| `created_by` | uuid FK to users | server-set from JWT; re-set to whoever last edited the row |
 | `created_at` | timestamptz | server-set, immutable |
+| `updated_at` | timestamptz | server-set by trigger; what the table's Date column shows |
+
+**Issuance capture.** Setting a key to `Key Issued` **requires** the name and
+phone number of the person taking it — a key out of the office with no record of
+who has it is the failure this module exists to prevent. The same two fields are
+optional on `Key Returned`. Phone numbers follow the app-wide Indian-mobile rule
+(ten digits, first digit 6-9).
+
+**History.** Every key carries an append-only trail in `dsc_key_events`:
+creation, each issuance (with who took it and their number), and each return.
+Selecting a row in the table opens it. Re-issuing a key to a *different* person
+records a fresh event even though the status does not change.
+
+**Row shading.** A row whose status is `Key Issued` is tinted red across its full
+width, not just in its status pill: a key that has left the office is the one
+thing worth spotting from across the room.
 
 **UI:**
 - Framed as a shared/global dashboard. Subtitle under page title: "Visible to all employees — find any client's key at a glance."
@@ -184,7 +253,10 @@ Flagged in `ARCHITECTURE.md` as a hardening item.
 
 Landing page after login. Same for both roles.
 
-- 4 metric cards: Total Active Clients, Pending Tenders (count), Total Tender Value (Paid, currency), DSC Keys in Office (count where status is `Key Created` or `Key Returned`).
+- Metric cards: Total Active Clients, Pending Tenders (count), DSC Keys in
+  Office (count where status is `Key Created` or `Key Returned`), and — **for
+  admins only** — Total Tender Value (Paid, currency). Employees see three
+  cards; the value is withheld by the API, not merely hidden in the browser.
 - Two side-by-side panels: Recent Tenders (last 5 rows), Recent Client Onboarding (last 5 rows).
 
 ---
@@ -192,7 +264,7 @@ Landing page after login. Same for both roles.
 ## 5. Non-Functional Requirements
 
 - **Timezone:** all timestamps stored as `timestamptz` (UTC). Frontend renders in Asia/Kolkata (`Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata' })`).
-- **Pagination:** all list endpoints support `?page=&page_size=` from day one. Default page size 25, max 100. **Exception:** the two admin-managed master lists (`GET /api/portals`, `GET /api/tender-names`) return a plain array — they're bounded dropdown sources consumed whole by select inputs, so paging them would only complicate both sides. See `API_CONTRACT.md` §4.
+- **Pagination:** all list endpoints support `?page=&page_size=` from day one. Default page size 25, max 100. **Exception:** the two admin-managed master lists (`GET /api/portals`, `GET /api/tender-departments`) return a plain array — they're bounded dropdown sources consumed whole by the searchable dropdowns, so paging them would only complicate both sides. See `API_CONTRACT.md` §4.
 - **Currency:** rupees, displayed as `₹1,25,000.00` (Indian grouping). Use `Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' })`.
 - **Password policy for user accounts:** minimum 8 chars, at least one letter and one number. Enforced by Pydantic validator on `POST /api/admin/users`.
 - **Response times:** internal tool, low traffic. No specific latency targets beyond "feels snappy" — sub-500ms for reads on the free Postgres tier is fine.
@@ -220,7 +292,7 @@ Landing page after login. Same for both roles.
 The prototype is "done" when a developer can:
 
 1. Bootstrap the first Admin via the CLI script.
-2. Log in as Admin, create a Portal, create a Tender Name, onboard an Employee.
+2. Log in as Admin, create a Portal, create a Tender Department, onboard an Employee.
 3. Log out, log back in as the Employee, onboard a Client, save a portal credential for that Client, log a tender, log a DSC key.
 4. All CRUD operations respect the permission matrix in §3.3.
 5. All list endpoints paginate. All search/filter inputs work.

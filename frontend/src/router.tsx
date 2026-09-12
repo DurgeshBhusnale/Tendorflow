@@ -3,7 +3,7 @@ import { AdminRoute } from "@/auth/AdminRoute";
 import { ProtectedRoute } from "@/auth/ProtectedRoute";
 import { AppShell } from "@/components/layout/AppShell";
 import PortalsPage from "@/pages/admin/PortalsPage";
-import TenderNamesPage from "@/pages/admin/TenderNamesPage";
+import TenderDepartmentsPage from "@/pages/admin/TenderDepartmentsPage";
 import UsersPage from "@/pages/admin/UsersPage";
 import ClientsPage from "@/pages/clients/ClientsPage";
 import CredentialsPage from "@/pages/credentials/CredentialsPage";
@@ -30,7 +30,7 @@ export const router = createBrowserRouter([
             children: [
               { path: "/admin/users", element: <UsersPage /> },
               { path: "/admin/portals", element: <PortalsPage /> },
-              { path: "/admin/tender-names", element: <TenderNamesPage /> },
+              { path: "/admin/tender-departments", element: <TenderDepartmentsPage /> },
             ],
           },
         ],

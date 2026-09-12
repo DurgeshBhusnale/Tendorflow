@@ -3,15 +3,15 @@ from uuid import UUID
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError
+from app.core.exceptions import ConflictError, NotFoundError
 from app.models.client import Client
 from app.models.user import User
 from app.schemas.client import ClientCreate, ClientUpdate
 
-
-def _assert_can_modify(client: Client, current_user: User) -> None:
-    if client.created_by != current_user.id and current_user.role != "admin":
-        raise ForbiddenError(code="FORBIDDEN", message="You can only edit clients you created.")
+# There is deliberately no ownership check in this module any more (CH-19).
+# Every signed-in user may edit any client; the row records whoever touched it
+# last. Deletion is the exception and is gated to admins at the router, because
+# deleting a client cascades to its credentials, tenders and DSC keys.
 
 
 async def _assert_email_available(
@@ -73,7 +73,6 @@ async def update_client(
     session: AsyncSession, current_user: User, client_id: UUID, payload: ClientUpdate
 ) -> Client:
     client = await get_client(session, client_id)
-    _assert_can_modify(client, current_user)
 
     data = payload.model_dump(exclude_unset=True)
     if "email" in data and data["email"] != client.email:
@@ -82,14 +81,22 @@ async def update_client(
     for field, value in data.items():
         setattr(client, field, value)
 
+    # Attribution follows the latest edit (CH-19). `updated_at` is maintained by
+    # the trg_clients_updated_at trigger, so only the actor is set here.
+    client.created_by = current_user.id
+
     await session.commit()
     await session.refresh(client)
     return client
 
 
-async def delete_client(session: AsyncSession, current_user: User, client_id: UUID) -> None:
-    client = await get_client(session, client_id)
-    _assert_can_modify(client, current_user)
+async def delete_client(session: AsyncSession, client_id: UUID) -> None:
+    """Admin-only — enforced by the router's require_admin dependency.
 
+    A client delete cascades to every credential, tender and DSC key logged
+    against them, which is not something to leave open to the whole team now
+    that `created_by` tracks the last editor rather than the original author.
+    """
+    client = await get_client(session, client_id)
     await session.delete(client)
     await session.commit()

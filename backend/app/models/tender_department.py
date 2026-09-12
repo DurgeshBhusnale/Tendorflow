@@ -8,8 +8,14 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.models.base import Base
 
 
-class TenderName(Base):
-    __tablename__ = "tender_names"
+class TenderDepartment(Base):
+    """The admin-managed master list of departments a tender is filed with.
+
+    Was `TenderName` / `tender_names` until CH-04 — the list always held
+    departments, and the old name made the tender form read wrong.
+    """
+
+    __tablename__ = "tender_departments"
 
     id: Mapped[uuid.UUID] = mapped_column(
         PGUUID(as_uuid=True), primary_key=True, server_default=text("uuid_generate_v4()")

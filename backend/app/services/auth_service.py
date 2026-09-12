@@ -16,9 +16,12 @@ from app.schemas.auth import LoginRequest
 
 
 async def login(session: AsyncSession, payload: LoginRequest) -> tuple[str, str, User]:
-    user = await session.scalar(select(User).where(User.email == payload.email))
+    # Usernames are stored case-folded (schemas/validators.normalize_username),
+    # so the lookup folds too and 'Asha' signs in as 'asha'.
+    username = payload.username.strip().lower()
+    user = await session.scalar(select(User).where(User.username == username))
     if user is None or not verify_password(payload.password, user.password_hash):
-        raise UnauthorizedError(code="INVALID_CREDENTIALS", message="Invalid email or password.")
+        raise UnauthorizedError(code="INVALID_CREDENTIALS", message="Invalid username or password.")
     if not user.is_active:
         raise ForbiddenError(code="ACCOUNT_INACTIVE", message="This account has been deactivated.")
 

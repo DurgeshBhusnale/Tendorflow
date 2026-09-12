@@ -3,7 +3,8 @@ import type { ApiSuccess } from "@/types/api";
 import type { AuthUser } from "@/types/user";
 
 export interface LoginPayload {
-  email: string;
+  /** Username, not email — see CH-02 and API_CONTRACT.md section 1. */
+  username: string;
   password: string;
 }
 

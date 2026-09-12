@@ -22,6 +22,14 @@ interface DataTableProps<T> {
   rowKey: (row: T) => string;
   isLoading?: boolean;
   empty?: ReactNode;
+  /**
+   * Per-row classes, applied to both renderings. For flagging a row's state in
+   * the row itself rather than only in a status pill — a DSC key that is out of
+   * the office, say (CH-16).
+   */
+  rowClassName?: (row: T) => string | undefined;
+  /** Makes rows activatable. Keep it off tables whose rows have no detail view. */
+  onRowClick?: (row: T) => void;
 }
 
 /**
@@ -33,7 +41,15 @@ interface DataTableProps<T> {
  * scrolling to reach the actions or unreadable text — so each row becomes a card
  * with the key value as its heading and the rest as labelled pairs.
  */
-export function DataTable<T>({ columns, rows, rowKey, isLoading, empty }: DataTableProps<T>) {
+export function DataTable<T>({
+  columns,
+  rows,
+  rowKey,
+  isLoading,
+  empty,
+  rowClassName,
+  onRowClick,
+}: DataTableProps<T>) {
   if (isLoading) {
     return <div className="px-6 py-16 text-center text-sm text-muted-foreground">Loading…</div>;
   }
@@ -52,7 +68,11 @@ export function DataTable<T>({ columns, rows, rowKey, isLoading, empty }: DataTa
       {/* Mobile: one card per row. */}
       <ul className="divide-y divide-divider md:hidden">
         {rows.map((row) => (
-          <li key={rowKey(row)} className="px-4 py-4">
+          <li
+            key={rowKey(row)}
+            className={cn("px-4 py-4", rowClassName?.(row))}
+            onClick={onRowClick ? () => onRowClick(row) : undefined}
+          >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 text-sm font-medium text-foreground">
                 {titleColumn?.cell(row)}
@@ -96,7 +116,12 @@ export function DataTable<T>({ columns, rows, rowKey, isLoading, empty }: DataTa
             {rows.map((row) => (
               <tr
                 key={rowKey(row)}
-                className="border-b border-divider transition-colors last:border-b-0 hover:bg-muted/60"
+                onClick={onRowClick ? () => onRowClick(row) : undefined}
+                className={cn(
+                  "border-b border-divider transition-colors last:border-b-0 hover:bg-muted/60",
+                  onRowClick && "cursor-pointer",
+                  rowClassName?.(row),
+                )}
               >
                 {columns.map((col) => (
                   <td

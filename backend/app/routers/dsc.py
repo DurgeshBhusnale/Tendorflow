@@ -4,10 +4,16 @@ from fastapi import APIRouter, Depends, Query
 from fastapi import status as http_status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.deps import get_current_user, get_db_session
+from app.core.deps import get_current_user, get_db_session, require_admin
 from app.models.user import User
 from app.schemas.common import ok, paginated
-from app.schemas.dsc_key import DscKeyCreate, DscKeyRead, DscKeyStatus, DscKeyUpdate
+from app.schemas.dsc_key import (
+    DscKeyCreate,
+    DscKeyEventRead,
+    DscKeyRead,
+    DscKeyStatus,
+    DscKeyUpdate,
+)
 from app.services import dsc_key_service
 
 router = APIRouter(prefix="/api/dsc", tags=["dsc"])
@@ -51,6 +57,21 @@ async def get_dsc_key(
     return ok(DscKeyRead.model_validate(dsc_key))
 
 
+@router.get("/{dsc_key_id}/history")
+async def get_dsc_key_history(
+    dsc_key_id: UUID,
+    session: AsyncSession = Depends(get_db_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Creation, every issuance and every return, newest first (CH-18).
+
+    Readable by anyone signed in, like the rest of this module: knowing where a
+    key is and who has it is the point of the shared dashboard.
+    """
+    events = await dsc_key_service.list_dsc_key_events(session, dsc_key_id)
+    return ok([DscKeyEventRead.model_validate(event) for event in events])
+
+
 @router.patch("/{dsc_key_id}")
 async def update_dsc_key(
     dsc_key_id: UUID,
@@ -66,7 +87,7 @@ async def update_dsc_key(
 async def delete_dsc_key(
     dsc_key_id: UUID,
     session: AsyncSession = Depends(get_db_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ):
-    await dsc_key_service.delete_dsc_key(session, current_user, dsc_key_id)
+    await dsc_key_service.delete_dsc_key(session, dsc_key_id)
     return ok({"id": str(dsc_key_id), "deleted": True})

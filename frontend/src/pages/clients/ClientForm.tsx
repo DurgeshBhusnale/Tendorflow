@@ -7,13 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FieldError, Label } from "@/components/ui/label";
 import { useCreateClient, useUpdateClient } from "@/hooks/useClients";
+import { phoneSchema } from "@/lib/validation";
 import { ApiError } from "@/types/api";
 import type { Client } from "@/types/client";
 
 const clientSchema = z.object({
   contact_person_name: z.string().min(1, "Required").max(120),
   company_name: z.string().min(1, "Required").max(200),
-  contact_number: z.string().regex(/^[\d +-]{7,20}$/, "Invalid phone number"),
+  // Indian mobile only, normalized to ten digits before it is sent (CH-17).
+  contact_number: phoneSchema,
   email: z.string().email("Invalid email"),
 });
 type ClientFormValues = z.infer<typeof clientSchema>;
@@ -75,7 +77,13 @@ export function ClientForm({ client, onSuccess, onCancel }: ClientFormProps) {
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="contact_number">Contact Number</Label>
-          <Input id="contact_number" {...register("contact_number")} />
+          <Input
+            id="contact_number"
+            type="tel"
+            inputMode="numeric"
+            placeholder="9876543210"
+            {...register("contact_number")}
+          />
           <FieldError>{errors.contact_number?.message}</FieldError>
         </div>
         <div className="space-y-1.5">

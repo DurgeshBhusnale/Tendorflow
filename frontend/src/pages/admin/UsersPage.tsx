@@ -1,8 +1,9 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Users } from "lucide-react";
+import { Plus, Trash2, Users } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { useAuth } from "@/auth/AuthContext";
 import { DataTable, type Column } from "@/components/shared/DataTable";
 import { Drawer, DrawerBody, DrawerFooter } from "@/components/shared/Drawer";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -12,13 +13,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FieldError, Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
-import { useCreateUser, useUpdateUser, useUsers } from "@/hooks/useUsers";
+import { useCreateUser, useDeleteUser, useUpdateUser, useUsers } from "@/hooks/useUsers";
 import { formatDate } from "@/lib/format";
+import { usernameSchema } from "@/lib/validation";
 import { ApiError } from "@/types/api";
 import type { User } from "@/types/user";
 
 const createUserSchema = z.object({
   full_name: z.string().min(1, "Required"),
+  // Username is the sign-in credential; email stays required as the contact
+  // address (CH-02). Neither is optional at onboarding.
+  username: usernameSchema,
   email: z.string().email("Invalid email"),
   password: z
     .string()
@@ -34,8 +39,10 @@ export default function UsersPage() {
   const [showForm, setShowForm] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const { data, isLoading } = useUsers({ page, page_size: 25 });
+  const { user: currentUser } = useAuth();
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
+  const deleteUser = useDeleteUser();
 
   const {
     register,
@@ -58,6 +65,26 @@ export default function UsersPage() {
     }
   });
 
+  async function handleDelete(user: User) {
+    // Deliberately blunter than the other delete confirmations in the app: this
+    // one cannot be undone and it strips the person's name off every record
+    // they ever created.
+    const confirmed = window.confirm(
+      [
+        `Permanently delete ${user.full_name}?`,
+        "They lose access immediately, and their name is removed from every client, " +
+          "tender, credential and DSC key they logged. This cannot be undone.",
+        "To revoke access but keep their name on those records, use Deactivate instead.",
+      ].join("\n\n"),
+    );
+    if (!confirmed) return;
+    try {
+      await deleteUser.mutateAsync(user.id);
+    } catch (err) {
+      window.alert(err instanceof ApiError ? err.message : "Could not delete this user.");
+    }
+  }
+
   function closeForm() {
     reset();
     setFormError(null);
@@ -69,6 +96,10 @@ export default function UsersPage() {
       header: "Name",
       mobile: "title",
       cell: (u) => <span className="font-medium text-foreground">{u.full_name}</span>,
+    },
+    {
+      header: "Username",
+      cell: (u) => <span className="font-mono text-xs text-foreground">{u.username}</span>,
     },
     { header: "Email", cell: (u) => <span className="text-muted-foreground">{u.email}</span> },
     { header: "Role", cell: (u) => <span className="capitalize">{u.role}</span> },
@@ -90,13 +121,29 @@ export default function UsersPage() {
       align: "right",
       mobile: "actions",
       cell: (u) => (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => updateUser.mutate({ id: u.id, payload: { is_active: !u.is_active } })}
-        >
-          {u.is_active ? "Deactivate" : "Reactivate"}
-        </Button>
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => updateUser.mutate({ id: u.id, payload: { is_active: !u.is_active } })}
+          >
+            {u.is_active ? "Deactivate" : "Reactivate"}
+          </Button>
+          {/* Deleting yourself is refused by the server too; hiding the button
+              spares the admin a pointless error. */}
+          {u.id !== currentUser?.id && (
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => handleDelete(u)}
+              aria-label={`Delete ${u.full_name}`}
+              title="Delete permanently"
+              className="text-destructive hover:bg-red-50 hover:text-destructive"
+            >
+              <Trash2 />
+            </Button>
+          )}
+        </div>
       ),
     },
   ];
@@ -112,7 +159,7 @@ export default function UsersPage() {
     <div className="page">
       <PageHeader
         title="Users"
-        description="Admins and employees with access to this workspace. Deactivating a user revokes their sign-in without deleting their records."
+        description="Admins and employees with access to this workspace. Deactivating revokes sign-in and keeps their history; deleting removes the account and its attribution for good."
         actions={addButton}
       />
 
@@ -137,7 +184,7 @@ export default function UsersPage() {
         open={showForm}
         onClose={closeForm}
         title="Onboard User"
-        description="The user signs in with the temporary password you set here."
+        description="The user signs in with the username and temporary password you set here."
       >
         <form onSubmit={onSubmit} className="flex h-full flex-col">
           <DrawerBody>
@@ -145,6 +192,20 @@ export default function UsersPage() {
               <Label htmlFor="user_full_name">Full Name</Label>
               <Input id="user_full_name" {...register("full_name")} />
               <FieldError>{errors.full_name?.message}</FieldError>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="user_username">Username</Label>
+              <Input
+                id="user_username"
+                autoCapitalize="none"
+                spellCheck={false}
+                placeholder="asha.patil"
+                {...register("username")}
+              />
+              <FieldError>{errors.username?.message}</FieldError>
+              <p className="text-xs text-muted-foreground">
+                This is what they sign in with. It cannot be changed later.
+              </p>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="user_email">Email</Label>

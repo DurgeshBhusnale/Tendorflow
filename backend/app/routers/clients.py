@@ -3,7 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.deps import get_current_user, get_db_session
+from app.core.deps import get_current_user, get_db_session, require_admin
 from app.models.user import User
 from app.schemas.client import ClientCreate, ClientRead, ClientUpdate
 from app.schemas.common import ok, paginated
@@ -61,7 +61,7 @@ async def update_client(
 async def delete_client(
     client_id: UUID,
     session: AsyncSession = Depends(get_db_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ):
-    await client_service.delete_client(session, current_user, client_id)
+    await client_service.delete_client(session, client_id)
     return ok({"id": str(client_id), "deleted": True})

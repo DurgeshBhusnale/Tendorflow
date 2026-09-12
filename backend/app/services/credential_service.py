@@ -3,17 +3,16 @@ from uuid import UUID
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import ForbiddenError, NotFoundError
+from app.core.exceptions import NotFoundError
 from app.models.client import Client
 from app.models.credential import Credential
 from app.models.portal import Portal
 from app.models.user import User
 from app.schemas.credential import CredentialCreate, CredentialUpdate
 
-
-def _assert_can_modify(credential: Credential, current_user: User) -> None:
-    if credential.created_by != current_user.id and current_user.role != "admin":
-        raise ForbiddenError(code="FORBIDDEN", message="You can only edit credentials you created.")
+# No ownership check here any more (CH-19): any signed-in user may edit any
+# credential, and the row reports whoever touched it last. Deletion is gated to
+# admins at the router.
 
 
 async def _assert_refs_exist(
@@ -47,6 +46,7 @@ async def list_credentials(
     if search:
         pattern = f"%{search}%"
         matching = or_(
+            Client.contact_person_name.ilike(pattern),
             Client.company_name.ilike(pattern),
             Portal.name.ilike(pattern),
         )
@@ -105,7 +105,6 @@ async def update_credential(
     payload: CredentialUpdate,
 ) -> Credential:
     credential = await get_credential(session, credential_id)
-    _assert_can_modify(credential, current_user)
 
     data = payload.model_dump(exclude_unset=True)
     await _assert_refs_exist(session, data.get("client_id"), data.get("portal_id"))
@@ -113,13 +112,17 @@ async def update_credential(
     for field, value in data.items():
         setattr(credential, field, value)
 
+    # Attribution follows the latest edit (CH-13): the table's "Added/Updated
+    # By" column and its date have to name whoever last changed the password,
+    # not whoever first stored it. `updated_at` comes from the table trigger.
+    credential.created_by = current_user.id
+
     await session.commit()
     return await get_credential(session, credential_id)
 
 
-async def delete_credential(session: AsyncSession, current_user: User, credential_id: UUID) -> None:
+async def delete_credential(session: AsyncSession, credential_id: UUID) -> None:
+    """Admin-only — enforced by the router's require_admin dependency."""
     credential = await get_credential(session, credential_id)
-    _assert_can_modify(credential, current_user)
-
     await session.delete(credential)
     await session.commit()

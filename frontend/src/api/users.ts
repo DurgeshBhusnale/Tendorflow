@@ -23,4 +23,11 @@ export const usersApi = {
     const { data } = await apiClient.patch<ApiSuccess<User>>(`/api/admin/users/${id}`, payload);
     return data.data;
   },
+  /** Permanent. The user's records survive but lose their attribution. */
+  remove: async (id: string) => {
+    const { data } = await apiClient.delete<ApiSuccess<{ id: string; deleted: boolean }>>(
+      `/api/admin/users/${id}`,
+    );
+    return data.data;
+  },
 };

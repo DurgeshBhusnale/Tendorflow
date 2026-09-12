@@ -1,10 +1,11 @@
+from datetime import date
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 from fastapi import status as http_status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.deps import get_current_user, get_db_session
+from app.core.deps import get_current_user, get_db_session, require_admin
 from app.models.user import User
 from app.schemas.common import ok, paginated
 from app.schemas.tender import TenderCreate, TenderRead, TenderStatus, TenderUpdate
@@ -20,11 +21,13 @@ async def list_tenders(
     client_id: UUID | None = Query(default=None),
     status: TenderStatus | None = Query(default=None),
     search: str | None = Query(default=None),
+    start_date: date | None = Query(default=None),
+    end_date: date | None = Query(default=None),
     session: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(get_current_user),
 ):
     items, total_count = await tender_service.list_tenders(
-        session, page, page_size, client_id, status, search
+        session, page, page_size, client_id, status, search, start_date, end_date
     )
     return paginated(
         [TenderRead.model_validate(item) for item in items], total_count, page, page_size
@@ -36,10 +39,20 @@ async def summarize_tenders(
     client_id: UUID | None = Query(default=None),
     status: TenderStatus | None = Query(default=None),
     search: str | None = Query(default=None),
+    start_date: date | None = Query(default=None),
+    end_date: date | None = Query(default=None),
     session: AsyncSession = Depends(get_db_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ):
-    summary = await tender_service.summarize_tenders(session, client_id, status, search)
+    """Admin-only (CH-12).
+
+    These totals are the business's revenue and receivables. Hiding the cards
+    in the UI would leave the numbers one API call away from any employee, so
+    the endpoint itself is what enforces it.
+    """
+    summary = await tender_service.summarize_tenders(
+        session, client_id, status, search, start_date, end_date
+    )
     return ok(summary)
 
 
@@ -78,7 +91,7 @@ async def update_tender(
 async def delete_tender(
     tender_id: UUID,
     session: AsyncSession = Depends(get_db_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ):
-    await tender_service.delete_tender(session, current_user, tender_id)
+    await tender_service.delete_tender(session, tender_id)
     return ok({"id": str(tender_id), "deleted": True})

@@ -46,3 +46,13 @@ async def update_user(
 ):
     user = await user_service.update_user(session, user_id, payload)
     return ok(UserRead.model_validate(user))
+
+
+@router.delete("/{user_id}")
+async def delete_user(
+    user_id: UUID,
+    session: AsyncSession = Depends(get_db_session),
+    current_user: User = Depends(require_admin),
+):
+    await user_service.delete_user(session, current_user, user_id)
+    return ok({"id": str(user_id), "deleted": True})

@@ -2,12 +2,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { ClientPicker } from "@/components/shared/ClientPicker";
 import { DrawerBody, DrawerFooter } from "@/components/shared/Drawer";
 import { Button } from "@/components/ui/button";
+import { Combobox } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { FieldError, Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
-import { useClients } from "@/hooks/useClients";
 import { useCreateCredential, useUpdateCredential } from "@/hooks/useCredentials";
 import { usePortals } from "@/hooks/usePortals";
 import { ApiError } from "@/types/api";
@@ -29,8 +29,6 @@ interface CredentialFormProps {
 
 export function CredentialForm({ credential, onSuccess, onCancel }: CredentialFormProps) {
   const [formError, setFormError] = useState<string | null>(null);
-  // Clients list is the select's source; page_size is the API max.
-  const { data: clientsPage } = useClients({ page: 1, page_size: 100 });
   // Only active portals are offered — inactive ones stay valid on existing rows.
   const { data: portals } = usePortals({ active_only: true });
   const createCredential = useCreateCredential();
@@ -39,6 +37,8 @@ export function CredentialForm({ credential, onSuccess, onCancel }: CredentialFo
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<CredentialFormValues>({
     resolver: zodResolver(credentialSchema),
@@ -52,6 +52,9 @@ export function CredentialForm({ credential, onSuccess, onCancel }: CredentialFo
         }
       : undefined,
   });
+
+  const clientId = watch("client_id") ?? "";
+  const portalId = watch("portal_id") ?? "";
 
   const onSubmit = handleSubmit(async (values) => {
     setFormError(null);
@@ -74,29 +77,24 @@ export function CredentialForm({ credential, onSuccess, onCancel }: CredentialFo
   return (
     <form onSubmit={onSubmit} className="flex h-full flex-col">
       <DrawerBody>
-        <div className="space-y-1.5">
-          <Label htmlFor="credential_client_id">Client</Label>
-          <Select id="credential_client_id" {...register("client_id")}>
-            <option value="">Select a client…</option>
-            {clientsPage?.items.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.company_name}
-              </option>
-            ))}
-          </Select>
-          <FieldError>{errors.client_id?.message}</FieldError>
-        </div>
+        <ClientPicker
+          idPrefix="credential"
+          value={clientId}
+          onChange={(id) => setValue("client_id", id, { shouldValidate: true })}
+          selected={credential?.client}
+          error={errors.client_id?.message}
+        />
 
         <div className="space-y-1.5">
           <Label htmlFor="credential_portal_id">Portal</Label>
-          <Select id="credential_portal_id" {...register("portal_id")}>
-            <option value="">Select a portal…</option>
-            {portals?.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </Select>
+          <Combobox
+            id="credential_portal_id"
+            options={(portals ?? []).map((p) => ({ value: p.id, label: p.name }))}
+            value={portalId}
+            onChange={(id) => setValue("portal_id", id, { shouldValidate: true })}
+            placeholder="Search portals…"
+            emptyMessage="No portal matches"
+          />
           <FieldError>{errors.portal_id?.message}</FieldError>
         </div>
 

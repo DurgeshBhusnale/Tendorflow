@@ -45,7 +45,7 @@ Rules that apply on both sides. The layer-specific CLAUDE.md files add more, but
 3. **Validate at the edges.** Every request body has a Pydantic schema on the backend. Every form has a Zod schema on the frontend. No untyped payloads flowing through the system.
 4. **One response envelope.** `{ success: true, data: ... }` or `{ success: false, error: { code, message } }`. Uniform across every endpoint. Both sides depend on this shape.
 5. **Auth on every route.** Everything except `POST /api/auth/login`, `POST /api/auth/refresh`, and `GET /api/health` requires a valid session. Frontend enforces at the router level, backend enforces at the dependency level. Both, not one.
-6. **Two-role permission model.** Admin vs Employee. Ownership (`created_by == current_user.id`) is the third axis. No fourth role, no group system, no per-object ACLs — if you feel you need one, stop and ask.
+6. **Two-role permission model, and only two.** Admin vs Employee. **There is no ownership axis** — every record module is open-edit, so any signed-in user may edit any client, credential, tender or DSC key, and deletion is admin-only. `created_by` is re-set to the acting user on every update, which makes it a "last touched by" column, *not* an ownership column: never authorize against it. No third role, no group system, no per-object ACLs — if you feel you need one, stop and ask. (This replaces the original owner-or-admin rule; see `PRD.md` §3.3 for why open editing forces role-based deletion.)
 7. **No secrets in the repo.** `.env` is gitignored. `.env.example` holds variable names with placeholder values. If you find a real credential in a diff, stop and ask before continuing.
 
 ---
