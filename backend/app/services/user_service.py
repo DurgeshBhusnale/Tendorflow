@@ -39,13 +39,35 @@ async def list_users(
     return items, total_count or 0
 
 
-async def create_user(session: AsyncSession, payload: UserCreate) -> User:
-    if await session.scalar(select(User).where(User.username == payload.username)) is not None:
+async def _assert_identity_available(
+    session: AsyncSession,
+    *,
+    username: str | None = None,
+    email: str | None = None,
+    exclude_id: UUID | None = None,
+) -> None:
+    """Refuse a username or email another account already holds.
+
+    A missing email is never a clash — any number of accounts may have none
+    (CH-25).
+    """
+
+    def taken(condition):
+        query = select(User).where(condition)
+        if exclude_id is not None:
+            query = query.where(User.id != exclude_id)
+        return session.scalar(query)
+
+    if username is not None and await taken(User.username == username) is not None:
         raise ConflictError(
             code="USERNAME_EXISTS", message="A user with this username already exists."
         )
-    if await session.scalar(select(User).where(User.email == payload.email)) is not None:
+    if email is not None and await taken(User.email == email) is not None:
         raise ConflictError(code="EMAIL_EXISTS", message="A user with this email already exists.")
+
+
+async def create_user(session: AsyncSession, payload: UserCreate) -> User:
+    await _assert_identity_available(session, username=payload.username, email=payload.email)
 
     user = User(
         full_name=payload.full_name,
@@ -66,6 +88,13 @@ async def update_user(session: AsyncSession, user_id: UUID, payload: UserUpdate)
         raise NotFoundError(code="NOT_FOUND", message="User not found.")
 
     data = payload.model_dump(exclude_unset=True)
+    await _assert_identity_available(
+        session,
+        username=data.get("username"),
+        email=data.get("email"),
+        exclude_id=user_id,
+    )
+
     password = data.pop("password", None)
     if password:
         user.password_hash = hash_password(password)

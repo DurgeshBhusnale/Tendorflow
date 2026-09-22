@@ -1,9 +1,9 @@
 import re
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, EmailStr, field_validator
 
 from app.schemas.validators import normalize_username
 
@@ -20,12 +20,22 @@ def validate_password_policy(password: str) -> str:
     return password
 
 
+def _blank_to_none(value: object) -> object:
+    """Treat an empty email box as "no email" rather than an invalid address."""
+    if isinstance(value, str) and not value.strip():
+        return None
+    return value
+
+
+OptionalEmail = Annotated[EmailStr | None, BeforeValidator(_blank_to_none)]
+
+
 class UserCreate(BaseModel):
     full_name: str
-    # Both required at onboarding (CH-02): username is the credential, email is
-    # the contact address.
+    # Username is the credential and is required; email is an optional contact
+    # address (CH-25).
     username: str
-    email: EmailStr
+    email: OptionalEmail = None
     password: str
     role: UserRole = "employee"
 
@@ -62,7 +72,7 @@ class UserRead(BaseModel):
     id: UUID
     full_name: str
     username: str
-    email: str
+    email: str | None
     role: str
     is_active: bool
     created_at: datetime

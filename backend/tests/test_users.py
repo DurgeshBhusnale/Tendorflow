@@ -50,11 +50,51 @@ async def test_create_user_requires_a_username(client, admin_headers, uniq):
     assert resp.json()["error"]["code"] == "VALIDATION_ERROR"
 
 
-async def test_create_user_requires_an_email(client, admin_headers, uniq):
+async def test_create_user_without_an_email(client, admin_headers, uniq):
+    """Email is an optional contact address, not a credential (CH-25)."""
     payload = _payload(uniq)
     del payload["email"]
 
     resp = await client.post("/api/admin/users", json=payload, headers=admin_headers)
+
+    assert resp.status_code == 201
+    assert resp.json()["data"]["email"] is None
+
+
+async def test_blank_emails_do_not_collide(client, admin_headers, uniq):
+    """A blank box is stored as no email, so the unique constraint never trips on it."""
+    first = await client.post(
+        "/api/admin/users", json=_payload(uniq, email=""), headers=admin_headers
+    )
+    second = await client.post(
+        "/api/admin/users",
+        json=_payload(uniq, username=f"second-{uniq}", email=""),
+        headers=admin_headers,
+    )
+
+    assert first.status_code == 201
+    assert second.status_code == 201
+    assert first.json()["data"]["email"] is None
+    assert second.json()["data"]["email"] is None
+
+
+async def test_user_without_an_email_can_sign_in(client, admin_headers, uniq):
+    payload = _payload(uniq)
+    del payload["email"]
+    await client.post("/api/admin/users", json=payload, headers=admin_headers)
+
+    resp = await client.post(
+        "/api/auth/login", json={"username": payload["username"], "password": "Password123"}
+    )
+
+    assert resp.status_code == 200
+    assert resp.json()["data"]["user"]["email"] is None
+
+
+async def test_create_user_rejects_an_invalid_email(client, admin_headers, uniq):
+    resp = await client.post(
+        "/api/admin/users", json=_payload(uniq, email="notanemail"), headers=admin_headers
+    )
 
     assert resp.status_code == 422
     assert resp.json()["error"]["code"] == "VALIDATION_ERROR"

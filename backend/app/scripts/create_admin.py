@@ -14,7 +14,9 @@ async def main() -> None:
     print("Bootstrap the first Admin user.")
     full_name = input("Full name: ").strip()
     username = input("Username (used to sign in): ").strip()
-    email = input("Email: ").strip()
+    # Optional (CH-25): blank is stored as NULL, never as an empty string that
+    # the unique constraint would then let only one account hold.
+    email = input("Email (optional): ").strip() or None
     password = getpass.getpass("Password: ")
     confirm = getpass.getpass("Confirm password: ")
 
@@ -35,9 +37,10 @@ async def main() -> None:
         return
 
     async with async_session_maker() as session:
-        existing = await session.scalar(
-            select(User).where(or_(User.username == username, User.email == email))
-        )
+        clashes = [User.username == username]
+        if email is not None:
+            clashes.append(User.email == email)
+        existing = await session.scalar(select(User).where(or_(*clashes)))
         if existing is not None:
             taken = "username" if existing.username == username else "email"
             print(f"A user with that {taken} already exists.")

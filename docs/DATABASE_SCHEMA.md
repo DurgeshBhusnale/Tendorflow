@@ -36,8 +36,9 @@ create table users (
   full_name       text not null,
   -- The login credential. Lowercased, 3-30 chars of [a-z0-9._-].
   username        text not null unique,
-  -- Still required and unique as the contact address, but no longer a credential.
-  email           text not null unique,
+  -- Optional contact address, never a credential. Unique when present: Postgres
+  -- treats NULLs as distinct, so any number of accounts may leave it empty.
+  email           text unique,
   password_hash   text not null,               -- bcrypt hash
   role            user_role not null default 'employee',
   is_active       boolean not null default true,

@@ -98,8 +98,9 @@ Resource-specific `409` codes are used in place of the generic `CONFLICT` so the
 
 Public.
 
-Sign-in is by **username**, not email. Email remains a required, unique contact
-address on every account, but it is not a credential.
+Sign-in is by **username**, not email. Email is an **optional** contact address
+on every account — unique when present, and never a credential — so `email` can
+be `null` anywhere a user appears.
 
 **Request:**
 ```json
@@ -178,7 +179,7 @@ All endpoints in this section require role `admin`. Non-admin → `403 FORBIDDEN
 
 Query params: `page`, `page_size`, `search` (matches full_name / username / email), `role` (optional filter).
 
-**Success 200:** paginated list of user objects (id, full_name, username, email, role, is_active, created_at).
+**Success 200:** paginated list of user objects (id, full_name, username, email, role, is_active, created_at). `email` is `null` on accounts that have none.
 
 ---
 
@@ -195,8 +196,12 @@ Query params: `page`, `page_size`, `search` (matches full_name / username / emai
 }
 ```
 
-`username` and `email` are both **required**. `username` is normalized to
-lowercase and must be 3-30 characters of `a-z`, `0-9`, `.`, `_` or `-`.
+`username` is **required**, normalized to lowercase, and must be 3-30 characters
+of `a-z`, `0-9`, `.`, `_` or `-`.
+
+`email` is **optional** and may be omitted, `null`, or an empty string — all
+three store no email and read back as `null`. The column stays unique, but
+Postgres treats NULLs as distinct, so any number of accounts may have none.
 
 **Success 201:**
 ```json

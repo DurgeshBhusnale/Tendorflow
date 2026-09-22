@@ -121,7 +121,7 @@ All cases run as `ADMIN-1` unless stated.
 | TC-USER-N04 | Password with no letter | `12345678` | "Must contain a letter". |
 | TC-USER-N05 | Server enforces the policy too | Swagger `POST /api/admin/users` with password `abc` | `422 VALIDATION_ERROR` — the rule is not client-side only (`PRD.md` §5). |
 | TC-USER-N06 | Blank full name | Leave name empty | "Required". |
-| TC-USER-N07 | Invalid email | `notanemail` | "Invalid email". |
+| TC-USER-N07 | Invalid email | `notanemail` | "Invalid email". A **blank** email is fine — it means the account has none. |
 | TC-USER-N08 | Employee creates a user | Swagger with `EMP-1`'s token → `POST /api/admin/users` | `403 FORBIDDEN`. |
 | TC-USER-N09 | Cancel discards input | Open the drawer, type a name, Cancel, reopen | Fields empty — the form resets. |
 | TC-USER-N10 | More than 25 users | Create 26+ users, load `/admin/users` | **⚠ Known gap:** the page requests page 1 with no pager, so users 26+ are unreachable in the UI. Confirm and log. |

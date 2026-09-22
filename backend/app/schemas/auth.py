@@ -21,7 +21,8 @@ class AuthUser(BaseModel):
     id: UUID
     full_name: str
     username: str
-    email: str
+    # Optional since CH-25 — a user without one must still be able to sign in.
+    email: str | None
     role: str
 
 
@@ -31,6 +32,6 @@ class MeResponse(BaseModel):
     id: UUID
     full_name: str
     username: str
-    email: str
+    email: str | None
     role: str
     is_active: bool
