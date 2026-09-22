@@ -13,6 +13,15 @@ const STATUS_TONES: Record<TenderStatus, PillTone> = {
   Pending: "amber",
 };
 
+// Payment state shades the whole row, not just the pill (CH-23): what is still
+// owed is what this table gets scanned for. The hover tint is restated so the
+// shade doesn't disappear under the cursor.
+const STATUS_ROW_SHADES: Record<TenderStatus, string> = {
+  Pending: "bg-red-50/70 hover:bg-red-50",
+  "Partially Paid": "bg-blue-50/70 hover:bg-blue-50",
+  Paid: "bg-emerald-50/70 hover:bg-emerald-50",
+};
+
 interface TendersTableProps {
   tenders: Tender[];
   isLoading: boolean;
@@ -106,6 +115,7 @@ export function TendersTable({
       rows={tenders}
       rowKey={(t) => t.id}
       isLoading={isLoading}
+      rowClassName={(t) => STATUS_ROW_SHADES[t.status]}
       empty={
         <EmptyState
           icon={FileText}

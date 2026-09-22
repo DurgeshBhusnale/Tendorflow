@@ -131,9 +131,15 @@ Two optional props cover the cases a column config cannot express:
 
 - **`rowClassName(row)`** — classes applied to the whole row, in both the table
   and the card rendering. For flagging a row's state in the row itself rather
-  than only in a pill: a DSC key that is out of the office is tinted
-  `bg-red-50/70` across its full width, because that is the one thing worth
-  spotting from across the room.
+  than only in a pill. Two tables use it:
+  - A DSC key that is out of the office is tinted `bg-red-50/70` across its
+    full width, because that is the one thing worth spotting from across the
+    room.
+  - Every tender row is tinted by payment state — `bg-red-50/70` Pending,
+    `bg-blue-50/70` Partially Paid, `bg-emerald-50/70` Paid — so a screen of
+    tenders reads as "what is still owed" before a single figure is read.
+    Restate the hover tint (`hover:bg-red-50`) alongside the shade, or the
+    colour vanishes under the cursor.
 - **`onRowClick(row)`** — makes rows activatable and adds `cursor-pointer`. Use
   it only where a row has a detail view (DSC keys open their history). Any cell
   containing its own buttons must wrap them in a `stopPropagation` handler, or

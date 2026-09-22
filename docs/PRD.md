@@ -196,10 +196,14 @@ Flagged in `ARCHITECTURE.md` as a hardening item.
    Postgres generated column.
 
 **UI:**
-- Table columns, in order: Date, Added/Updated By, Client Name, Company Name,
-  Tender Department, Quantity, Price, Total Amount, Paid Amount, Remaining
-  Amount, Status (coloured pill, with the payment mode beneath), actions. All
-  money right-aligned and currency-formatted.
+- Table columns, in order: Date (the tender's own date), Added/Updated By,
+  Client Name, Company Name, Tender Department, Quantity, Price, Total Amount,
+  Paid Amount, Remaining Amount, Status (coloured pill, with the payment mode
+  beneath), actions. All money right-aligned and currency-formatted.
+- **Row shading by payment state**, across the full width: red for `Pending`,
+  blue for `Partially Paid`, green for `Paid`. What is still owed is what this
+  table gets scanned for, so the whole row carries it rather than the pill
+  alone.
 - Search matches the client's contact name, their company name, or the
   department.
 - **KPI strip above the table is admin-only** — see §3.3. Which cards appear
