@@ -41,3 +41,13 @@ async def update_portal(
 ):
     portal = await portal_service.update_portal(session, portal_id, payload)
     return ok(PortalRead.model_validate(portal))
+
+
+@router.delete("/{portal_id}")
+async def delete_portal(
+    portal_id: UUID,
+    session: AsyncSession = Depends(get_db_session),
+    current_user: User = Depends(require_admin),
+):
+    await portal_service.delete_portal(session, portal_id)
+    return ok({"id": str(portal_id), "deleted": True})

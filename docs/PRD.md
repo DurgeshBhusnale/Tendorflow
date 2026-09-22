@@ -139,6 +139,10 @@ async def delete_client(
 - Manage the master `portals` table.
 - Fields: `name` (unique), `is_active` (boolean).
 - Inactive portals disappear from the employee-facing dropdown but historic credential rows referencing them remain intact.
+- A portal can also be **deleted outright**, but only while no credential uses
+  it — otherwise the request is refused and deactivating is the way to retire
+  it. Delete is for clearing up a mistyped entry, not for retiring one with
+  history behind it.
 
 **Employee sub-workflow:**
 - Form fields:

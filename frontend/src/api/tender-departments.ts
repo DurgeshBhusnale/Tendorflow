@@ -29,4 +29,11 @@ export const tenderDepartmentsApi = {
     );
     return data.data;
   },
+  /** Refused with 409 TENDER_DEPARTMENT_IN_USE while any tender references it. */
+  remove: async (id: string) => {
+    const { data } = await apiClient.delete<ApiSuccess<{ id: string; deleted: boolean }>>(
+      `/api/tender-departments/${id}`,
+    );
+    return data.data;
+  },
 };

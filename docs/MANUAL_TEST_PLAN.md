@@ -237,6 +237,8 @@ Both pages share one component, so run each case on **both** `/admin/portals` an
 | TC-MSTR-P07 | Employee read access | As `EMP-1`, Swagger `GET /api/portals` | `200` with the array. Employees read master lists, they just can't write them. |
 | TC-MSTR-P08 | Not paginated | Inspect the `GET /api/portals` response | `data` is a **plain array**, not `{items,total_count,...}`. The documented exception to "everything paginates" (`API_CONTRACT.md` §4). |
 | TC-MSTR-P09 | active_only filter | `GET /api/portals?active_only=true` | Inactive portals excluded. Without the param, all are returned. |
+| TC-MSTR-P10 | Delete an unused entry | Add a throwaway portal, don't use it anywhere, then Delete → confirm | Row disappears, and it is gone from the dropdowns too. Repeat on `/admin/tender-departments`. |
+| TC-MSTR-P11 | Employee can't delete | Swagger with `EMP-1`'s token → `DELETE /api/portals/{id}` | `403 FORBIDDEN`. |
 
 ### Negative
 
@@ -247,7 +249,7 @@ Both pages share one component, so run each case on **both** `/admin/portals` an
 | TC-MSTR-N03 | Blank name | Submit empty | "Required". No request. |
 | TC-MSTR-N04 | Name over 120 chars | Paste 121 chars | Rejected; `422` from the API. |
 | TC-MSTR-N05 | Employee writes a master list | Swagger with `EMP-1`'s token → `POST /api/portals`, then `PATCH /api/portals/{id}` | `403 FORBIDDEN` on both. |
-| TC-MSTR-N06 | No hard delete | Look for a delete action | There is none, by design — historic rows reference these ids (`API_CONTRACT.md` §4). |
+| TC-MSTR-N06 | Deleting an entry in use is refused | Add a portal, save a credential against it, then delete the portal and confirm | The dialog **stays open** and shows "used by 1 saved credential(s) … Deactivate it instead". The portal is still listed. Repeat on a tender department that has a tender: same, naming tenders (`API_CONTRACT.md` §4, §6). |
 | TC-MSTR-N07 | Patch a non-existent id | `PATCH /api/portals/{random uuid}` | `404 NOT_FOUND`. |
 | TC-MSTR-N08 | Case-variant duplicate | Add `GeM Portal`, then `gem portal` | **⚠ Known gap:** the uniqueness check is exact-match, so the near-duplicate is likely accepted and both appear in the dropdown. Log it. |
 | TC-MSTR-N09 | Renaming isn't possible in the UI | Try to rename an existing portal from the page | **⚠ Known gap:** the page only offers create and activate/deactivate, though `PATCH .../{id}` with `{"name": ...}` works via the API. Log the missing affordance. |

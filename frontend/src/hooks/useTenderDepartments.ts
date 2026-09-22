@@ -30,3 +30,11 @@ export function useUpdateTenderDepartment() {
     onSuccess: () => qc.invalidateQueries({ queryKey: tenderDepartmentsKeys.all }),
   });
 }
+
+export function useDeleteTenderDepartment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: tenderDepartmentsApi.remove,
+    onSuccess: () => qc.invalidateQueries({ queryKey: tenderDepartmentsKeys.all }),
+  });
+}

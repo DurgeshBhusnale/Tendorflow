@@ -49,3 +49,13 @@ async def update_tender_department(
         session, tender_department_id, payload
     )
     return ok(TenderDepartmentRead.model_validate(department))
+
+
+@router.delete("/{tender_department_id}")
+async def delete_tender_department(
+    tender_department_id: UUID,
+    session: AsyncSession = Depends(get_db_session),
+    current_user: User = Depends(require_admin),
+):
+    await tender_department_service.delete_tender_department(session, tender_department_id)
+    return ok({"id": str(tender_department_id), "deleted": True})

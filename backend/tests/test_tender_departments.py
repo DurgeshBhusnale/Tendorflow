@@ -117,3 +117,54 @@ async def test_update_tender_department_not_found(client, admin_headers):
 
     assert resp.status_code == 404
     assert resp.json()["error"]["code"] == "NOT_FOUND"
+
+
+# --------------------------------------------------------------------------
+# Deletion (CH-21). The in-use refusal needs a tender, so it lives in
+# test_tenders.py alongside that module's fixtures.
+# --------------------------------------------------------------------------
+
+
+async def _create_department(client, headers, name: str) -> str:
+    resp = await client.post("/api/tender-departments", json={"name": name}, headers=headers)
+    return resp.json()["data"]["id"]
+
+
+async def test_delete_tender_department_happy_path(client, admin_headers, uniq):
+    department_id = await _create_department(client, admin_headers, f"Unused-{uniq}")
+
+    resp = await client.delete(f"/api/tender-departments/{department_id}", headers=admin_headers)
+
+    assert resp.status_code == 200
+    assert resp.json()["data"] == {"id": department_id, "deleted": True}
+    remaining = (await client.get("/api/tender-departments", headers=admin_headers)).json()
+    assert department_id not in {d["id"] for d in remaining["data"]}
+
+
+async def test_delete_tender_department_requires_admin(
+    client, admin_headers, employee_headers, uniq
+):
+    department_id = await _create_department(client, admin_headers, f"Unused-{uniq}")
+
+    resp = await client.delete(f"/api/tender-departments/{department_id}", headers=employee_headers)
+
+    assert resp.status_code == 403
+    assert resp.json()["error"]["code"] == "FORBIDDEN"
+
+
+async def test_delete_tender_department_requires_auth(client, admin_headers, uniq):
+    department_id = await _create_department(client, admin_headers, f"Unused-{uniq}")
+
+    resp = await client.delete(f"/api/tender-departments/{department_id}")
+
+    assert resp.status_code == 401
+    assert resp.json()["error"]["code"] == "UNAUTHENTICATED"
+
+
+async def test_delete_tender_department_not_found(client, admin_headers):
+    resp = await client.delete(
+        "/api/tender-departments/00000000-0000-0000-0000-000000000000", headers=admin_headers
+    )
+
+    assert resp.status_code == 404
+    assert resp.json()["error"]["code"] == "NOT_FOUND"

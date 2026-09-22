@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Tags } from "lucide-react";
+import { Plus, Tags, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -11,6 +11,7 @@ import { StatusPill } from "@/components/shared/StatusPill";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FieldError, Label } from "@/components/ui/label";
+import { useConfirm } from "@/hooks/useConfirm";
 import { formatDate } from "@/lib/format";
 import { ApiError } from "@/types/api";
 
@@ -31,22 +32,47 @@ interface MasterListManagerProps {
   title: string;
   /** Singular noun used in the add button and empty state, e.g. "Portal". */
   entityLabel: string;
+  /** What references an entry and so blocks deleting it, e.g. "logged tenders". */
+  inUseBy: string;
   items: MasterListItem[];
   isLoading: boolean;
   onCreate: (name: string) => Promise<unknown>;
   onToggleActive: (item: MasterListItem) => Promise<unknown>;
+  /** The API refuses (409 *_IN_USE) while anything references the entry. */
+  onDelete: (item: MasterListItem) => Promise<unknown>;
 }
 
 export function MasterListManager({
   title,
   entityLabel,
+  inUseBy,
   items,
   isLoading,
   onCreate,
   onToggleActive,
+  onDelete,
 }: MasterListManagerProps) {
   const [showForm, setShowForm] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const confirm = useConfirm();
+
+  function handleDelete(item: MasterListItem) {
+    confirm({
+      title: `Delete ${item.name}?`,
+      description: (
+        <>
+          <p>It will be removed permanently and disappear from every dropdown.</p>
+          <p>
+            An entry still used by {inUseBy} can't be deleted — deactivate it instead, which hides
+            it from new entries and leaves existing records untouched.
+          </p>
+        </>
+      ),
+      confirmLabel: `Delete ${entityLabel}`,
+      tone: "destructive",
+      onConfirm: () => onDelete(item),
+    });
+  }
 
   const {
     register,
@@ -96,9 +122,21 @@ export function MasterListManager({
       align: "right",
       mobile: "actions",
       cell: (item) => (
-        <Button variant="outline" size="sm" onClick={() => void onToggleActive(item)}>
-          {item.is_active ? "Deactivate" : "Reactivate"}
-        </Button>
+        <div className="flex items-center justify-end gap-1">
+          <Button variant="outline" size="sm" onClick={() => void onToggleActive(item)}>
+            {item.is_active ? "Deactivate" : "Reactivate"}
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => handleDelete(item)}
+            aria-label={`Delete ${item.name}`}
+            title="Delete"
+            className="hover:bg-red-50 hover:text-destructive"
+          >
+            <Trash2 />
+          </Button>
+        </div>
       ),
     },
   ];
@@ -114,7 +152,7 @@ export function MasterListManager({
     <div className="page">
       <PageHeader
         title={title}
-        description="Inactive entries disappear from employee-facing dropdowns, but existing records that reference them are unaffected."
+        description={`Inactive entries disappear from employee-facing dropdowns, but existing records that reference them are unaffected. Deleting is permanent, and only possible once no ${inUseBy} use the entry.`}
         actions={addButton}
       />
 

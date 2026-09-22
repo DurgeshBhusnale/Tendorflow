@@ -221,8 +221,8 @@ create trigger trg_dsc_keys_updated_at     before update on dsc_keys     for eac
 |---|---|
 | `client` | Cascades → deletes all their `credentials`, `tenders`, `dsc_keys` rows. Admin-only, for exactly that reason. |
 | `dsc_key` | Cascades → deletes its `dsc_key_events` history. |
-| `portal` | **Blocked** (`on delete restrict`) if any `credentials` row references it. Admins must set `is_active = false` instead. |
-| `tender_department` | **Blocked** if any `tenders` row references it. Admins must deactivate instead. |
+| `portal` | Supported and admin-only (`DELETE /api/portals/:id`) **while unreferenced**. `on delete restrict` blocks it once any `credentials` row points at it; the service checks first and answers `409 PORTAL_IN_USE`, so admins deactivate instead of deleting. |
+| `tender_department` | Same, via `DELETE /api/tender-departments/:id`. **Blocked** (`409 TENDER_DEPARTMENT_IN_USE`) once any `tenders` row references it — the department is part of that tender's financial record. |
 | `user` | Supported and admin-only (`DELETE /api/admin/users/:id`). `created_by` foreign keys are `on delete set null`, so the person's clients, tenders, credentials and DSC keys survive and simply report `created_by: null`. Two guards apply: an admin cannot delete themselves, and the last active admin cannot be deleted, demoted or deactivated. Use `is_active = false` instead when the attribution should be preserved. |
 
 ### Never order an append-only log by `created_at`

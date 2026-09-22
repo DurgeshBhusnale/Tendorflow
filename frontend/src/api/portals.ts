@@ -16,4 +16,11 @@ export const portalsApi = {
     const { data } = await apiClient.patch<ApiSuccess<Portal>>(`/api/portals/${id}`, payload);
     return data.data;
   },
+  /** Refused with 409 PORTAL_IN_USE while any credential references the portal. */
+  remove: async (id: string) => {
+    const { data } = await apiClient.delete<ApiSuccess<{ id: string; deleted: boolean }>>(
+      `/api/portals/${id}`,
+    );
+    return data.data;
+  },
 };

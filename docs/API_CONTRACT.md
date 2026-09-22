@@ -88,7 +88,7 @@ cascades to their credentials, tenders and DSC keys.
 | 422 | `VALIDATION_ERROR` | Request body failed schema validation |
 | 500 | `INTERNAL_ERROR` | Unhandled server error |
 
-Resource-specific `409` codes are used in place of the generic `CONFLICT` so the frontend can attach an error to the right field: `EMAIL_EXISTS` (users, clients), `PORTAL_EXISTS`, `TENDER_DEPARTMENT_EXISTS`.
+Resource-specific `409` codes are used in place of the generic `CONFLICT` so the frontend can attach an error to the right field: `EMAIL_EXISTS` (users, clients), `USERNAME_EXISTS`, `PORTAL_EXISTS`, `TENDER_DEPARTMENT_EXISTS`, `PORTAL_IN_USE`, `TENDER_DEPARTMENT_IN_USE`.
 
 ---
 
@@ -353,7 +353,21 @@ Admin only. **Request:** `{ "name"?, "is_active"? }`
 **Success 200:** updated portal.
 **Errors:** `403 FORBIDDEN`, `404 NOT_FOUND`, `409 PORTAL_EXISTS`.
 
-Deactivating (`is_active: false`) removes a portal from `?active_only=true` results but leaves it resolvable by id, so existing `credentials` rows that reference it keep working. Portals are never hard-deleted (`DATABASE_SCHEMA.md` §2).
+Deactivating (`is_active: false`) removes a portal from `?active_only=true` results but leaves it resolvable by id, so existing `credentials` rows that reference it keep working.
+
+---
+
+### `DELETE /api/portals/:id`
+
+Admin only. A hard delete, and only for a portal nothing references.
+
+A portal that any credential still uses is refused with `409 PORTAL_IN_USE` and
+a message naming the count — `credentials.portal_id` is `ON DELETE RESTRICT`
+(`DATABASE_SCHEMA.md` §2), and cascading would silently destroy stored logins.
+Deactivating is the answer for a portal that is no longer used but has history.
+
+**Success 200:** `{ "success": true, "data": { "id": "uuid", "deleted": true } }`
+**Errors:** `403 FORBIDDEN`, `404 NOT_FOUND`, `409 PORTAL_IN_USE`.
 
 ---
 
@@ -444,7 +458,7 @@ Returns a single credential in the same shape as a list item. With `?reveal=true
 
 ## 6. Tender Departments (Admin-managed master list)
 
-Identical in shape and behavior to Portals above — same non-paginated array response, same admin-only writes, same deactivate-don't-delete rule.
+Identical in shape and behavior to Portals above — same non-paginated array response, same admin-only writes, and the same rule that an entry in use can only be deactivated.
 
 ### `GET /api/tender-departments`
 
@@ -470,6 +484,18 @@ Admin only. **Request:** `{ "name": "PWD-Roads" }`
 Admin only. **Request:** `{ "name"?, "is_active"? }`
 **Success 200:** updated tender department.
 **Errors:** `403 FORBIDDEN`, `404 NOT_FOUND`, `409 TENDER_DEPARTMENT_EXISTS`.
+
+### `DELETE /api/tender-departments/:id`
+
+Admin only, and only for a department nothing references.
+
+A department on any logged tender is refused with `409 TENDER_DEPARTMENT_IN_USE`
+and a message naming the count. `tenders.tender_department_id` is
+`ON DELETE RESTRICT`: the department is part of that tender's financial record,
+so it has to outlive any attempt to tidy the dropdown.
+
+**Success 200:** `{ "success": true, "data": { "id": "uuid", "deleted": true } }`
+**Errors:** `403 FORBIDDEN`, `404 NOT_FOUND`, `409 TENDER_DEPARTMENT_IN_USE`.
 
 ---
 

@@ -30,3 +30,11 @@ export function useUpdatePortal() {
     onSuccess: () => qc.invalidateQueries({ queryKey: portalsKeys.all }),
   });
 }
+
+export function useDeletePortal() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: portalsApi.remove,
+    onSuccess: () => qc.invalidateQueries({ queryKey: portalsKeys.all }),
+  });
+}

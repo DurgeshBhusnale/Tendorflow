@@ -798,17 +798,25 @@ async def test_admin_can_delete_a_tender(
     assert follow_up.status_code == 404
 
 
-async def test_tender_department_in_use_is_deactivated_not_deleted(
+async def test_tender_department_in_use_cannot_be_deleted(
     client, admin_headers, employee_headers, client_id, tender_department_id
 ):
-    """Tender departments are deactivated, never deleted, while referenced."""
+    """A department on a logged tender is part of that record (CH-21).
+
+    Deleting it is refused rather than cascaded; deactivating still works.
+    """
     await _create_tender(client, employee_headers, client_id, tender_department_id)
 
-    resp = await client.patch(
+    deleted = await client.delete(
+        f"/api/tender-departments/{tender_department_id}", headers=admin_headers
+    )
+    deactivated = await client.patch(
         f"/api/tender-departments/{tender_department_id}",
         json={"is_active": False},
         headers=admin_headers,
     )
 
-    assert resp.status_code == 200
-    assert resp.json()["data"]["is_active"] is False
+    assert deleted.status_code == 409
+    assert deleted.json()["error"]["code"] == "TENDER_DEPARTMENT_IN_USE"
+    assert deactivated.status_code == 200
+    assert deactivated.json()["data"]["is_active"] is False
