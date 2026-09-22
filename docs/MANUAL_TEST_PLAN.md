@@ -157,6 +157,10 @@ All cases run as `ADMIN-1` unless stated.
 | TC-CLI-P06b | Edit **another employee's** client | As `EMP-2`, edit the client `EMP-1` created | **Allowed.** Saves cleanly. The **Onboarded/Updated By** column now reads `EMP-2`, and **Date** moves to today (`PRD.md` §3.3). |
 | TC-CLI-P07 | Admin edits someone else's client | As `ADMIN-2`, edit the client `EMP-1` created | Allowed. Edit **and** Delete icons visible on every row for an admin; employees see Edit only. |
 | TC-CLI-P08 | Delete cascades | As `EMP-1`, give a throwaway client a credential, a tender and a DSC key. Then **as `ADMIN-1`** delete the client and confirm | Client gone. Its credential, tender and DSC rows are **also gone** from their pages. Dashboard metrics drop accordingly. |
+| TC-CLI-P11 | Bank details on creation | Onboard a client, filling **Bank Details** with three lines (bank, A/C, IFSC) | Saves. The table's Bank Details column shows it clamped to one line; hovering shows the whole value. |
+| TC-CLI-P12 | Bank details are optional | Onboard a client leaving Bank Details empty | Saves. The column shows **—**, not "null". |
+| TC-CLI-P13 | An employee can add them later | As `EMP-2`, edit a client `EMP-1` onboarded and fill in Bank Details | Allowed — this is not an admin field (`PRD.md` §4.2). Onboarded/Updated By becomes `EMP-2`. |
+| TC-CLI-P14 | Clearing bank details | Edit a client with details saved, empty the box, save | Column returns to **—**. |
 | TC-CLI-P09 | Pagination | With 26+ clients, use Next/Previous | Page 2 shows the remainder. "Page 2 of N · M records" is accurate. Previous disabled on page 1, Next on the last. |
 | TC-CLI-P10 | Search resets paging | Go to page 2, then type a search | Jumps back to page 1 — no empty table from a stale page number. |
 
@@ -179,6 +183,8 @@ All cases run as `ADMIN-1` unless stated.
 | TC-CLI-N13 | Cancel the delete confirm | Click Delete, then Cancel in the confirmation dialog | Row remains. No request fires. |
 | TC-CLI-N14 | Audit fields can't be spoofed | Swagger `POST /api/clients` with `"created_by": "<another user id>"` and `"created_at": "2020-01-01T00:00:00Z"` in the body | Both ignored. Response shows **you** as creator and now as the timestamp (root `CLAUDE.md` invariant 2). |
 | TC-CLI-N15 | Email case collision | Create `rohan@mehta.com`, then try `ROHAN@MEHTA.COM` | **⚠ Known gap:** the uniqueness check is an exact match, so the second is likely **accepted**. Two clients with the same email in different case is almost certainly wrong — log it. |
+| TC-CLI-N20 | Bank details over the cap | Paste 501 characters into Bank Details | Rejected with "At most 500 characters"; `422` if sent via Swagger. |
+| TC-CLI-N21 | Whitespace-only bank details | Enter only spaces and save | Stored as **no** details (column shows —), not as a blank string. |
 | TC-CLI-N16 | Whitespace-only phone | Enter 7 spaces in Contact Number | Rejected: "Enter a 10-digit Indian mobile number starting with 6, 7, 8 or 9." (This closes the old known gap.) |
 | TC-CLI-N17 | Phone normalization | Save `+91 98765-43210` | Accepted, and the table shows **9876543210** — the +91, space and dash are stripped server-side (`API_CONTRACT.md` §3). |
 | TC-CLI-N18 | Landline rejected | `2212345678` | Rejected — Indian mobiles start 6-9. |

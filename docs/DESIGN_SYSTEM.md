@@ -171,6 +171,13 @@ and a `<FieldError>`.
   seed the currently-selected item into the options when editing, or the field
   blanks out mid-edit as soon as the search stops matching it.
 
+**Multi-line fields are `ui/textarea.tsx`**, not a taller `Input`. It wears
+the same 1px chrome and indigo focus ring, starts at four rows and is
+vertically resizable. Use it wherever the value genuinely runs to several
+lines — a client's bank details, an expense's note — and say in the hint
+whether there is a length limit, because the two current uses differ: bank
+details are capped at 500 characters, an expense note is uncapped.
+
 **Conditional fields.** A field that only applies to one state is rendered only
 in that state, never disabled-but-visible: the tender form shows Amount Paid
 solely for *Partially Paid*, and Payment Mode only once money has changed hands.

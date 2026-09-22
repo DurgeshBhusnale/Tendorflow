@@ -36,6 +36,19 @@ export function ClientsTable({
     },
     { header: "Email", cell: (c) => <span className="text-muted-foreground">{c.email}</span> },
     {
+      header: "Bank Details",
+      // Multi-line free text in a table that never wraps, so it is clamped to
+      // one line with the full value on hover (CH-26).
+      cell: (c) =>
+        c.bank_details ? (
+          <span className="block max-w-[14rem] truncate" title={c.bank_details}>
+            {c.bank_details}
+          </span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
+    },
+    {
       // Every user may edit every client now, so both columns report the latest
       // change rather than the original onboarding (CH-19).
       header: "Onboarded/Updated By",

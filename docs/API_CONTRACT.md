@@ -269,6 +269,9 @@ Each item:
   "company_name": "Mehta Constructions",
   "contact_number": "9876543210",
   "email": "rohan@mehta.com",
+  "bank_details": "HDFC Bank, Pune Camp
+A/C 50100123456
+IFSC HDFC0000123",
   "created_by": { "id": "uuid", "full_name": "Asha Patil" },
   "created_at": "2026-08-28T10:15:00Z",
   "updated_at": "2026-09-02T11:40:00Z"
@@ -288,9 +291,18 @@ Fields*.
   "contact_person_name": "Rohan Mehta",
   "company_name": "Mehta Constructions",
   "contact_number": "9876543210",
-  "email": "rohan@mehta.com"
+  "email": "rohan@mehta.com",
+  "bank_details": "HDFC Bank, Pune Camp
+A/C 50100123456
+IFSC HDFC0000123"
 }
 ```
+
+`bank_details` is **optional** free text, at most 500 characters, and may
+contain newlines — it is whatever the client actually sends: an account
+number and IFSC, a UPI handle, or a sentence naming the branch. Omitted,
+`null` or blank all store nothing and read back as `null`. Any signed-in
+user may set or change it; it is not an admin field.
 
 **`contact_number` must be an Indian mobile number**: ten digits beginning 6, 7,
 8 or 9. A leading `+91`, `91` or `0`, and any spaces, dashes or brackets, are
@@ -313,7 +325,7 @@ The same rule applies to every phone field in the API.
 
 ### `PATCH /api/clients/:id`
 
-**Any signed-in user.** Any subset of the 4 client fields. On success
+**Any signed-in user.** Any subset of the 5 client fields. On success
 `created_by` becomes the acting user and `updated_at` moves to now.
 
 **Errors:** `404 NOT_FOUND`, `409 EMAIL_EXISTS`, `422 VALIDATION_ERROR`.

@@ -58,6 +58,10 @@ create table clients (
   company_name           text not null,
   contact_number         text not null,
   email                  text not null unique,
+  -- Free text, optional, capped in the API at 500 chars. Whatever the client
+  -- sends: account number and IFSC, a UPI handle, or a sentence. Any signed-in
+  -- user may set it.
+  bank_details           text,
   created_by             uuid references users (id) on delete set null,
   created_at             timestamptz not null default now(),
   updated_at             timestamptz not null default now()

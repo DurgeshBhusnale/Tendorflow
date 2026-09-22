@@ -238,3 +238,68 @@ async def test_admin_can_delete_a_client(client, employee_headers, admin_headers
 
     follow_up = await client.get(f"/api/clients/{client_id}", headers=admin_headers)
     assert follow_up.status_code == 404
+
+
+# --------------------------------------------------------------------------
+# Bank details (CH-26)
+# --------------------------------------------------------------------------
+
+
+async def test_create_client_with_bank_details(client, employee_headers, uniq):
+    """Free text, and any signed-in user may record it — not an admin field."""
+    details = f"HDFC Bank, Pune Camp\nA/C 50100{uniq}\nIFSC HDFC0000123"
+
+    resp = await _create_client(client, employee_headers, uniq, bank_details=details)
+
+    assert resp.status_code == 201
+    assert resp.json()["data"]["bank_details"] == details
+
+
+async def test_bank_details_are_optional(client, employee_headers, uniq):
+    resp = await _create_client(client, employee_headers, uniq)
+
+    assert resp.status_code == 201
+    assert resp.json()["data"]["bank_details"] is None
+
+
+async def test_blank_bank_details_are_stored_as_none(client, employee_headers, uniq):
+    """An emptied box means "none on file", not an empty string."""
+    resp = await _create_client(client, employee_headers, uniq, bank_details="   ")
+
+    assert resp.status_code == 201
+    assert resp.json()["data"]["bank_details"] is None
+
+
+async def test_bank_details_are_capped(client, employee_headers, uniq):
+    resp = await _create_client(client, employee_headers, uniq, bank_details="x" * 501)
+
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+async def test_employee_can_edit_another_clients_bank_details(
+    client, employee_headers, other_employee_headers, uniq
+):
+    created = await _create_client(client, employee_headers, uniq)
+    client_id = created.json()["data"]["id"]
+
+    resp = await client.patch(
+        f"/api/clients/{client_id}",
+        json={"bank_details": f"SBI, Shivajinagar · A/C 3010{uniq}"},
+        headers=other_employee_headers,
+    )
+
+    assert resp.status_code == 200
+    assert resp.json()["data"]["bank_details"] == f"SBI, Shivajinagar · A/C 3010{uniq}"
+
+
+async def test_bank_details_can_be_cleared(client, employee_headers, uniq):
+    created = await _create_client(client, employee_headers, uniq, bank_details="HDFC, Pune")
+    client_id = created.json()["data"]["id"]
+
+    resp = await client.patch(
+        f"/api/clients/{client_id}", json={"bank_details": ""}, headers=employee_headers
+    )
+
+    assert resp.status_code == 200
+    assert resp.json()["data"]["bank_details"] is None

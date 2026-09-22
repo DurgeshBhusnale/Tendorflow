@@ -125,10 +125,19 @@ async def delete_client(
 | `company_name` | text | required, 1–200 chars |
 | `contact_number` | text | required, 7–20 chars, digits + optional `+`/spaces/dashes |
 | `email` | text | required, valid email format, **unique across all clients** |
+| `bank_details` | text | **optional**, free text up to 500 chars, newlines allowed |
 
 **UI:**
 - Page shows a "Total Active Clients: N" metric badge at the top.
-- Table columns: Contact Person, Company Name, Contact Number, Email, Onboarded By, Date Added, actions menu.
+- Table columns: Contact Person, Company Name, Contact Number, Email, Bank
+  Details, Onboarded By, Date Added, actions menu. Bank details are clamped to
+  one line in the table with the full value on hover — the column is free text
+  and often runs to several lines.
+- **Bank details** are typed by hand into a multi-line box by whoever has them:
+  admin or employee, on creation or later. They arrive as whatever the client
+  sends — an account number and IFSC, a UPI handle, or a sentence naming the
+  branch — so the field is deliberately unstructured rather than a set of
+  validated sub-fields that would reject half of what people actually have.
 - Search box filters by any of contact person / company / email (server-side).
 - "+ Add Client" button opens a drawer or modal with the 4 fields.
 - Duplicate email → inline error "This email is already onboarded to another client."
