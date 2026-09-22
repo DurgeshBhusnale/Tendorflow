@@ -107,6 +107,13 @@ All cases run as `ADMIN-1` unless stated.
 | TC-USER-P06b | Deleted user's records survive | Open the client `EMP-3` created | Still there. **Onboarded/Updated By** now reads **—**, not a crash or a blank row (`DATABASE_SCHEMA.md` §2). |
 | TC-USER-P06c | No self-delete button | As `ADMIN-1`, look at your own row | No Delete button — only Deactivate. |
 | TC-USER-P07 | Search & role filter (API) | Swagger: `GET /api/admin/users?search=asha`, then `?role=admin` | Filters correctly, paginated envelope. **Note:** the Users *page* has no search box — this is API-only today. |
+| TC-USER-P08 | Onboard without an email | Onboard a user leaving Email blank | Created. The Email column shows **—**, not "null" (`PRD.md` §4.1). |
+| TC-USER-P08b | Two accounts with no email | Onboard a second user with Email blank | Also created — a blank email is stored as *no* email, so the two don't collide (`DATABASE_SCHEMA.md` §1.1). |
+| TC-USER-P08c | Sign in without an email | Sign in as the user from P08 | Succeeds. A user with no email must still be able to log in. |
+| TC-USER-P09 | Edit every field | Edit a user: change name, username, email and role, and set a new password → Save | All four update in the table. Sign in with the **new** username and **new** password — both work, and the old username no longer does (`API_CONTRACT.md` §2). |
+| TC-USER-P09b | Edit without touching the password | Edit a user, change only the name, leave New Password blank | Saves. Their existing password still works. |
+| TC-USER-P09c | Clear an email | Edit a user with an email, empty the Email box, save | Column shows **—**. |
+| TC-USER-P09d | Renaming yourself doesn't sign you out | As `ADMIN-1`, edit your own row and change your username | Stays signed in — the session's token carries your id, not your username. The next sign-in needs the new one. |
 
 ### Negative
 
@@ -128,7 +135,10 @@ All cases run as `ADMIN-1` unless stated.
 | TC-USER-N11 | Self-delete via API | Swagger with `ADMIN-1`'s token → `DELETE /api/admin/users/{ADMIN-1's own id}` | `422 CANNOT_DELETE_SELF`. |
 | TC-USER-N12 | Deleting the last admin | Deactivate `ADMIN-2` so `ADMIN-1` is the only active admin, then have `ADMIN-2`'s session (or a second admin) try to delete `ADMIN-1` | `422 LAST_ADMIN`. Also try deactivating and demoting the last admin — both refused. **Restore `ADMIN-2` afterwards.** |
 | TC-USER-N13 | Employee deletes a user | Swagger with `EMP-1`'s token → `DELETE /api/admin/users/{any id}` | `403 FORBIDDEN`. |
-| TC-USER-N14 | Username can't be changed | Swagger `PATCH /api/admin/users/{id}` with `{"username":"newname"}` | The username is **unchanged** — the field is not accepted (`API_CONTRACT.md` §2). |
+| TC-USER-N14 | Duplicate username on edit | Edit a user and set their username to one another account already holds | `409 USERNAME_EXISTS`. The row is unchanged. |
+| TC-USER-N15 | Duplicate email on edit | Same, with an email another account holds | `409 EMAIL_EXISTS`. |
+| TC-USER-N16 | Invalid username on edit | Edit a user, set the username to `a b!` | Rejected with the 3-30 character rule; no request fires. |
+| TC-USER-N17 | Blank password on edit isn't a weak password | Edit a user, leave New Password empty, save | Saves. **No** "at least 8 characters" error — blank means "don't change it" (`PRD.md` §4.1). |
 
 ---
 
@@ -435,8 +445,8 @@ behaves the old way, that is the bug.
 | Reveal a stored password | ✅ | ✅ | ✅ (deliberate) |
 | See the tender KPI strip / `GET /api/tenders/summary` | ✅ | 🚫 `403` | 🚫 `403` |
 | See `total_paid_tender_value` on the dashboard | ✅ | 🚫 `null` | 🚫 `null` |
-| Manage portals / tender departments | ✅ | 🚫 `403` | 🚫 `403` |
-| Onboard **or delete** users | ✅ | 🚫 `403` | 🚫 `403` |
+| Manage portals / tender departments (including deleting an unused one) | ✅ | 🚫 `403` | 🚫 `403` |
+| Onboard, **edit** or delete users | ✅ | 🚫 `403` | 🚫 `403` |
 
 After each successful cross-account edit, check the **Added/Updated By** column:
 it must now name the editor, not the original author.

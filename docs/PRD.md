@@ -53,7 +53,7 @@ Both personas share full read access across every data module — this is a shar
 | View tender KPI totals (revenue / receivables) | ✅ | 🚫 |
 | Manage master **Portals** list | ✅ | 🚫 (read-only) |
 | Manage master **Tender Departments** list | ✅ | 🚫 (read-only) |
-| Onboard / delete user accounts | ✅ | 🚫 |
+| Onboard / edit / delete user accounts | ✅ | 🚫 |
 
 **There is no ownership axis.** Editing is open to every signed-in user across
 all four record modules, and `created_by` is re-set to the acting user on each
@@ -94,10 +94,14 @@ async def delete_client(
 
 **Admin user management (`/admin/users`)**
 - Table of all accounts: Name, Username, Email, Role, Date Added, Status.
-- "Onboard User" action opens a form: Full Name, **Username**, Email, Temporary
-  Password, Role (Admin / Employee). Username and email are both required;
-  username is lowercased and limited to 3-30 chars of `a-z0-9._-`, and cannot be
-  changed afterwards.
+- "Onboard User" action opens a form: Full Name, **Username**, Email (optional),
+  Temporary Password, Role (Admin / Employee). Username is required, lowercased
+  and limited to 3-30 chars of `a-z0-9._-`. **Email is optional** — it is a
+  contact address, not a credential, and not everyone on staff has one.
+- **Admins can edit every field of an account**, including the username and the
+  password. Changing the username changes what that person signs in with, so
+  tell them; their existing sessions survive, since tokens carry the user id.
+  Leaving the password box blank keeps the current password.
 - Admins can toggle a user active/inactive (soft disable) **or delete them
   outright**. Deletion is permanent: `created_by` foreign keys are
   `ON DELETE SET NULL`, so the person's records survive but lose their

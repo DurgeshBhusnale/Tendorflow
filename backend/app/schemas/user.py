@@ -51,12 +51,27 @@ class UserCreate(BaseModel):
 
 
 class UserUpdate(BaseModel):
+    """Every field an admin can change on an account (CH-24).
+
+    `username` is editable: the admin changing it is expected to tell the
+    person, whose existing sessions survive because tokens carry the user id.
+    `email` may be sent as null (or blank) to clear it. `password` is only
+    changed when present.
+    """
+
     full_name: str | None = None
+    username: str | None = None
+    email: OptionalEmail = None
     role: UserRole | None = None
     is_active: bool | None = None
     password: str | None = None
-    # Username is intentionally absent: it is the login credential, and letting
-    # it change silently would strand the person holding it.
+
+    @field_validator("username")
+    @classmethod
+    def validate_username(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        return normalize_username(v)
 
     @field_validator("password")
     @classmethod

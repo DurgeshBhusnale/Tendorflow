@@ -405,3 +405,45 @@ on every update, it names the last editor rather than an owner — so the old
 `created_by == current_user.id` check would have handed deletion rights to
 whoever edited a row most recently. That is worse than having no check, so the
 ownership check was replaced by `require_admin` rather than merely relaxed.
+
+---
+
+## Phase 9 — Second Change Set
+
+Six changes requested once the tool was in daily use. As before, the
+authoritative descriptions live in `PRD.md`, `API_CONTRACT.md`,
+`DATABASE_SCHEMA.md` and `DESIGN_SYSTEM.md`; this is the map.
+
+### Migrations, in order
+
+| Revision | Does |
+|---|---|
+| `b7f2c4e8a915` | Adds `tenders.tender_date`, backfilled from `created_at` in IST, then made `not null` with an IST-day default, plus the `(tender_date desc, created_at desc)` index. |
+| `c8a3d5f9b026` | Drops `not null` from `users.email`. The unique constraint stays — Postgres treats NULLs as distinct. |
+
+### The changes
+
+| Ref | Change | Where it is specified |
+|---|---|---|
+| CH-20 | In-app confirmation dialog replaces every `window.confirm` / `window.alert` | `DESIGN_SYSTEM.md` §3 |
+| CH-21 | Portals and tender departments can be deleted, but only while unreferenced | `API_CONTRACT.md` §4, §6, `DATABASE_SCHEMA.md` §2 |
+| CH-22 | `tender_date` — a tender is logged for a day, defaulting to today (IST) | `API_CONTRACT.md` §7, `PRD.md` §4.4 |
+| CH-23 | Tender rows shaded red / blue / green by payment state | `DESIGN_SYSTEM.md` §3, `PRD.md` §4.4 |
+| CH-24 | Admins can edit every field of a user, including username and password | `API_CONTRACT.md` §2, `PRD.md` §4.1 |
+| CH-25 | User email becomes optional | `API_CONTRACT.md` §1–2, `DATABASE_SCHEMA.md` §1.1 |
+
+### Two couplings worth remembering
+
+**CH-22 exists because `created_at` is untouchable.** Audit fields are
+server-set and never accepted from a client (root `CLAUDE.md` invariant 2), so
+"log this tender for last Friday" cannot be expressed by back-dating
+`created_at`. The business date had to become its own column — after which the
+filter, the ordering, the Date column and the dashboard's recent list all had to
+move onto it together, or the table and its filter would describe different
+days.
+
+**CH-25 widens `email` to null across the whole auth path.** `AuthUser` and
+`MeResponse` carry it, so leaving either as a required `str` would have turned
+"sign in as a user with no email" into a 500 at serialization time. CH-24 turns
+the same field into something an admin can clear, which is what makes the null
+case reachable in the UI rather than only through the API.

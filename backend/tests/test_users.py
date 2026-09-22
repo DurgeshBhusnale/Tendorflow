@@ -1,8 +1,10 @@
 """Admin user management.
 
-Onboarding takes a username as well as an email (CH-02), and users can now be
-deleted outright rather than only deactivated (CH-01) — with two guards, since
-either mistake locks people out of the tool in a way the UI cannot undo.
+Onboarding takes a username and an optional email (CH-02, CH-25), admins can
+edit every field of an account including its username and password (CH-24),
+and users can be deleted outright rather than only deactivated (CH-01) — with
+two guards, since either mistake locks people out of the tool in a way the UI
+cannot undo.
 """
 
 
@@ -191,6 +193,109 @@ async def test_patch_user_toggles_active(client, admin_headers, make_user, uniq)
 
     assert resp.status_code == 200
     assert resp.json()["data"]["is_active"] is False
+
+
+# --------------------------------------------------------------------------
+# Editing (CH-24)
+# --------------------------------------------------------------------------
+
+
+async def test_patch_user_edits_every_field(client, admin_headers, make_user, uniq):
+    target, _ = await make_user(email=f"target-{uniq}@example.com")
+
+    resp = await client.patch(
+        f"/api/admin/users/{target.id}",
+        json={
+            "full_name": "Renamed User",
+            "username": f"Renamed-{uniq}",
+            "email": f"renamed-{uniq}@example.com",
+            "role": "admin",
+            "password": "NewPass456",
+        },
+        headers=admin_headers,
+    )
+
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert data["full_name"] == "Renamed User"
+    assert data["username"] == f"renamed-{uniq}"  # normalized, as on create
+    assert data["email"] == f"renamed-{uniq}@example.com"
+    assert data["role"] == "admin"
+
+    login = await client.post(
+        "/api/auth/login", json={"username": f"renamed-{uniq}", "password": "NewPass456"}
+    )
+    assert login.status_code == 200
+
+
+async def test_patch_user_can_clear_the_email(client, admin_headers, make_user, uniq):
+    target, _ = await make_user(email=f"target-{uniq}@example.com")
+
+    resp = await client.patch(
+        f"/api/admin/users/{target.id}", json={"email": None}, headers=admin_headers
+    )
+
+    assert resp.status_code == 200
+    assert resp.json()["data"]["email"] is None
+
+
+async def test_patch_user_may_resend_its_own_username(client, admin_headers, make_user, uniq):
+    """The edit form sends every field; a user's own values are not a clash."""
+    target, _ = await make_user(email=f"target-{uniq}@example.com")
+
+    resp = await client.patch(
+        f"/api/admin/users/{target.id}",
+        json={"username": target.username, "email": target.email},
+        headers=admin_headers,
+    )
+
+    assert resp.status_code == 200
+
+
+async def test_patch_user_duplicate_username(client, admin_headers, make_user, uniq):
+    other, _ = await make_user(email=f"taken-{uniq}@example.com")
+    target, _ = await make_user(email=f"target-{uniq}@example.com")
+
+    resp = await client.patch(
+        f"/api/admin/users/{target.id}", json={"username": other.username}, headers=admin_headers
+    )
+
+    assert resp.status_code == 409
+    assert resp.json()["error"]["code"] == "USERNAME_EXISTS"
+
+
+async def test_patch_user_duplicate_email(client, admin_headers, make_user, uniq):
+    other, _ = await make_user(email=f"taken-{uniq}@example.com")
+    target, _ = await make_user(email=f"target-{uniq}@example.com")
+
+    resp = await client.patch(
+        f"/api/admin/users/{target.id}", json={"email": other.email}, headers=admin_headers
+    )
+
+    assert resp.status_code == 409
+    assert resp.json()["error"]["code"] == "EMAIL_EXISTS"
+
+
+async def test_patch_user_rejects_an_invalid_username(client, admin_headers, make_user, uniq):
+    target, _ = await make_user(email=f"target-{uniq}@example.com")
+
+    resp = await client.patch(
+        f"/api/admin/users/{target.id}", json={"username": "a b!"}, headers=admin_headers
+    )
+
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+async def test_patch_user_requires_admin(client, employee_headers, make_user, uniq):
+    target, _ = await make_user(email=f"target-{uniq}@example.com")
+
+    resp = await client.patch(
+        f"/api/admin/users/{target.id}", json={"full_name": "Nope"}, headers=employee_headers
+    )
+
+    assert resp.status_code == 403
+    assert resp.json()["error"]["code"] == "FORBIDDEN"
 
 
 # --------------------------------------------------------------------------

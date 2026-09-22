@@ -214,15 +214,19 @@ Postgres treats NULLs as distinct, so any number of accounts may have none.
 
 ### `PATCH /api/admin/users/:id`
 
-**Request (any subset):** `{ "full_name": "...", "role": "admin", "is_active": false, "password": "NewPass123!" }`
+**Request (any subset):** `{ "full_name": "...", "username": "asha.p", "email": "asha@company.com", "role": "admin", "is_active": false, "password": "NewPass123!" }`
 
-`username` is **not** accepted: it is the login credential, and changing it
-silently would strand the person holding it.
+Every field of an account is editable by an admin, `username` included. Changing
+it changes what that person signs in with, so the admin is expected to tell
+them; their existing sessions are unaffected, because tokens carry the user id
+rather than the username. Sending `email: null` (or `""`) clears the stored
+address. `password` is only changed when present — omit it to leave it alone.
 
 **Success 200:** updated user object.
 
-**Errors:** `404 NOT_FOUND`, `422 LAST_ADMIN` (deactivating or demoting the only
-active admin), `422 VALIDATION_ERROR`.
+**Errors:** `404 NOT_FOUND`, `409 USERNAME_EXISTS`, `409 EMAIL_EXISTS`,
+`422 LAST_ADMIN` (deactivating or demoting the only active admin),
+`422 VALIDATION_ERROR`.
 
 ---
 
