@@ -488,3 +488,44 @@ The same reason as `tender_date` (CH-22): the module needs a date-range filter,
 `created_at` is server-set and never client-settable (root `CLAUDE.md`
 invariant 2), and an expense entered on Monday for Friday's diesel belongs to
 Friday. The filter, the ordering and the Date column all use it.
+
+---
+
+## Phase 11 — Bulk Clean-up and Stronger Row Shading
+
+| Ref | Change | Where it is specified |
+|---|---|---|
+| CH-28 | Row shades moved one step darker (`-50/70` → `-100/70`) on tenders and expenses | `DESIGN_SYSTEM.md` §3 |
+| CH-29 | Admin-only bulk delete of tenders, selected by checkbox | `API_CONTRACT.md` §7, `PRD.md` §4.4 |
+
+No migration: CH-29 adds an endpoint over the existing table, and CH-28 is
+presentation only.
+
+### Why the endpoint takes ids and not a filter
+
+`POST /api/tenders/bulk-delete` names the rows explicitly. A filter-shaped
+delete (`DELETE /api/tenders?client_id=…`) is one dropped query param away from
+emptying the table, and it re-evaluates server-side — so a tender edited between
+the click and the request could be deleted without ever having been on screen.
+Ids cost a slightly larger request and a chunking loop in the client, and remove
+both failure modes.
+
+The same reasoning caps a call at 100 ids, the list endpoint's own page-size
+ceiling: one request can never exceed what one screenful could have selected.
+
+### Why "select all" stops at the page
+
+The header checkbox covers the rendered rows only. Selecting rows the user has
+not seen is exactly how a bulk delete becomes a data-loss incident, so reaching
+past the page is a second, separately labelled action that states its count
+("Select all 40 matching this filter"). The selection is also dropped whenever
+the filter or the page changes, so it can never outlive the view that produced
+it.
+
+### The consequence that was flagged and accepted
+
+Deleting paid tenders removes their value from the tender KPI strip and the
+dashboard's Total Paid Value, permanently and retroactively. Archiving was
+offered as the alternative that keeps the revenue history intact; hard delete
+was chosen deliberately, because the intent is to remove the data rather than
+hide it. The confirmation dialog states this before anything is deleted.

@@ -226,6 +226,15 @@ Flagged in `ARCHITECTURE.md` as a hardening item.
 - Filter bar: searchable Client dropdown, Status segmented control
   (All / Pending / Partially Paid / Paid), and a **From / To date range**.
   Dates are IST calendar days and both ends are inclusive.
+- **Bulk delete, admin-only.** Each row carries a checkbox for admins, with a
+  header checkbox selecting everything on the current page. Where the filter
+  matches more rows than the page shows, an explicit "Select all N matching
+  this filter" appears — the header checkbox never reaches beyond what is on
+  screen. A bar above the table then offers one action, Delete, which
+  confirms with the count and spells out that paid tenders leave the revenue
+  totals with them. The selection clears whenever the filter or page changes,
+  so nothing can be deleted from behind a view the user has left.
+  The workflow it exists for: filter to a client, select all, delete.
 - **No row-level "mark paid" quick action.** Marking a tender paid now requires
   a payment mode, so it goes through the form.
 

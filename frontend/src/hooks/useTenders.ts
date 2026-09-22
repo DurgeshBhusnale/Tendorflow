@@ -46,6 +46,22 @@ export function useUpdateTender() {
   });
 }
 
+/** Deletes a selection, chunked to the API's 100-id ceiling. */
+export function useBulkDeleteTenders() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      let deleted = 0;
+      for (let i = 0; i < ids.length; i += 100) {
+        const result = await tendersApi.bulkRemove(ids.slice(i, i + 100));
+        deleted += result.deleted;
+      }
+      return { deleted };
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: tendersKeys.all }),
+  });
+}
+
 export function useDeleteTender() {
   const qc = useQueryClient();
   return useMutation({

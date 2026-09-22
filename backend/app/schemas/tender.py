@@ -102,6 +102,21 @@ class TenderUpdate(BaseModel):
     # onto the stored row. tender_service.update_tender does that.
 
 
+class TenderBulkDelete(BaseModel):
+    """Ids to delete in one go (CH-29).
+
+    Explicit ids rather than a filter: the server then deletes exactly the
+    rows the user ticked. Re-running a filter here would let a row that
+    changed between the click and the request be deleted unseen, and a
+    dropped query param would mean deleting everything.
+
+    Capped at the list endpoint's own page-size ceiling, so a single call can
+    never exceed what one screenful could have selected.
+    """
+
+    ids: list[UUID] = Field(min_length=1, max_length=100)
+
+
 class TenderRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

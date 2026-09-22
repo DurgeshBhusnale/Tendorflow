@@ -707,6 +707,31 @@ how it was paid.)
 
 ---
 
+### `POST /api/tenders/bulk-delete`
+
+**Admin only.** Clears a selection in one call — the case it exists for is a
+client whose finished tenders are no longer worth keeping.
+
+**Request:** `{ "ids": ["uuid", "uuid", ...] }` — between 1 and 100 ids.
+
+**Ids, never a filter.** The server deletes exactly the rows named, so a
+dropped query param cannot widen the blast radius and a row that changed
+between the click and the request cannot be deleted unseen. A caller with a
+larger selection sends several calls.
+
+**Success 200:** `{ "success": true, "data": { "deleted": 20, "requested": 20 } }`
+
+`deleted` can be lower than `requested` when an id was already gone — that is
+not an error, since the caller's intent already holds. Unlike the single-row
+delete, an unknown id is **not** a `404`.
+
+**Errors:** `403 FORBIDDEN`, `422 VALIDATION_ERROR` (empty list, or over 100 ids).
+
+It is a `POST` because the ids travel in a body, which `DELETE` is not
+reliably allowed to carry.
+
+---
+
 ### `DELETE /api/tenders/:id`
 
 **Admin only.**

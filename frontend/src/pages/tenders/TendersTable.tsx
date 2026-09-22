@@ -28,6 +28,12 @@ interface TendersTableProps {
   onEdit: (tender: Tender) => void;
   onDelete: (tender: Tender) => void;
   emptyAction?: React.ReactNode;
+  /** Passed straight to DataTable; the page supplies it for admins only (CH-29). */
+  selection?: {
+    selectedIds: Set<string>;
+    onToggle: (id: string) => void;
+    onToggleAll: () => void;
+  };
 }
 
 export function TendersTable({
@@ -36,6 +42,7 @@ export function TendersTable({
   onEdit,
   onDelete,
   emptyAction,
+  selection,
 }: TendersTableProps) {
   const { isAdmin } = useAuth();
 
@@ -116,6 +123,7 @@ export function TendersTable({
       rowKey={(t) => t.id}
       isLoading={isLoading}
       rowClassName={(t) => STATUS_ROW_SHADES[t.status]}
+      selection={selection}
       empty={
         <EmptyState
           icon={FileText}

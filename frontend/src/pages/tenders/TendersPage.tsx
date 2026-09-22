@@ -1,4 +1,4 @@
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/auth/AuthContext";
 import { Drawer } from "@/components/shared/Drawer";
@@ -10,10 +10,16 @@ import { Button } from "@/components/ui/button";
 import { Combobox } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { tendersApi } from "@/api/tenders";
 import { useClients } from "@/hooks/useClients";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
-import { useDeleteTender, useTenderSummary, useTenders } from "@/hooks/useTenders";
+import {
+  useBulkDeleteTenders,
+  useDeleteTender,
+  useTenderSummary,
+  useTenders,
+} from "@/hooks/useTenders";
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { TenderForm } from "@/pages/tenders/TenderForm";
@@ -36,6 +42,10 @@ export default function TendersPage() {
   const [formState, setFormState] = useState<{ open: boolean; tender?: Tender }>({
     open: false,
   });
+  // Ids only, so a selection survives the row objects being refetched. Cleared
+  // whenever the filter or page moves, so a tender can never be deleted from
+  // behind a view the user has already left (CH-29).
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Shared by the table and the summary strip so they always agree.
   const filters = {
@@ -57,15 +67,71 @@ export default function TendersPage() {
     search: debouncedClientSearch || undefined,
   });
   const deleteTender = useDeleteTender();
+  const bulkDeleteTenders = useBulkDeleteTenders();
   const confirm = useConfirm();
 
+  const rows = data?.items ?? [];
   const totalCount = data?.total_count ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   const hasDateRange = Boolean(startDate || endDate);
+  const allOnPageSelected = rows.length > 0 && rows.every((t) => selectedIds.has(t.id));
 
   function changeFilter(apply: () => void) {
     apply();
     setPage(1);
+    setSelectedIds(new Set());
+  }
+
+  function changePage(next: number) {
+    setPage(next);
+    setSelectedIds(new Set());
+  }
+
+  function toggleRow(id: string) {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  /** The header checkbox covers this page only, never the whole filter. */
+  function toggleAllOnPage() {
+    setSelectedIds((current) => {
+      const allSelected = rows.length > 0 && rows.every((t) => current.has(t.id));
+      return allSelected ? new Set() : new Set(rows.map((t) => t.id));
+    });
+  }
+
+  /** The opt-in beyond the page: fetches every id the current filter matches. */
+  async function selectAllMatching() {
+    setSelectedIds(new Set(await tendersApi.listIds(filters)));
+  }
+
+  function handleBulkDelete() {
+    const ids = [...selectedIds];
+    confirm({
+      title: `Delete ${ids.length} tender${ids.length === 1 ? "" : "s"}?`,
+      description: (
+        <>
+          <p>
+            {ids.length === 1 ? "This tender" : "These tenders"} will be removed permanently, along
+            with {ids.length === 1 ? "its" : "their"} payment records.
+          </p>
+          <p>
+            Any paid ones drop out of the revenue totals on this page and the dashboard, including
+            for past date ranges. This cannot be undone.
+          </p>
+        </>
+      ),
+      confirmLabel: `Delete ${ids.length}`,
+      tone: "destructive",
+      onConfirm: async () => {
+        await bulkDeleteTenders.mutateAsync(ids);
+        setSelectedIds(new Set());
+      },
+    });
   }
 
   function clearFilters() {
@@ -219,12 +285,52 @@ export default function TendersPage() {
           </Button>
         </div>
 
+        {/* Only appears once something is ticked, so the table is unchanged
+            until the user is actually mid-task (CH-29). */}
+        {isAdmin && selectedIds.size > 0 && (
+          <div className="flex flex-wrap items-center gap-3 border-b border-divider bg-muted px-4 py-3 sm:px-6">
+            <span className="text-sm font-medium text-foreground">
+              {selectedIds.size} selected
+            </span>
+            {allOnPageSelected && selectedIds.size < totalCount && (
+              <Button type="button" variant="outline" size="sm" onClick={selectAllMatching}>
+                Select all {totalCount} matching this filter
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedIds(new Set())}
+            >
+              Clear selection
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              className="ml-auto"
+              onClick={handleBulkDelete}
+            >
+              <Trash2 />
+              Delete selected
+            </Button>
+          </div>
+        )}
+
         <TendersTable
-          tenders={data?.items ?? []}
+          tenders={rows}
           isLoading={isLoading}
           onEdit={(tender) => setFormState({ open: true, tender })}
           onDelete={handleDelete}
           emptyAction={addButton}
+          // Checkboxes only where the selection can be acted on: deletion is
+          // admin-only, so an employee gets the table exactly as before.
+          selection={
+            isAdmin
+              ? { selectedIds, onToggle: toggleRow, onToggleAll: toggleAllOnPage }
+              : undefined
+          }
         />
 
         {totalCount > PAGE_SIZE && (
@@ -232,7 +338,7 @@ export default function TendersPage() {
             page={page}
             totalPages={totalPages}
             totalCount={totalCount}
-            onPageChange={setPage}
+            onPageChange={changePage}
           />
         )}
       </div>

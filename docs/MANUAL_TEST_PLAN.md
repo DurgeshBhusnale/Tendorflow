@@ -309,7 +309,15 @@ The status enum now has **three** values, the KPI strip is **admin-only**, and t
 | TC-TEN-P26b | The filter follows the tender's date | Filter From/To to that backdated day, then to today | The backdated tender appears on **its own** date and is **absent** from today — the filter follows `tender_date`, not when it was typed (`API_CONTRACT.md` §7). |
 | TC-TEN-P26c | Ordering follows the tender's date | With both tenders from P25/P26 present, look at the table | Today's row sits **above** the backdated one, even though the backdated one was created later. |
 | TC-TEN-P27 | Correct a date | Edit any tender and change Tender Date | Saves; the Date column and the row's position both move. |
-| TC-TEN-P28 | Row shading by payment state | Look at a table holding all three statuses | Pending rows are tinted **red**, Partially Paid **blue**, Paid **green**, across the full row width. Hover a row: the tint stays (it darkens, it does not vanish). Narrow to 390px — the cards carry the same shading (`DESIGN_SYSTEM.md` §3). |
+| TC-TEN-P28 | Row shading by payment state | Look at a table holding all three statuses | Pending rows are tinted **red**, Partially Paid **blue**, Paid **green**, across the full row width. The tint is clearly visible without being strong enough to fight the text (`-100/70`, `DESIGN_SYSTEM.md` §3). Hover a row: the tint stays (it darkens, it does not vanish). Narrow to 390px — the cards carry the same shading. |
+| TC-TEN-P29 | Select one | As `ADMIN-1`, tick one row's checkbox | A bar appears above the table: "1 selected", **Clear selection**, **Delete selected**. |
+| TC-TEN-P30 | Select all on the page | Tick the header checkbox | Every row on the page is ticked and the count matches. Untick it — all clear. |
+| TC-TEN-P31 | Indeterminate state | Tick two rows out of many | The header checkbox shows a dash, not a tick. |
+| TC-TEN-P32 | The client workflow | Filter to a client with several tenders, tick the header checkbox, **Delete selected**, confirm | All of that client's listed tenders disappear in one go. The KPI strip and the dashboard drop accordingly. |
+| TC-TEN-P33 | Beyond one page | With a filter matching **more than 25** rows, tick the header checkbox | "Select all N matching this filter" appears. Click it: the count becomes N, not 25. Deleting then clears them all. |
+| TC-TEN-P34 | Selection clears on filter change | Select some rows, then change the status filter | The bar disappears — the selection is dropped, so nothing can be deleted from a view you have left. |
+| TC-TEN-P35 | Selection clears on page change | Select rows, then go to page 2 | Same: selection cleared. |
+| TC-TEN-P36 | The confirmation states the cost | Select 3 paid tenders and press Delete | The dialog names the count **and** says the paid ones leave the revenue totals, including past date ranges. Cancel leaves everything untouched. |
 | TC-TEN-P22 | Date filter drives the strip too | With a date range applied, compare the strip against the visible rows | They agree — the strip describes exactly the filtered set. |
 | TC-TEN-P23 | Clear filters | Set several filters, click **Clear filters** | Everything resets and the list returns to page 1. |
 | TC-TEN-P24 | Searchable client filter | Click the client filter and type | It filters as you type and offers an **×** to clear. |
@@ -340,6 +348,12 @@ The status enum now has **three** values, the KPI strip is **admin-only**, and t
 | TC-TEN-N22 | Pending with a mode | `POST` Pending with `"payment_mode":"Cash"` | `422` — a pending tender has no payment mode. |
 | TC-TEN-N23 | Repricing below what was paid | On a Partially Paid tender with ₹20,000 paid, drop quantity so the total falls under ₹20,000 | `422` with a readable message. **Not** a 500 from the database CHECK. |
 | TC-TEN-N24 | remaining_amount can't be forced | `POST` with `"remaining_amount":"1.00"` | Ignored; the computed value is stored. |
+| TC-TEN-N26 | Employee sees no checkboxes | As `EMP-1`, open `/tenders` | **No** checkbox column and no selection bar — deletion is admin-only, so a selection would lead nowhere. |
+| TC-TEN-N27 | Employee bulk-deletes via the API | Swagger with `EMP-1`'s token → `POST /api/tenders/bulk-delete` with any ids | `403 FORBIDDEN`. The rows are still there. |
+| TC-TEN-N28 | Empty bulk delete | `POST /api/tenders/bulk-delete` with `{"ids": []}` | `422 VALIDATION_ERROR`. |
+| TC-TEN-N29 | Over the cap | `POST` with 101 ids | `422 VALIDATION_ERROR` — the API takes at most 100 per call, and the UI chunks larger selections automatically. |
+| TC-TEN-N30 | Already-deleted id | Delete a tender, then bulk-delete that same id | `200` with `deleted: 0, requested: 1` — not a `404`. |
+| TC-TEN-N31 | Bulk delete is not a filter | `POST` with two ids while a client filter is applied in the UI | Exactly those two rows go. Nothing else matching the filter is touched (`API_CONTRACT.md` §7). |
 | TC-TEN-N25 | Employee reads the summary | Swagger with `EMP-1`'s token → `GET /api/tenders/summary` | `403 FORBIDDEN`. Also confirm the KPI cards are absent from `/tenders` for `EMP-1` — and that **no** 403 appears in the console, i.e. the query never fires. |
 | TC-TEN-N15 | Price beyond the column | `POST` with price `12345678901234.00` (over 12 digits) | `422` — `numeric(12,2)` is the limit. Should not be a 500. |
 | TC-TEN-N16 | Total overflow | Quantity `999999999` with price `9999999999.99` | The product exceeds `numeric(14,2)`. Expected: a clean validation error. **⚠ Watch for a `500 INTERNAL_ERROR`** — a raw Postgres overflow reaching the user is a bug. |

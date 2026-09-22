@@ -30,6 +30,47 @@ interface DataTableProps<T> {
   rowClassName?: (row: T) => string | undefined;
   /** Makes rows activatable. Keep it off tables whose rows have no detail view. */
   onRowClick?: (row: T) => void;
+  /**
+   * Adds a leading checkbox column for bulk actions (CH-29). Omit it entirely
+   * where the user cannot act on a selection — a checkbox that leads nowhere is
+   * worse than none — so callers gate this on the permission themselves.
+   *
+   * `onToggleAll` covers the rows currently rendered, never the whole filter:
+   * the page must not select what it is not showing.
+   */
+  selection?: {
+    selectedIds: Set<string>;
+    onToggle: (id: string) => void;
+    onToggleAll: () => void;
+  };
+}
+
+/** Square, indigo, and indeterminate when only some of the page is selected. */
+function RowCheckbox({
+  checked,
+  indeterminate,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  indeterminate?: boolean;
+  onChange: () => void;
+  label: string;
+}) {
+  return (
+    <input
+      type="checkbox"
+      checked={checked}
+      ref={(el) => {
+        if (el) el.indeterminate = Boolean(indeterminate) && !checked;
+      }}
+      onChange={onChange}
+      // The row itself may be clickable, and a tick is not a navigation.
+      onClick={(event) => event.stopPropagation()}
+      aria-label={label}
+      className="size-4 cursor-pointer accent-primary"
+    />
+  );
 }
 
 /**
@@ -49,6 +90,7 @@ export function DataTable<T>({
   empty,
   rowClassName,
   onRowClick,
+  selection,
 }: DataTableProps<T>) {
   if (isLoading) {
     return <div className="px-6 py-16 text-center text-sm text-muted-foreground">Loading…</div>;
@@ -63,6 +105,11 @@ export function DataTable<T>({
     (col) => col !== titleColumn && col !== actionsColumn && col.mobile !== "hide",
   );
 
+  const selectedOnPage = selection
+    ? rows.filter((row) => selection.selectedIds.has(rowKey(row))).length
+    : 0;
+  const allOnPageSelected = selectedOnPage > 0 && selectedOnPage === rows.length;
+
   return (
     <>
       {/* Mobile: one card per row. */}
@@ -74,8 +121,19 @@ export function DataTable<T>({
             onClick={onRowClick ? () => onRowClick(row) : undefined}
           >
             <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0 text-sm font-medium text-foreground">
-                {titleColumn?.cell(row)}
+              <div className="flex min-w-0 items-start gap-3">
+                {selection && (
+                  <span className="pt-0.5">
+                    <RowCheckbox
+                      checked={selection.selectedIds.has(rowKey(row))}
+                      onChange={() => selection.onToggle(rowKey(row))}
+                      label="Select row"
+                    />
+                  </span>
+                )}
+                <div className="min-w-0 text-sm font-medium text-foreground">
+                  {titleColumn?.cell(row)}
+                </div>
               </div>
               {actionsColumn && <div className="shrink-0">{actionsColumn.cell(row)}</div>}
             </div>
@@ -98,6 +156,16 @@ export function DataTable<T>({
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-border">
+              {selection && (
+                <th scope="col" className="w-10 px-4 py-3">
+                  <RowCheckbox
+                    checked={allOnPageSelected}
+                    indeterminate={selectedOnPage > 0}
+                    onChange={selection.onToggleAll}
+                    label="Select all rows on this page"
+                  />
+                </th>
+              )}
               {columns.map((col) => (
                 <th
                   key={col.header}
@@ -123,6 +191,15 @@ export function DataTable<T>({
                   rowClassName?.(row),
                 )}
               >
+                {selection && (
+                  <td className="w-10 px-4 py-4 align-middle">
+                    <RowCheckbox
+                      checked={selection.selectedIds.has(rowKey(row))}
+                      onChange={() => selection.onToggle(rowKey(row))}
+                      label="Select row"
+                    />
+                  </td>
+                )}
                 {columns.map((col) => (
                   <td
                     key={col.header}

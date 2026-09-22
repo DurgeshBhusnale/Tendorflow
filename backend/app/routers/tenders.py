@@ -8,7 +8,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.deps import get_current_user, get_db_session, require_admin
 from app.models.user import User
 from app.schemas.common import ok, paginated
-from app.schemas.tender import TenderCreate, TenderRead, TenderStatus, TenderUpdate
+from app.schemas.tender import (
+    TenderBulkDelete,
+    TenderCreate,
+    TenderRead,
+    TenderStatus,
+    TenderUpdate,
+)
 from app.services import tender_service
 
 router = APIRouter(prefix="/api/tenders", tags=["tenders"])
@@ -64,6 +70,21 @@ async def create_tender(
 ):
     tender = await tender_service.create_tender(session, current_user, payload)
     return ok(TenderRead.model_validate(tender))
+
+
+@router.post("/bulk-delete")
+async def bulk_delete_tenders(
+    payload: TenderBulkDelete,
+    session: AsyncSession = Depends(get_db_session),
+    current_user: User = Depends(require_admin),
+):
+    """Admin-only (CH-29) — clearing out a client's finished tenders in one go.
+
+    A POST rather than a DELETE because the ids travel in a body, which DELETE
+    is not reliably allowed to carry.
+    """
+    deleted = await tender_service.bulk_delete_tenders(session, payload.ids)
+    return ok({"deleted": deleted, "requested": len(payload.ids)})
 
 
 @router.get("/{tender_id}")

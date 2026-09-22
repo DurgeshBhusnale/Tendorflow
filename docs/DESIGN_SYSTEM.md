@@ -136,12 +136,21 @@ Two optional props cover the cases a column config cannot express:
     full width, because that is the one thing worth spotting from across the
     room.
   - Expense rows are tinted the same way, with two states rather than three:
-    `bg-red-50/70` Pending, `bg-emerald-50/70` Paid.
-  - Every tender row is tinted by payment state — `bg-red-50/70` Pending,
-    `bg-blue-50/70` Partially Paid, `bg-emerald-50/70` Paid — so a screen of
+    `bg-red-100/70` Pending, `bg-emerald-100/70` Paid.
+  - Every tender row is tinted by payment state — `bg-red-100/70` Pending,
+    `bg-blue-100/70` Partially Paid, `bg-emerald-100/70` Paid — so a screen of
     tenders reads as "what is still owed" before a single figure is read.
     Restate the hover tint (`hover:bg-red-50`) alongside the shade, or the
     colour vanishes under the cursor.
+- **`selection`** — adds a leading checkbox column, for tables with a bulk
+  action. The header checkbox covers **the rendered page only**, and shows an
+  indeterminate state while part of it is ticked; anything wider than the page
+  is an explicit, separately labelled opt-in, so a tick never acts on rows the
+  user cannot see. Pass it only where the user can act on a selection — a
+  checkbox leading to an action they lack permission for is worse than no
+  checkbox. The boxes are native inputs tinted with `accent-primary`: the one
+  place a browser-drawn control is preferred to a styled one, because its
+  keyboard and screen-reader behaviour is free and correct.
 - **`onRowClick(row)`** — makes rows activatable and adds `cursor-pointer`. Use
   it only where a row has a detail view (DSC keys open their history). Any cell
   containing its own buttons must wrap them in a `stopPropagation` handler, or

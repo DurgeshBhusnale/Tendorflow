@@ -890,3 +890,115 @@ async def test_tender_department_in_use_cannot_be_deleted(
     assert deleted.json()["error"]["code"] == "TENDER_DEPARTMENT_IN_USE"
     assert deactivated.status_code == 200
     assert deactivated.json()["data"]["is_active"] is False
+
+
+# --------------------------------------------------------------------------
+# Bulk delete (CH-29)
+# --------------------------------------------------------------------------
+
+
+async def test_bulk_delete_removes_every_selected_tender(
+    client, admin_headers, employee_headers, client_id, tender_department_id
+):
+    """The point of the feature: clear out a client's finished tenders in one go."""
+    ids = []
+    for _ in range(3):
+        created = await _create_tender(client, employee_headers, client_id, tender_department_id)
+        ids.append(created.json()["data"]["id"])
+
+    resp = await client.post("/api/tenders/bulk-delete", json={"ids": ids}, headers=admin_headers)
+
+    assert resp.status_code == 200
+    assert resp.json()["data"] == {"deleted": 3, "requested": 3}
+    remaining = await client.get(
+        "/api/tenders", params={"client_id": client_id}, headers=admin_headers
+    )
+    assert remaining.json()["data"]["total_count"] == 0
+
+
+async def test_bulk_delete_leaves_unselected_tenders_alone(
+    client, admin_headers, employee_headers, client_id, tender_department_id
+):
+    doomed = await _create_tender(client, employee_headers, client_id, tender_department_id)
+    survivor = await _create_tender(client, employee_headers, client_id, tender_department_id)
+
+    resp = await client.post(
+        "/api/tenders/bulk-delete",
+        json={"ids": [doomed.json()["data"]["id"]]},
+        headers=admin_headers,
+    )
+
+    assert resp.json()["data"]["deleted"] == 1
+    still_there = await client.get(
+        f"/api/tenders/{survivor.json()['data']['id']}", headers=admin_headers
+    )
+    assert still_there.status_code == 200
+
+
+async def test_bulk_delete_requires_admin(
+    client, employee_headers, client_id, tender_department_id
+):
+    """Deletion is admin-only however many rows are involved (CH-19)."""
+    created = await _create_tender(client, employee_headers, client_id, tender_department_id)
+
+    resp = await client.post(
+        "/api/tenders/bulk-delete",
+        json={"ids": [created.json()["data"]["id"]]},
+        headers=employee_headers,
+    )
+
+    assert resp.status_code == 403
+    assert resp.json()["error"]["code"] == "FORBIDDEN"
+
+
+async def test_bulk_delete_requires_auth(client):
+    resp = await client.post(
+        "/api/tenders/bulk-delete", json={"ids": ["00000000-0000-0000-0000-000000000000"]}
+    )
+
+    assert resp.status_code == 401
+    assert resp.json()["error"]["code"] == "UNAUTHENTICATED"
+
+
+async def test_bulk_delete_rejects_an_empty_list(client, admin_headers):
+    """An empty request is a bug in the caller, not a no-op worth honouring."""
+    resp = await client.post("/api/tenders/bulk-delete", json={"ids": []}, headers=admin_headers)
+
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+async def test_bulk_delete_is_capped(client, admin_headers):
+    ids = ["00000000-0000-0000-0000-000000000000"] * 101
+
+    resp = await client.post("/api/tenders/bulk-delete", json={"ids": ids}, headers=admin_headers)
+
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+async def test_bulk_delete_tolerates_an_already_deleted_id(
+    client, admin_headers, employee_headers, client_id, tender_department_id
+):
+    """Deleted twice is not an error — the caller's intent already holds."""
+    created = await _create_tender(client, employee_headers, client_id, tender_department_id)
+    tender_id = created.json()["data"]["id"]
+    await client.delete(f"/api/tenders/{tender_id}", headers=admin_headers)
+
+    resp = await client.post(
+        "/api/tenders/bulk-delete", json={"ids": [tender_id]}, headers=admin_headers
+    )
+
+    assert resp.status_code == 200
+    assert resp.json()["data"] == {"deleted": 0, "requested": 1}
+
+
+async def test_bulk_delete_route_not_shadowed_by_the_id_route(client, admin_headers):
+    """`/bulk-delete` must resolve as a literal path, not as a tender id."""
+    resp = await client.post(
+        "/api/tenders/bulk-delete",
+        json={"ids": ["00000000-0000-0000-0000-000000000000"]},
+        headers=admin_headers,
+    )
+
+    assert resp.status_code == 200

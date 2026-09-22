@@ -2,7 +2,7 @@ from datetime import date
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundError, ValidationError
@@ -232,3 +232,16 @@ async def delete_tender(session: AsyncSession, tender_id: UUID) -> None:
     tender = await get_tender(session, tender_id)
     await session.delete(tender)
     await session.commit()
+
+
+async def bulk_delete_tenders(session: AsyncSession, ids: list[UUID]) -> int:
+    """Delete several tenders in one statement (CH-29). Admin-only at the router.
+
+    Returns how many rows were actually removed, which can be fewer than were
+    asked for if someone else deleted one first. An id that no longer exists
+    is not an error: the caller's intent — that this row be gone — already
+    holds.
+    """
+    result = await session.execute(delete(Tender).where(Tender.id.in_(ids)))
+    await session.commit()
+    return result.rowcount or 0
