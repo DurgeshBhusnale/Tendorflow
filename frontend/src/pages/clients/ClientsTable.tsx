@@ -1,5 +1,6 @@
 import { Building2 } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
+import { Avatar } from "@/components/shared/Avatar";
 import { DataTable, type Column } from "@/components/shared/DataTable";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { RowActions } from "@/components/shared/RowActions";
@@ -24,7 +25,22 @@ export function ClientsTable({
   const { isAdmin } = useAuth();
 
   const columns: Column<Client>[] = [
-    { header: "Contact Person", cell: (c) => c.contact_person_name },
+    {
+      // Name over email in one cell: two facts about the same person, and it
+      // buys back a column's width for the table.
+      header: "Contact Person",
+      cell: (c) => (
+        <span className="flex items-center gap-3">
+          <Avatar name={c.contact_person_name} />
+          <span className="min-w-0">
+            <span className="block truncate font-semibold text-foreground">
+              {c.contact_person_name}
+            </span>
+            <span className="block truncate text-[13px] text-muted-foreground">{c.email}</span>
+          </span>
+        </span>
+      ),
+    },
     {
       header: "Company Name",
       mobile: "title",
@@ -32,9 +48,8 @@ export function ClientsTable({
     },
     {
       header: "Contact Number",
-      cell: (c) => <span className="tabular-nums">{c.contact_number}</span>,
+      cell: (c) => <span className="tabular-nums text-muted-foreground">{c.contact_number}</span>,
     },
-    { header: "Email", cell: (c) => <span className="text-muted-foreground">{c.email}</span> },
     {
       header: "Bank Details",
       // Multi-line free text in a table that never wraps, so it is clamped to
@@ -52,7 +67,15 @@ export function ClientsTable({
       // Every user may edit every client now, so both columns report the latest
       // change rather than the original onboarding (CH-19).
       header: "Onboarded/Updated By",
-      cell: (c) => <span className="text-muted-foreground">{c.created_by?.full_name ?? "—"}</span>,
+      cell: (c) =>
+        c.created_by ? (
+          <span className="flex items-center gap-2">
+            <Avatar name={c.created_by.full_name} size="sm" />
+            <span className="truncate text-muted-foreground">{c.created_by.full_name}</span>
+          </span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
     },
     {
       header: "Date",

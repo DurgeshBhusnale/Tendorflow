@@ -144,7 +144,7 @@ export function DscForm({ dscKey, onSuccess, onCancel }: DscFormProps) {
             ))}
           </Select>
           {hasRetiredStatus && (
-            <p className="border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+            <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
               This key is recorded as <strong>{dscKey?.key_status}</strong>, a status that is no
               longer in use. Saving will re-classify it as the status selected above — pick the
               one that reflects where the key actually is.
@@ -153,7 +153,7 @@ export function DscForm({ dscKey, onSuccess, onCancel }: DscFormProps) {
         </div>
 
         {capturesHolder && (
-          <div className="space-y-4 border border-border bg-muted p-4">
+          <div className="space-y-4 rounded-xl border border-border bg-muted/60 p-4">
             <p className="eyebrow">
               {keyStatus === "Key Issued" ? "Issued To" : "Returned By (optional)"}
             </p>
@@ -190,7 +190,7 @@ export function DscForm({ dscKey, onSuccess, onCancel }: DscFormProps) {
         </div>
 
         {formError && (
-          <p className="border border-red-100 bg-red-50 px-3 py-2 text-sm text-destructive">
+          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-destructive">
             {formError}
           </p>
         )}

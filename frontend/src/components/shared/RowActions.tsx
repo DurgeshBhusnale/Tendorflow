@@ -19,9 +19,16 @@ interface RowActionsProps {
  */
 export function RowActions({ onEdit, onDelete, children }: RowActionsProps) {
   return (
-    <div className="flex items-center justify-end gap-1">
+    <div className="flex items-center justify-end gap-1.5">
       {children}
-      <Button variant="outline" size="icon" onClick={onEdit} aria-label="Edit" title="Edit">
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={onEdit}
+        aria-label="Edit"
+        title="Edit"
+        className="text-muted-foreground hover:text-foreground"
+      >
         <Pencil />
       </Button>
       {onDelete && (
@@ -31,7 +38,7 @@ export function RowActions({ onEdit, onDelete, children }: RowActionsProps) {
           onClick={onDelete}
           aria-label="Delete"
           title="Delete"
-          className="hover:bg-red-50 hover:text-destructive"
+          className="border-red-200 text-destructive hover:bg-red-50 hover:text-destructive"
         >
           <Trash2 />
         </Button>

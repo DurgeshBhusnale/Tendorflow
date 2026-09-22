@@ -67,7 +67,7 @@ export default function LoginPage() {
       <div className="flex flex-1 items-center justify-center bg-background p-4 sm:p-6">
         <form
           onSubmit={onSubmit}
-          className="w-full max-w-[400px] border border-border bg-card p-6 shadow-card sm:p-10"
+          className="w-full max-w-[420px] rounded-2xl border border-border bg-card p-6 shadow-pop sm:p-10"
         >
           <h1 className="sr-only">Sign in</h1>
 
@@ -102,7 +102,7 @@ export default function LoginPage() {
                   onClick={() => setShowPassword((v) => !v)}
                   aria-label={showPassword ? "Hide the password" : "Show the password"}
                   title={showPassword ? "Hide" : "Show"}
-                  className="absolute right-0 top-0 flex h-10 w-10 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+                  className="absolute right-1 top-1 flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 >
                   {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </button>
@@ -111,7 +111,7 @@ export default function LoginPage() {
             </div>
 
             {formError && (
-              <p className="border border-red-100 bg-red-50 px-3 py-2 text-sm text-destructive">
+              <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-destructive">
                 {formError}
               </p>
             )}

@@ -1,7 +1,6 @@
-import { Building2, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useState } from "react";
 import { Drawer } from "@/components/shared/Drawer";
-import { MetricCard } from "@/components/shared/MetricCard";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Pagination } from "@/components/shared/Pagination";
 import { SearchInput } from "@/components/shared/SearchInput";
@@ -59,21 +58,21 @@ export default function ClientsPage() {
     <div className="page">
       <PageHeader
         title="Clients"
-        description="Everyone onboarded to the workspace. Employees can edit the clients they added; admins can edit any."
+        description="Everyone onboarded to the workspace. Any signed-in user can edit a client; only admins can delete one."
         actions={addButton}
       />
 
-      <div className="grid grid-cols-1 gap-6 sm:max-w-xs">
-        <MetricCard label="Total Active Clients" value={totalCount} icon={Building2} />
-      </div>
-
       <div className="surface">
-        <div className="toolbar">
+        <div className="card-header">
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-base">All clients</h2>
+            <span className="count-chip">{totalCount} active</span>
+          </div>
           <SearchInput
             value={search}
             onChange={handleSearchChange}
             placeholder="Search by contact person, company, or email…"
-            className="w-full sm:max-w-sm"
+            className="w-full sm:w-80"
           />
         </div>
 

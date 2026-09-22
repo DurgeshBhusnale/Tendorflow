@@ -3,46 +3,48 @@
 @tailwind utilities;
 
 /**
- * Design tokens — Elevated Minimalism (docs/DESIGN_SYSTEM.md).
+ * Design tokens — Composed Professional (docs/DESIGN_SYSTEM.md).
  * Values are HSL triplets because tailwind.config.ts wraps them in hsl().
  * The hex each one encodes is noted alongside; the spec is the source of truth.
  */
 @layer base {
   :root {
-    --background: 210 17% 98%; /* #F8F9FA — primary surface */
-    --foreground: 221 39% 11%; /* #111827 — rich black, headings */
+    --background: 216 29% 97%; /* #F4F6F9 — primary surface */
+    --foreground: 220 43% 11%; /* #101828 — headings, primary text */
 
-    --card: 0 0% 100%; /* #FFFFFF — containers, sidebar, drawers */
-    --card-foreground: 221 39% 11%;
+    --card: 0 0% 100%; /* #FFFFFF — containers, drawers */
+    --card-foreground: 220 43% 11%;
     --popover: 0 0% 100%;
-    --popover-foreground: 221 39% 11%;
+    --popover-foreground: 220 43% 11%;
 
     --primary: 227 77% 53%; /* #2952E3 — indigo, primary actions */
     --primary-foreground: 0 0% 100%;
     --primary-light: 227 100% 78%; /* readable indigo on the navy sign-in panel */
 
-    --secondary: 220 14% 96%; /* #F3F4F6 */
-    --secondary-foreground: 221 39% 11%;
+    --secondary: 217 24% 96%; /* #F2F4F7 */
+    --secondary-foreground: 216 18% 34%;
 
-    --muted: 220 14% 96%; /* #F3F4F6 */
-    --muted-foreground: 220 9% 46%; /* #6B7280 — body/secondary text */
+    --muted: 217 24% 96%; /* #F2F4F7 — table header strip, quiet fills */
+    --muted-foreground: 216 18% 34%; /* #475467 — body/secondary text */
 
-    --accent: 210 9% 96%; /* #F3F4F5 — hover tint */
-    --accent-foreground: 221 39% 11%;
+    --accent: 210 20% 98%; /* #F9FAFB — hover tint */
+    --accent-foreground: 220 43% 11%;
 
-    --destructive: 0 72% 51%; /* #DC2626 */
+    --destructive: 4 74% 49%; /* #D92D20 */
     --destructive-foreground: 0 0% 100%;
 
-    --ink: 0 0% 10%; /* #1A1A1A — deep charcoal accent */
-    --border: 220 13% 91%; /* #E5E7EB — 1px structural borders */
-    --input: 220 13% 91%;
+    --ink: 218 53% 9%; /* #0B1424 — deep navy: brand, scrims, sign-in */
+    --border: 217 17% 91%; /* #E4E7EC — 1px structural borders */
+    --input: 217 17% 91%;
     --ring: 227 77% 53%;
-    --divider: 220 14% 96%; /* #F3F4F6 — table row dividers */
+    --divider: 217 24% 96%; /* #F2F4F7 — table row dividers */
 
-    --sidebar: 0 0% 100%;
-    --sidebar-foreground: 221 39% 11%;
-    --sidebar-accent: 220 14% 96%;
-    --sidebar-border: 220 13% 91%;
+    /* The rail is the one dark surface in the app. */
+    --sidebar: 218 53% 9%; /* #0B1424 */
+    --sidebar-foreground: 218 21% 74%; /* #AEB8CA — resting nav text */
+    --sidebar-active: 221 46% 20%; /* #1C2B4B — active nav fill */
+    --sidebar-muted: 218 17% 56%; /* #7D8BA3 — section eyebrows */
+    --sidebar-border: 221 45% 16%; /* #16213A */
   }
 
   * {
@@ -54,11 +56,15 @@
     font-feature-settings: "cv11", "ss01";
   }
 
-  /* Editorial serif carries every level of heading hierarchy. */
+  /**
+   * Headings are set in the sans face, tight and bold. The serif is reserved
+   * for the wordmark (`.font-display`), where it reads as a brand mark rather
+   * than as editorial styling applied to an ops screen.
+   */
   h1,
   h2,
   h3 {
-    @apply font-display font-semibold tracking-tight text-foreground;
+    @apply font-sans font-bold tracking-[-0.02em] text-foreground;
   }
 
   ::selection {
@@ -85,7 +91,21 @@
 @layer components {
   /* Shared shell for every bordered white container: cards, tables, drawers. */
   .surface {
-    @apply border border-border bg-card shadow-card;
+    @apply rounded-xl border border-border bg-card shadow-card;
+  }
+
+  /**
+   * Title strip at the head of a table card: the card's own name and count,
+   * with search or filters opposite. Every table card carries one, which is
+   * also what keeps the filled table-header row off the card's rounded top.
+   */
+  .card-header {
+    @apply flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-5;
+  }
+
+  /* Count chip beside a card title. */
+  .count-chip {
+    @apply inline-flex h-[22px] shrink-0 items-center rounded-full bg-primary/10 px-2.5 text-xs font-semibold text-primary;
   }
 
   /**
@@ -121,11 +141,11 @@
 
   /* Filter strip at the head of a table card. */
   .toolbar {
-    @apply flex flex-wrap items-center gap-3 border-b border-border px-4 py-4 sm:px-6;
+    @apply flex flex-wrap items-center gap-2.5 px-4 pb-4 sm:px-5;
   }
 
   /* Small caps label used for table headers and section eyebrows. */
   .eyebrow {
-    @apply text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground;
+    @apply text-[11px] font-semibold uppercase tracking-[0.05em] text-muted-foreground;
   }
 }

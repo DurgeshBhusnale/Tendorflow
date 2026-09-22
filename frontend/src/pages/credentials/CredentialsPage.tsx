@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Pagination } from "@/components/shared/Pagination";
 import { SearchInput } from "@/components/shared/SearchInput";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { useClients } from "@/hooks/useClients";
 import { useConfirm } from "@/hooks/useConfirm";
@@ -68,44 +69,57 @@ export default function CredentialsPage() {
     <div className="page">
       <PageHeader
         title="Credentials"
-        description="Portal logins for every client. Any employee can reveal a password; only the owner or an admin can change one."
+        description="Portal logins for every client. Anyone signed in can reveal a password or edit a login; only admins can delete one."
         actions={addButton}
       />
 
       <div className="surface">
-        <div className="toolbar">
+        <div className="card-header">
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-base">All credentials</h2>
+            <span className="count-chip">{totalCount} stored</span>
+          </div>
           <SearchInput
             value={search}
             onChange={resetToFirstPage(setSearch)}
             placeholder="Search by client or portal…"
-            className="w-full sm:max-w-xs"
+            className="w-full sm:w-80"
           />
-          <Select
-            aria-label="Filter by client"
-            className="w-full sm:w-auto sm:min-w-[11rem]"
-            value={clientFilter}
-            onChange={(e) => resetToFirstPage(setClientFilter)(e.target.value)}
-          >
-            <option value="">All clients</option>
-            {clientsPage?.items.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.company_name}
-              </option>
-            ))}
-          </Select>
-          <Select
-            aria-label="Filter by portal"
-            className="w-full sm:w-auto sm:min-w-[11rem]"
-            value={portalFilter}
-            onChange={(e) => resetToFirstPage(setPortalFilter)(e.target.value)}
-          >
-            <option value="">All portals</option>
-            {portals?.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </Select>
+        </div>
+
+        <div className="toolbar">
+          <div className="w-full space-y-1.5 sm:w-56">
+            <Label htmlFor="credential_client_filter">Client</Label>
+            <Select
+              id="credential_client_filter"
+              aria-label="Filter by client"
+              value={clientFilter}
+              onChange={(e) => resetToFirstPage(setClientFilter)(e.target.value)}
+            >
+              <option value="">All clients</option>
+              {clientsPage?.items.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.company_name}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="w-full space-y-1.5 sm:w-56">
+            <Label htmlFor="credential_portal_filter">Portal</Label>
+            <Select
+              id="credential_portal_filter"
+              aria-label="Filter by portal"
+              value={portalFilter}
+              onChange={(e) => resetToFirstPage(setPortalFilter)(e.target.value)}
+            >
+              <option value="">All portals</option>
+              {portals?.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </Select>
+          </div>
         </div>
 
         <CredentialsTable

@@ -1,4 +1,4 @@
-import { Plus, Trash2 } from "lucide-react";
+import { Clock, PieChart, Plus, Trash2, Wallet } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/auth/AuthContext";
 import { Drawer } from "@/components/shared/Drawer";
@@ -6,6 +6,7 @@ import { MetricCard } from "@/components/shared/MetricCard";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Pagination } from "@/components/shared/Pagination";
 import { SearchInput } from "@/components/shared/SearchInput";
+import { SegmentedFilter } from "@/components/shared/SegmentedFilter";
 import { Button } from "@/components/ui/button";
 import { Combobox } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
@@ -21,7 +22,6 @@ import {
   useTenders,
 } from "@/hooks/useTenders";
 import { formatCurrency } from "@/lib/format";
-import { cn } from "@/lib/utils";
 import { TenderForm } from "@/pages/tenders/TenderForm";
 import { TendersTable } from "@/pages/tenders/TendersTable";
 import type { Tender, TenderStatus } from "@/types/tender";
@@ -186,6 +186,8 @@ export default function TendersPage() {
             <MetricCard
               label="Total Outstanding"
               value={formatCurrency(summary.total_outstanding_value)}
+              icon={Clock}
+              tone="amber"
               hint={`Unpaid balance across ${summary.pending_count + summary.partially_paid_count} tender(s)`}
             />
           )}
@@ -193,6 +195,8 @@ export default function TendersPage() {
             <MetricCard
               label="Partially Paid Value"
               value={formatCurrency(summary.total_partially_paid_value)}
+              icon={PieChart}
+              tone="blue"
               hint={`${summary.partially_paid_count} tender(s) part-settled`}
             />
           )}
@@ -200,6 +204,8 @@ export default function TendersPage() {
             <MetricCard
               label="Total Paid Value"
               value={formatCurrency(summary.total_paid_value)}
+              icon={Wallet}
+              tone="green"
               hint={`${summary.paid_count} tender(s) settled`}
             />
           )}
@@ -207,52 +213,43 @@ export default function TendersPage() {
       )}
 
       <div className="surface">
-        <div className="toolbar">
+        <div className="card-header">
+          <SegmentedFilter
+            label="Filter by status"
+            options={STATUS_OPTIONS}
+            value={statusFilter}
+            onChange={(option) => changeFilter(() => setStatusFilter(option))}
+          />
           <SearchInput
             value={search}
             onChange={(value) => changeFilter(() => setSearch(value))}
             placeholder="Search by client, company or department…"
-            className="w-full sm:max-w-xs"
+            className="w-full sm:w-80"
           />
-          <Combobox
-            aria-label="Filter by client"
-            className="w-full sm:w-56"
-            options={(clientsPage?.items ?? []).map((c) => ({
-              value: c.id,
-              label: c.contact_person_name,
-              hint: c.company_name,
-            }))}
-            value={clientFilter}
-            onChange={(value) => changeFilter(() => setClientFilter(value))}
-            onSearchChange={setClientSearch}
-            placeholder="All clients"
-            emptyMessage="No client matches"
-            clearable
-          />
-
-          <div className="flex border border-border" role="group" aria-label="Filter by status">
-            {STATUS_OPTIONS.map((option) => (
-              <button
-                key={option}
-                type="button"
-                aria-pressed={statusFilter === option}
-                onClick={() => changeFilter(() => setStatusFilter(option))}
-                className={cn(
-                  "h-10 whitespace-nowrap border-r border-border px-3 text-sm transition-colors last:border-r-0",
-                  statusFilter === option
-                    ? "bg-ink font-semibold text-white"
-                    : "bg-card text-muted-foreground hover:bg-accent hover:text-foreground",
-                )}
-              >
-                {option}
-              </button>
-            ))}
-          </div>
         </div>
 
-        {/* Dates sit on their own row: two labelled fields do not fit the
-            toolbar at tablet width without wrapping mid-pair. */}
-        <div className="flex flex-wrap items-end gap-3 border-b border-divider px-4 pb-4 sm:px-6">
+        {/* Client and dates on their own row: two labelled date fields do not
+            fit beside the tabs at tablet width without wrapping mid-pair. */}
+        <div className="flex flex-wrap items-end gap-3 px-4 pb-4 sm:px-5">
+          <div className="space-y-1.5">
+            <Label htmlFor="tender_client_filter">Client</Label>
+            <Combobox
+              id="tender_client_filter"
+              aria-label="Filter by client"
+              className="w-full sm:w-56"
+              options={(clientsPage?.items ?? []).map((c) => ({
+                value: c.id,
+                label: c.contact_person_name,
+                hint: c.company_name,
+              }))}
+              value={clientFilter}
+              onChange={(value) => changeFilter(() => setClientFilter(value))}
+              onSearchChange={setClientSearch}
+              placeholder="All clients"
+              emptyMessage="No client matches"
+              clearable
+            />
+          </div>
           <div className="space-y-1.5">
             <Label htmlFor="tender_start_date">From</Label>
             <Input
@@ -288,8 +285,8 @@ export default function TendersPage() {
         {/* Only appears once something is ticked, so the table is unchanged
             until the user is actually mid-task (CH-29). */}
         {isAdmin && selectedIds.size > 0 && (
-          <div className="flex flex-wrap items-center gap-3 border-b border-divider bg-muted px-4 py-3 sm:px-6">
-            <span className="text-sm font-medium text-foreground">
+          <div className="flex flex-wrap items-center gap-3 border-y border-border bg-primary/5 px-4 py-3 sm:px-5">
+            <span className="text-sm font-semibold text-foreground">
               {selectedIds.size} selected
             </span>
             {allOnPageSelected && selectedIds.size < totalCount && (

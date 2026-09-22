@@ -165,7 +165,7 @@ export function Combobox({
           type="button"
           aria-label="Clear selection"
           onClick={() => onChange("")}
-          className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
+          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
         >
           <X className="size-4" />
         </button>
@@ -180,7 +180,7 @@ export function Combobox({
         <ul
           id={listboxId}
           role="listbox"
-          className="absolute z-30 mt-1 max-h-60 w-full overflow-y-auto border border-border bg-card shadow-lg"
+          className="absolute z-30 mt-1.5 max-h-60 w-full overflow-y-auto rounded-xl border border-border bg-card p-1.5 shadow-pop"
         >
           {visible.length === 0 && (
             <li className="px-3 py-2.5 text-sm text-muted-foreground">{emptyMessage}</li>
@@ -200,8 +200,8 @@ export function Combobox({
                 }}
                 onMouseEnter={() => setActiveIndex(index)}
                 className={cn(
-                  "flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left text-sm transition-colors",
-                  index === activeIndex ? "bg-accent text-foreground" : "text-foreground",
+                  "flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-left text-sm transition-colors",
+                  index === activeIndex ? "bg-muted text-foreground" : "text-foreground",
                 )}
               >
                 <span className="min-w-0">

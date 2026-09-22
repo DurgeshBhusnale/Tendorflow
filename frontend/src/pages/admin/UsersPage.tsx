@@ -1,6 +1,7 @@
 import { Plus, Users } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/auth/AuthContext";
+import { Avatar } from "@/components/shared/Avatar";
 import { DataTable, type Column } from "@/components/shared/DataTable";
 import { Drawer } from "@/components/shared/Drawer";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -11,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useDeleteUser, useUpdateUser, useUsers } from "@/hooks/useUsers";
 import { formatDate } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { UserForm } from "@/pages/admin/UserForm";
 import type { User } from "@/types/user";
 
@@ -46,19 +48,47 @@ export default function UsersPage() {
 
   const columns: Column<User>[] = [
     {
+      // Display name over the username they actually sign in with.
       header: "Name",
       mobile: "title",
-      cell: (u) => <span className="font-medium text-foreground">{u.full_name}</span>,
-    },
-    {
-      header: "Username",
-      cell: (u) => <span className="font-mono text-xs text-foreground">{u.username}</span>,
+      cell: (u) => (
+        <span className="flex items-center gap-3">
+          <Avatar name={u.full_name} />
+          <span className="min-w-0">
+            <span className="flex items-center gap-2">
+              <span className="truncate font-semibold text-foreground">{u.full_name}</span>
+              {u.id === currentUser?.id && (
+                <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                  You
+                </span>
+              )}
+            </span>
+            <span className="block truncate font-mono text-xs text-muted-foreground">
+              {u.username}
+            </span>
+          </span>
+        </span>
+      ),
     },
     {
       header: "Email",
       cell: (u) => <span className="text-muted-foreground">{u.email ?? "—"}</span>,
     },
-    { header: "Role", cell: (u) => <span className="capitalize">{u.role}</span> },
+    {
+      header: "Role",
+      cell: (u) => (
+        <span
+          className={cn(
+            "inline-flex items-center rounded-full border px-2.5 py-[3px] text-xs font-semibold capitalize",
+            u.role === "admin"
+              ? "border-primary/20 bg-primary/10 text-primary"
+              : "border-border bg-muted text-muted-foreground",
+          )}
+        >
+          {u.role}
+        </span>
+      ),
+    },
     {
       header: "Date Added",
       cell: (u) => <span className="text-muted-foreground">{formatDate(u.created_at)}</span>,
@@ -111,11 +141,24 @@ export default function UsersPage() {
       />
 
       <div className="surface">
+        <div className="card-header">
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-base">Team members</h2>
+            {data && (
+              <span className="count-chip">
+                {data.total_count} {data.total_count === 1 ? "account" : "accounts"}
+              </span>
+            )}
+          </div>
+        </div>
+
         <DataTable
           columns={columns}
           rows={data?.items ?? []}
           rowKey={(u) => u.id}
           isLoading={isLoading}
+          // A deactivated account stays legible but visibly out of service.
+          rowClassName={(u) => (u.is_active ? undefined : "bg-muted/40")}
           empty={
             <EmptyState
               icon={Users}

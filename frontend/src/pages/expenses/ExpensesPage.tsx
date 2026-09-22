@@ -1,17 +1,17 @@
-import { Plus } from "lucide-react";
+import { CheckCircle2, Clock, Plus, Wallet } from "lucide-react";
 import { useState } from "react";
 import { Drawer } from "@/components/shared/Drawer";
 import { MetricCard } from "@/components/shared/MetricCard";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Pagination } from "@/components/shared/Pagination";
 import { SearchInput } from "@/components/shared/SearchInput";
+import { SegmentedFilter } from "@/components/shared/SegmentedFilter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useDeleteExpense, useExpenseSummary, useExpenses } from "@/hooks/useExpenses";
 import { formatCurrency } from "@/lib/format";
-import { cn } from "@/lib/utils";
 import { ExpenseForm } from "@/pages/expenses/ExpenseForm";
 import { ExpensesTable } from "@/pages/expenses/ExpensesTable";
 import type { Expense, ExpenseStatus } from "@/types/expense";
@@ -92,16 +92,20 @@ export default function ExpensesPage() {
       />
 
       {summary && (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           <MetricCard
             label="Total Expenses"
             value={formatCurrency(summary.total_amount)}
+            icon={Wallet}
+            tone="indigo"
             hint={`${summary.total_count} expense(s) in view`}
           />
           {showPaid && (
             <MetricCard
               label="Paid Amount"
               value={formatCurrency(summary.paid_amount)}
+              icon={CheckCircle2}
+              tone="green"
               hint={`${summary.paid_count} settled`}
             />
           )}
@@ -109,6 +113,8 @@ export default function ExpensesPage() {
             <MetricCard
               label="Pending Amount"
               value={formatCurrency(summary.pending_amount)}
+              icon={Clock}
+              tone="amber"
               hint={`${summary.pending_count} still to pay`}
             />
           )}
@@ -116,37 +122,24 @@ export default function ExpensesPage() {
       )}
 
       <div className="surface">
-        <div className="toolbar">
+        <div className="card-header">
+          <SegmentedFilter
+            label="Filter by status"
+            options={STATUS_OPTIONS}
+            value={statusFilter}
+            onChange={(option) => changeFilter(() => setStatusFilter(option))}
+          />
           <SearchInput
             value={search}
             onChange={(value) => changeFilter(() => setSearch(value))}
             placeholder="Search the details…"
-            className="w-full sm:max-w-xs"
+            className="w-full sm:w-80"
           />
-
-          <div className="flex border border-border" role="group" aria-label="Filter by status">
-            {STATUS_OPTIONS.map((option) => (
-              <button
-                key={option}
-                type="button"
-                aria-pressed={statusFilter === option}
-                onClick={() => changeFilter(() => setStatusFilter(option))}
-                className={cn(
-                  "h-10 whitespace-nowrap border-r border-border px-3 text-sm transition-colors last:border-r-0",
-                  statusFilter === option
-                    ? "bg-ink font-semibold text-white"
-                    : "bg-card text-muted-foreground hover:bg-accent hover:text-foreground",
-                )}
-              >
-                {option}
-              </button>
-            ))}
-          </div>
         </div>
 
-        {/* Dates sit on their own row: two labelled fields do not fit the
-            toolbar at tablet width without wrapping mid-pair. */}
-        <div className="flex flex-wrap items-end gap-3 border-b border-divider px-4 pb-4 sm:px-6">
+        {/* Dates sit on their own row: two labelled fields do not fit beside
+            the tabs at tablet width without wrapping mid-pair. */}
+        <div className="flex flex-wrap items-end gap-3 px-4 pb-4 sm:px-5">
           <div className="space-y-1.5">
             <Label htmlFor="expense_start_date">From</Label>
             <Input

@@ -124,7 +124,7 @@ export function ExpenseForm({ expense, onSuccess, onCancel }: ExpenseFormProps) 
         </div>
 
         {formError && (
-          <p className="border border-red-100 bg-red-50 px-3 py-2 text-sm text-destructive">
+          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-destructive">
             {formError}
           </p>
         )}

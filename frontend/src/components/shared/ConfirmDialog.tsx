@@ -63,13 +63,13 @@ function ConfirmDialog({ options, onClose }: { options: ConfirmOptions; onClose:
   return (
     // Above the drawer (z-50), so a confirmation raised from inside one still shows.
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div className="absolute inset-0 animate-fade-in bg-ink/30" onClick={dismiss} aria-hidden />
+      <div className="absolute inset-0 animate-fade-in bg-ink/45" onClick={dismiss} aria-hidden />
       <div
         role="alertdialog"
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={description ? descriptionId : undefined}
-        className="relative w-full max-w-md animate-fade-in border border-border bg-card shadow-drawer"
+        className="relative w-full max-w-md animate-fade-in rounded-xl border border-border bg-card shadow-pop"
       >
         <div className="px-5 py-5 sm:px-6">
           <h2 id={titleId} className="text-xl">
@@ -81,7 +81,7 @@ function ConfirmDialog({ options, onClose }: { options: ConfirmOptions; onClose:
             </div>
           )}
           {error && (
-            <p className="mt-4 border border-red-100 bg-red-50 px-3 py-2 text-sm text-destructive">
+            <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-destructive">
               {error}
             </p>
           )}

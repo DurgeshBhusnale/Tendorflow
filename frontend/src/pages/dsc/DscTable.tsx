@@ -1,5 +1,6 @@
 import { Fingerprint } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
+import { Avatar } from "@/components/shared/Avatar";
 import { DataTable, type Column } from "@/components/shared/DataTable";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { RowActions } from "@/components/shared/RowActions";
@@ -39,13 +40,16 @@ export function DscTable({
       header: "Client",
       mobile: "title",
       cell: (k) => (
-        <div className="min-w-0">
-          <span className="block font-medium text-foreground">
-            {k.client.contact_person_name}
-          </span>
-          <span className="block truncate text-xs text-muted-foreground">
-            {k.client.company_name}
-          </span>
+        <div className="flex min-w-0 items-center gap-3">
+          <Avatar name={k.client.contact_person_name} />
+          <div className="min-w-0">
+            <span className="block truncate font-semibold text-foreground">
+              {k.client.contact_person_name}
+            </span>
+            <span className="block truncate text-[13px] text-muted-foreground">
+              {k.client.company_name}
+            </span>
+          </div>
         </div>
       ),
     },
@@ -65,7 +69,15 @@ export function DscTable({
     },
     {
       header: "Added/Updated By",
-      cell: (k) => <span className="text-muted-foreground">{k.created_by?.full_name ?? "—"}</span>,
+      cell: (k) =>
+        k.created_by ? (
+          <span className="flex items-center gap-2">
+            <Avatar name={k.created_by.full_name} size="sm" />
+            <span className="truncate text-muted-foreground">{k.created_by.full_name}</span>
+          </span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
     },
     {
       header: "Date",

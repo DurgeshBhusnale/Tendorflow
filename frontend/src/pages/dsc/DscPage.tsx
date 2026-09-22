@@ -6,6 +6,7 @@ import { Pagination } from "@/components/shared/Pagination";
 import { SearchInput } from "@/components/shared/SearchInput";
 import { Button } from "@/components/ui/button";
 import { Combobox } from "@/components/ui/combobox";
+import { Label } from "@/components/ui/label";
 import { useClients } from "@/hooks/useClients";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
@@ -78,38 +79,53 @@ export default function DscPage() {
       />
 
       <div className="surface">
-        <div className="toolbar">
+        <div className="card-header">
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-base">All keys</h2>
+            <span className="count-chip">
+              {totalCount} {totalCount === 1 ? "key" : "keys"}
+            </span>
+          </div>
           <SearchInput
             value={search}
             onChange={(value) => changeFilter(() => setSearch(value))}
             placeholder="Search by client, company or storage location…"
-            className="w-full sm:max-w-xs"
+            className="w-full sm:w-80"
           />
-          <Combobox
-            aria-label="Filter by client"
-            className="w-full sm:w-56"
-            options={(clientsPage?.items ?? []).map((c) => ({
-              value: c.id,
-              label: c.contact_person_name,
-              hint: c.company_name,
-            }))}
-            value={clientFilter}
-            onChange={(value) => changeFilter(() => setClientFilter(value))}
-            onSearchChange={setClientSearch}
-            placeholder="All clients"
-            emptyMessage="No client matches"
-            clearable
-          />
-          <Combobox
-            aria-label="Filter by status"
-            className="w-full sm:w-48"
-            options={DSC_KEY_STATUSES.map((status) => ({ value: status, label: status }))}
-            value={statusFilter}
-            onChange={(value) => changeFilter(() => setStatusFilter(value as "" | DscKeyStatus))}
-            placeholder="All statuses"
-            emptyMessage="No status matches"
-            clearable
-          />
+        </div>
+
+        <div className="toolbar">
+          <div className="w-full space-y-1.5 sm:w-56">
+            <Label htmlFor="dsc_client_filter">Client</Label>
+            <Combobox
+              id="dsc_client_filter"
+              aria-label="Filter by client"
+              options={(clientsPage?.items ?? []).map((c) => ({
+                value: c.id,
+                label: c.contact_person_name,
+                hint: c.company_name,
+              }))}
+              value={clientFilter}
+              onChange={(value) => changeFilter(() => setClientFilter(value))}
+              onSearchChange={setClientSearch}
+              placeholder="All clients"
+              emptyMessage="No client matches"
+              clearable
+            />
+          </div>
+          <div className="w-full space-y-1.5 sm:w-48">
+            <Label htmlFor="dsc_status_filter">Key status</Label>
+            <Combobox
+              id="dsc_status_filter"
+              aria-label="Filter by status"
+              options={DSC_KEY_STATUSES.map((status) => ({ value: status, label: status }))}
+              value={statusFilter}
+              onChange={(value) => changeFilter(() => setStatusFilter(value as "" | DscKeyStatus))}
+              placeholder="All statuses"
+              emptyMessage="No status matches"
+              clearable
+            />
+          </div>
         </div>
 
         <DscTable

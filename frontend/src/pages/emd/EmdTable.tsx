@@ -1,5 +1,6 @@
 import { Landmark } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
+import { Avatar } from "@/components/shared/Avatar";
 import { DataTable, type Column } from "@/components/shared/DataTable";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { RowActions } from "@/components/shared/RowActions";
@@ -36,16 +37,26 @@ export function EmdTable({ emds, isLoading, onEdit, onDelete, emptyAction }: Emd
       cell: (e) => <span className="text-muted-foreground">{formatDay(e.emd_date)}</span>,
     },
     {
+      // Contact name over company, as on the other record tables.
       header: "Client Name",
       mobile: "title",
       cell: (e) => (
-        <span className="font-medium text-foreground">{e.client.contact_person_name}</span>
+        <span className="flex items-center gap-3">
+          <Avatar name={e.client.contact_person_name} />
+          <span className="min-w-0">
+            <span className="block truncate font-semibold text-foreground">
+              {e.client.contact_person_name}
+            </span>
+            <span className="block truncate text-[13px] text-muted-foreground">
+              {e.client.company_name}
+            </span>
+          </span>
+        </span>
       ),
     },
-    { header: "Company Name", cell: (e) => e.client.company_name },
     {
       header: "Contact Number",
-      cell: (e) => <span className="tabular-nums">{e.contact_number}</span>,
+      cell: (e) => <span className="tabular-nums text-muted-foreground">{e.contact_number}</span>,
     },
     {
       header: "Amount",
@@ -58,7 +69,15 @@ export function EmdTable({ emds, isLoading, onEdit, onDelete, emptyAction }: Emd
     },
     {
       header: "Added/Updated By",
-      cell: (e) => <span className="text-muted-foreground">{e.created_by?.full_name ?? "—"}</span>,
+      cell: (e) =>
+        e.created_by ? (
+          <span className="flex items-center gap-2">
+            <Avatar name={e.created_by.full_name} size="sm" />
+            <span className="truncate text-muted-foreground">{e.created_by.full_name}</span>
+          </span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
     },
     {
       header: "Actions",

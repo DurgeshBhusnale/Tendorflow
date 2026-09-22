@@ -9,13 +9,13 @@ interface SearchInputProps {
   className?: string;
 }
 
-/** Minimalist search field: muted fill, leading icon, no border until focus. */
+/** Search field: white, bordered, leading icon — the standard field chrome. */
 export function SearchInput({ value, onChange, placeholder, className }: SearchInputProps) {
   return (
     <div className={cn("relative", className)}>
       <Search
         aria-hidden
-        className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+        className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/60"
       />
       <Input
         type="search"
@@ -23,7 +23,7 @@ export function SearchInput({ value, onChange, placeholder, className }: SearchI
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="border-transparent bg-muted pl-9"
+        className="pl-9"
       />
     </div>
   );

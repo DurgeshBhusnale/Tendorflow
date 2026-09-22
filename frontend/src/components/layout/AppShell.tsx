@@ -35,13 +35,13 @@ export function AppShell() {
       <Sidebar open={navOpen} onClose={() => setNavOpen(false)} />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-3 lg:hidden">
+        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-card px-3 lg:hidden">
           <button
             type="button"
             onClick={() => setNavOpen(true)}
             aria-label="Open navigation"
             aria-expanded={navOpen}
-            className="p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             <Menu className="size-5" />
           </button>

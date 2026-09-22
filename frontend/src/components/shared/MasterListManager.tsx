@@ -122,7 +122,7 @@ export function MasterListManager({
       align: "right",
       mobile: "actions",
       cell: (item) => (
-        <div className="flex items-center justify-end gap-1">
+        <div className="flex items-center justify-end gap-1.5">
           <Button variant="outline" size="sm" onClick={() => void onToggleActive(item)}>
             {item.is_active ? "Deactivate" : "Reactivate"}
           </Button>
@@ -132,7 +132,7 @@ export function MasterListManager({
             onClick={() => handleDelete(item)}
             aria-label={`Delete ${item.name}`}
             title="Delete"
-            className="hover:bg-red-50 hover:text-destructive"
+            className="border-red-200 text-destructive hover:bg-red-50 hover:text-destructive"
           >
             <Trash2 />
           </Button>
@@ -157,11 +157,22 @@ export function MasterListManager({
       />
 
       <div className="surface">
+        <div className="card-header">
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-base">{title}</h2>
+            <span className="count-chip">
+              {items.filter((item) => item.is_active).length} active
+            </span>
+          </div>
+        </div>
+
         <DataTable
           columns={columns}
           rows={items}
           rowKey={(item) => item.id}
           isLoading={isLoading}
+          // A deactivated entry stays legible but visibly out of service.
+          rowClassName={(item) => (item.is_active ? undefined : "bg-muted/40")}
           empty={
             <EmptyState
               icon={Tags}
@@ -187,7 +198,7 @@ export function MasterListManager({
               <FieldError>{errors.name?.message}</FieldError>
             </div>
             {formError && (
-              <p className="border border-red-100 bg-red-50 px-3 py-2 text-sm text-destructive">
+              <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-destructive">
                 {formError}
               </p>
             )}

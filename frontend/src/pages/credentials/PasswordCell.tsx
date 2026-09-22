@@ -22,7 +22,7 @@ export function PasswordCell({ credential }: { credential: Credential }) {
 
   return (
     <div className="flex items-center gap-2">
-      <span className="bg-muted px-2 py-1 font-mono text-xs tracking-tight text-foreground">
+      <span className="rounded-md border border-border bg-muted px-2 py-1 font-mono text-xs tracking-tight text-foreground">
         {revealed ?? credential.password}
       </span>
       {revealed === null ? (

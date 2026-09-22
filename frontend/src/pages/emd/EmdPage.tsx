@@ -1,10 +1,11 @@
-import { Plus } from "lucide-react";
+import { Landmark, Plus, Undo2 } from "lucide-react";
 import { useState } from "react";
 import { Drawer } from "@/components/shared/Drawer";
 import { MetricCard } from "@/components/shared/MetricCard";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Pagination } from "@/components/shared/Pagination";
 import { SearchInput } from "@/components/shared/SearchInput";
+import { SegmentedFilter } from "@/components/shared/SegmentedFilter";
 import { Button } from "@/components/ui/button";
 import { Combobox } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
@@ -14,7 +15,6 @@ import { useConfirm } from "@/hooks/useConfirm";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useDeleteEmd, useEmdSummary, useEmds } from "@/hooks/useEmds";
 import { formatCurrency } from "@/lib/format";
-import { cn } from "@/lib/utils";
 import { EmdForm } from "@/pages/emd/EmdForm";
 import { EmdTable } from "@/pages/emd/EmdTable";
 import type { Emd, EmdStatus } from "@/types/emd";
@@ -103,11 +103,13 @@ export default function EmdPage() {
       />
 
       {summary && (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {showWithUs && (
             <MetricCard
               label="Total With Us"
               value={formatCurrency(summary.total_with_us)}
+              icon={Landmark}
+              tone="blue"
               hint={`${summary.with_us_count} deposit(s) still held`}
             />
           )}
@@ -115,6 +117,8 @@ export default function EmdPage() {
             <MetricCard
               label="Total Returned"
               value={formatCurrency(summary.total_returned)}
+              icon={Undo2}
+              tone="green"
               hint={`${summary.returned_count} deposit(s) given back`}
             />
           )}
@@ -122,52 +126,43 @@ export default function EmdPage() {
       )}
 
       <div className="surface">
-        <div className="toolbar">
+        <div className="card-header">
+          <SegmentedFilter
+            label="Filter by status"
+            options={STATUS_OPTIONS}
+            value={statusFilter}
+            onChange={(option) => changeFilter(() => setStatusFilter(option))}
+          />
           <SearchInput
             value={search}
             onChange={(value) => changeFilter(() => setSearch(value))}
             placeholder="Search by client, company or number…"
-            className="w-full sm:max-w-xs"
+            className="w-full sm:w-80"
           />
-          <Combobox
-            aria-label="Filter by client"
-            className="w-full sm:w-56"
-            options={(clientsPage?.items ?? []).map((c) => ({
-              value: c.id,
-              label: c.contact_person_name,
-              hint: c.company_name,
-            }))}
-            value={clientFilter}
-            onChange={(value) => changeFilter(() => setClientFilter(value))}
-            onSearchChange={setClientSearch}
-            placeholder="All clients"
-            emptyMessage="No client matches"
-            clearable
-          />
-
-          <div className="flex border border-border" role="group" aria-label="Filter by status">
-            {STATUS_OPTIONS.map((option) => (
-              <button
-                key={option}
-                type="button"
-                aria-pressed={statusFilter === option}
-                onClick={() => changeFilter(() => setStatusFilter(option))}
-                className={cn(
-                  "h-10 whitespace-nowrap border-r border-border px-3 text-sm transition-colors last:border-r-0",
-                  statusFilter === option
-                    ? "bg-ink font-semibold text-white"
-                    : "bg-card text-muted-foreground hover:bg-accent hover:text-foreground",
-                )}
-              >
-                {option}
-              </button>
-            ))}
-          </div>
         </div>
 
-        {/* Dates sit on their own row: two labelled fields do not fit the
-            toolbar at tablet width without wrapping mid-pair. */}
-        <div className="flex flex-wrap items-end gap-3 border-b border-divider px-4 pb-4 sm:px-6">
+        {/* Client and dates on their own row: two labelled date fields do not
+            fit beside the tabs at tablet width without wrapping mid-pair. */}
+        <div className="flex flex-wrap items-end gap-3 px-4 pb-4 sm:px-5">
+          <div className="space-y-1.5">
+            <Label htmlFor="emd_client_filter">Client</Label>
+            <Combobox
+              id="emd_client_filter"
+              aria-label="Filter by client"
+              className="w-full sm:w-56"
+              options={(clientsPage?.items ?? []).map((c) => ({
+                value: c.id,
+                label: c.contact_person_name,
+                hint: c.company_name,
+              }))}
+              value={clientFilter}
+              onChange={(value) => changeFilter(() => setClientFilter(value))}
+              onSearchChange={setClientSearch}
+              placeholder="All clients"
+              emptyMessage="No client matches"
+              clearable
+            />
+          </div>
           <div className="space-y-1.5">
             <Label htmlFor="emd_start_date">From</Label>
             <Input

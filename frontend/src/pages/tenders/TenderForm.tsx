@@ -255,15 +255,15 @@ export function TenderForm({ tender, onSuccess, onCancel }: TenderFormProps) {
         )}
 
         {/* Calculated fields — visibly inert, never submitted. */}
-        <div className="space-y-3 border border-border bg-muted p-4">
+        <div className="space-y-3 rounded-xl border border-primary/15 bg-primary/5 p-4">
           <div>
             <p className="eyebrow">Total Amount</p>
-            <p className="text-2xl font-semibold tabular-nums text-foreground">
+            <p className="text-3xl font-bold tabular-nums tracking-[-0.03em] text-foreground">
               {formatCurrency(previewTotal)}
             </p>
           </div>
           {isPaidStatus && (
-            <div className="grid grid-cols-2 gap-4 border-t border-border pt-3">
+            <div className="grid grid-cols-2 gap-4 border-t border-primary/15 pt-3">
               <div>
                 <p className="eyebrow">Paid</p>
                 <p className="text-sm font-semibold tabular-nums text-foreground">
@@ -284,7 +284,7 @@ export function TenderForm({ tender, onSuccess, onCancel }: TenderFormProps) {
         </div>
 
         {formError && (
-          <p className="border border-red-100 bg-red-50 px-3 py-2 text-sm text-destructive">
+          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-destructive">
             {formError}
           </p>
         )}

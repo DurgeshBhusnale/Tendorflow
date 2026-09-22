@@ -155,7 +155,7 @@ export function DataTable<T>({
       <div className="hidden w-full overflow-x-auto md:block">
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="border-b border-border">
+            <tr className="border-y border-border bg-muted/60">
               {selection && (
                 <th scope="col" className="w-10 px-4 py-3">
                   <RowCheckbox
@@ -171,7 +171,10 @@ export function DataTable<T>({
                   key={col.header}
                   scope="col"
                   className={cn(
-                    "eyebrow whitespace-nowrap px-4 py-3 text-left",
+                    // Tighter than the cards and drawers around it: an
+                    // eleven-column table has to fit a 1440px desktop before
+                    // it is allowed to be comfortable.
+                    "eyebrow whitespace-nowrap px-3 py-3 text-left first:pl-5 last:pr-5",
                     col.align === "right" && "text-right",
                   )}
                 >
@@ -186,7 +189,7 @@ export function DataTable<T>({
                 key={rowKey(row)}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
                 className={cn(
-                  "border-b border-divider transition-colors last:border-b-0 hover:bg-muted/60",
+                  "border-b border-divider transition-colors last:border-b-0 hover:bg-accent",
                   onRowClick && "cursor-pointer",
                   rowClassName?.(row),
                 )}
@@ -204,7 +207,7 @@ export function DataTable<T>({
                   <td
                     key={col.header}
                     className={cn(
-                      "whitespace-nowrap px-4 py-4 align-middle text-foreground",
+                      "whitespace-nowrap px-3 py-3.5 align-middle text-foreground first:pl-5 last:pr-5",
                       col.align === "right" && "text-right tabular-nums",
                     )}
                   >

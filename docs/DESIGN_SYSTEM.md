@@ -1,4 +1,4 @@
-# Design System — Elevated Minimalism
+# Design System — Composed Professional
 
 The canonical UI specification for the TenderFlow internal operations tool. It governs every
 screen under `frontend/`. Where this document and a component disagree, this document wins and
@@ -7,17 +7,26 @@ the component has a bug.
 Nothing here changes behaviour. Features, permissions, payloads, and validation are defined by
 `PRD.md` and `API_CONTRACT.md`; this file only describes how they look.
 
+> **This replaces "Elevated Minimalism", the first prototype's language.** That spec asked for
+> zero border-radius, a white rail, and serif headings on every screen. Built out across eleven
+> modules it read as unfinished rather than restrained — square white boxes on a white page, with
+> nothing framing the workspace. What changed, and why, is recorded inline below; the shape of the
+> app did not change at all.
+
 ---
 
 ## 1. Core Visual Principles
 
-- **Minimalist & architectural.** High contrast, sharp edges, zero border-radius.
-- **Data-dense but scannable.** Optimised for desktop efficiency: generous internal padding,
-  tight structural grouping.
-- **Editorial typography.** A sophisticated serif for hierarchy, a modern high-readability sans
-  for data.
-- **Monochromatic foundation.** White space and grayscale carry the structure; a single deep
-  indigo carries primary actions and intent.
+- **Framed, not floating.** One dark navy rail frames a light content column. The rail is the
+  only dark surface in the app, and it is what makes the content read as a workspace.
+- **Softened geometry.** Corners are rounded on a small, closed scale (see §2). Cards, fields,
+  buttons and pills all sit on it, so no surface looks like a table drawn in a terminal.
+- **Data-dense but scannable.** Optimised for desktop efficiency: a filled table-header strip,
+  two-line identity cells, tinted initials, and a status dot on every pill.
+- **Editorial only where it brands.** The serif is the wordmark's, not every heading's; headings
+  are the sans face, bold and tight.
+- **Quiet colour, used meaningfully.** Grayscale carries structure; indigo carries primary
+  actions; a tone (green / amber / blue / red / slate) carries state and never decoration.
 
 ---
 
@@ -31,25 +40,36 @@ as semantic colour names in `frontend/tailwind.config.ts`. **Always reach for th
 
 | Role | Hex | Token / class |
 | --- | --- | --- |
-| Primary surface | `#F8F9FA` | `bg-background` |
-| Card / container / sidebar | `#FFFFFF` | `bg-card`, `bg-sidebar` |
+| Primary surface | `#F4F6F9` | `bg-background` |
+| Card / container / drawer | `#FFFFFF` | `bg-card` |
 | Primary accent (actions) | `#2952E3` | `bg-primary`, `text-primary` |
-| Deep charcoal (branding, active indicator) | `#1A1A1A` | `bg-ink`, `text-ink` |
-| Headings / primary text | `#111827` | `text-foreground` |
-| Body / secondary text | `#6B7280` | `text-muted-foreground` |
-| Borders | `#E5E7EB` | `border-border` |
-| Hover tint | `#F3F4F5` | `hover:bg-accent` |
-| Muted fill / table dividers | `#F3F4F6` | `bg-muted`, `border-divider` |
+| Deep navy (rail, brand, scrims, sign-in) | `#0B1424` | `bg-ink`, `bg-sidebar` |
+| Headings / primary text | `#101828` | `text-foreground` |
+| Body / secondary text | `#475467` | `text-muted-foreground` |
+| Borders | `#E4E7EC` | `border-border` |
+| Hover tint | `#F9FAFB` | `hover:bg-accent` |
+| Muted fill / table header / dividers | `#F2F4F7` | `bg-muted`, `border-divider` |
+| Destructive | `#D92D20` | `text-destructive`, `bg-destructive` |
 
-Status pill palette (`StatusPill`, exact Tailwind defaults):
+Rail-only tokens, because the rail is the one dark surface: `bg-sidebar` `#0B1424`,
+`text-sidebar-foreground` `#AEB8CA` (resting nav text), `bg-sidebar-active` `#1C2B4B` (the active
+item's fill), `text-sidebar-muted` `#7D8BA3` (section eyebrows), `border-sidebar-border` `#16213A`.
 
-| Tone | Background | Text |
+Body text darkened from `#6B7280` to `#475467` with the palette change: secondary text on a white
+card at 14px was the weakest contrast in the old build, and a data tool is read at length.
+
+Status pill palette (`StatusPill`) — a tinted fill, a border a step darker, and a solid dot:
+
+| Tone | Fill / border / text | Dot |
 | --- | --- | --- |
-| `green` — Paid, Active, Key Created/Returned | `#ECFDF5` | `#059669` |
-| `amber` — Pending | `#FFFBEB` | `#D97706` |
-| `blue` — part-way states (Partially Paid) | `#EFF6FF` | `#2563EB` |
-| `red` — Key Issued, error | `#FEF2F2` | `#DC2626` |
-| `slate` — neutral, Inactive, unknown | `#F3F4F6` | `#4B5563` |
+| `green` — Paid, Active, Key Created/Returned | `emerald-50` / `emerald-200` / `emerald-700` | `emerald-500` |
+| `amber` — Pending | `amber-50` / `amber-200` / `amber-700` | `amber-500` |
+| `blue` — part-way states (Partially Paid, EMD With Us) | `blue-50` / `blue-200` / `blue-700` | `blue-500` |
+| `red` — Key Issued, error | `red-50` / `red-200` / `red-700` | `red-500` |
+| `slate` — neutral, Inactive, unknown | `bg-muted` / `border-border` / `text-muted-foreground` | `gray-400` |
+
+The dot is not decoration: it is what separates two adjacent pills at a glance, and it keeps the
+state legible without relying on hue alone.
 
 `blue` exists so *Partially Paid* is not another amber pill sitting next to
 *Pending*: they are different states and the eye has to separate them at a
@@ -62,21 +82,32 @@ come back from the API on an old row (`DATABASE_SCHEMA.md` §7), so index with
 
 ### Typography
 
-- **Headings (h1–h3):** Playfair Display, semi-bold, tight tracking. Applied globally in the
-  base layer, so a bare `<h1>` is already correct. `font-display` applies it elsewhere.
-- **Body, labels, table data:** Plus Jakarta Sans, 14px base, regular to medium.
-- **Eyebrow** (`.eyebrow`): 11px, semi-bold, uppercase, `0.08em` tracking, muted. Used for table
-  headers, metric labels, and section headings in the sidebar.
+- **Headings (h1–h3):** Plus Jakarta Sans, bold, `-0.02em` tracking. Applied globally in the base
+  layer, so a bare `<h1>` is already correct. Page titles are 28px, card titles 16px.
+- **Body, labels, table data:** Plus Jakarta Sans, 14px base, regular to semibold. Field labels
+  are 13px semibold; secondary lines in a cell are 13px muted.
+- **Wordmark only:** Playfair Display, via `.font-display` — the rail's header, the mobile bar and
+  the sign-in panel. The serif brands; it no longer styles every heading on every screen, which is
+  what made ops tables read as a magazine spread.
+- **Eyebrow** (`.eyebrow`): 11px, semi-bold, uppercase, `0.05em` tracking, muted. Table headers,
+  drawer section headings, rail section labels.
+- **Numbers** are `tabular-nums` everywhere they are compared down a column: metrics, money,
+  quantities.
 - Both faces load from Google Fonts in `index.html` with system fallbacks.
 
 ### Layout & Spacing
 
 - 8px base grid — prefer even-numbered Tailwind spacing steps.
-- **Border radius: `0` everywhere.** Enforced by overriding the whole `borderRadius` scale in
-  `tailwind.config.ts`, so no `rounded-*` class anywhere can reintroduce a curve.
-- Borders: `1px solid #E5E7EB`.
-- Shadows: low-elevation only — `shadow-card` for containers, `shadow-drawer` for the slide-over.
-- Page padding: `px-8 py-8`, sections separated by `space-y-8`.
+- **Border radius: a small, closed scale**, set in `tailwind.config.ts` — `sm` 4px, default 6px,
+  `md` 8px, `lg` 9px (buttons, fields, nav items, icon chips), `xl` 12px (cards, panels, dropdowns),
+  `2xl` 16px (the sign-in card), `full` for pills and dots. The scale is closed so a stray
+  `rounded-3xl` can't introduce a curve the rest of the app doesn't use. (This reverses the
+  prototype's zero-radius rule; see the note at the top.)
+- Borders: `1px solid #E4E7EC`.
+- Shadows, all low-elevation: `shadow-card` for containers and raised segments, `shadow-button`
+  for filled buttons, `shadow-pop` for dropdowns and dialogs, `shadow-drawer` for the slide-over.
+- Page padding: `.page` (`px-8 py-8` at `lg`), sections separated by `space-y-8`; grids of cards
+  use `gap-4`.
 
 ---
 
@@ -84,13 +115,21 @@ come back from the API on an old row (`DATABASE_SCHEMA.md` §7), so index with
 
 ### Sidebar (`components/layout/Sidebar.tsx`)
 
-240px fixed, full height, white, right border only. Wordmark in a 64px header. Links are grouped
-("Workspace", "Administration") with `.eyebrow` section labels; the Administration group renders
-only for admins. Active state: light-gray rectangular background, semi-bold text, and a 2px
-charcoal indicator on the right edge.
+256px fixed, full height, navy (`bg-sidebar`), no border — the colour change is the edge. A 76px
+header carries an indigo brand tile and the serif wordmark, its second half in `--primary-light`.
+Links are grouped ("Workspace", "Administration") with `.eyebrow` section labels in
+`text-sidebar-muted`; the Administration group renders only for admins, and `lib/nav.ts` is the
+single source for both groups.
 
-The footer carries the signed-in identity — square charcoal avatar with initials, name, role —
-above a full-width outlined Log out button. This is the only place either appears.
+Active state: a filled `bg-sidebar-active` rounded item with white semibold text. This replaced
+the 2px charcoal edge indicator of the prototype — a fill survives being glanced at, a hairline on
+the far edge of the rail does not.
+
+The footer carries the signed-in identity in a `bg-white/5` card — indigo avatar with initials,
+name, role — with an icon-only Log out button beside it. This is the only place either appears.
+
+Below `lg` the rail slides off-canvas over a `bg-ink/50` scrim, and a 56px white bar carries the
+open button and the wordmark (`components/layout/AppShell.tsx`).
 
 ### No Top Bar
 
@@ -102,15 +141,38 @@ search lives in each list page's toolbar.
 
 Revisit only if a genuine cross-entity search endpoint is added.
 
+### Page Header (`components/shared/PageHeader.tsx`)
+
+Breadcrumb, title, supporting line, actions pinned right. The breadcrumb (`Section / Page`) is
+derived from `lib/nav.ts` and the current route rather than passed in, so a page added to the rail
+gets its trail for free and the two cannot drift; a route that isn't in the rail simply gets no
+trail.
+
+### Table Cards
+
+Every table lives in a `.surface` card that opens with a **`.card-header`**: the card's own name,
+a `.count-chip` with the record count, and search or the status filter opposite. Filters that
+don't fit go on a second `.toolbar` row beneath it.
+
+This is structural, not decorative — the filled table-header strip must never be the first thing
+in a card, or its square corners fight the card's rounded ones. A table card always has a header.
+
 ### Data Tables (`components/shared/DataTable.tsx`)
 
-- Header row: `.eyebrow`, bottom border in `border-border`.
-- Rows: horizontal dividers only (`border-divider`), **no zebra striping**, hover tint.
+- Header row: `.eyebrow` on a `bg-muted/60` strip with a border top and bottom.
+- Rows: horizontal dividers only (`border-divider`), **no zebra striping**, `hover:bg-accent`.
+- **Identity cells carry two lines and an `<Avatar>`**: contact person over email (clients),
+  contact person over company (tenders, credentials, DSC, EMD), name over `@username` (users).
+  Merging the pair into one cell is what buys back the width the avatar costs.
+- Attribution cells (`Added/Updated By`) use the `sm` avatar beside the name.
 - Numeric, currency, and action columns are right-aligned (`align: "right"`).
 - Cells never wrap; the container scrolls horizontally if a table outgrows the viewport.
-- Padding is `py-4 px-4`. This is the one deliberate deviation from the spec's `px-6`: at `px-6`
-  the nine-column tenders table pushed its Actions column off a 1440px desktop. Cards and drawers
-  keep the full `px-6`.
+- Padding is `py-3.5 px-3`, with `first:pl-5 last:pr-5` for the card's edges — tighter than the
+  cards and drawers around it, because an eleven-column table has to fit a 1440px desktop before
+  it is allowed to be comfortable. Cards and drawers keep the full `px-5`/`px-6`.
+- Where a table still overflows, the fix is to **merge a pair of related columns into one
+  two-line cell**, not to shrink the type: credentials pairs the editor with the date, clients
+  pairs the contact with their email, and the record tables pair contact with company.
 - Row actions are icon-only (`RowActions`) with `aria-label` + `title`, for the same reason.
 - **Every in-table action is an `outline` button, never `ghost`.** A ghost button in a table cell
   reads as static text until hovered; the 1px border is what makes it legible as pressable.
@@ -159,15 +221,38 @@ Two optional props cover the cases a column config cannot express:
   containing its own buttons must wrap them in a `stopPropagation` handler, or
   clicking Edit fires both.
 
+### Avatars (`components/shared/Avatar.tsx`)
+
+Tinted initials, `md` (36px, `rounded-lg`) in identity cells and `sm` (28px, `rounded-md`) in
+attribution cells. The tint is hashed from the name, so one client is the same colour on every
+screen. It carries no meaning — it is there to give a list of near-identical rows something to
+navigate by — so it is `aria-hidden`, with the name always beside it.
+
+### Metric Cards (`components/shared/MetricCard.tsx`)
+
+Label, tinted icon chip in the corner, a 30px bold tabular number, and a `hint` line saying what
+the number counts. `tone` picks the chip: `indigo` (counts and totals), `amber` (pending / owed),
+`green` (settled / received), `blue` (part-way), `violet` (DSC), `red`, `slate`. A row of metrics
+should be scannable by colour as well as by label, so tones stay consistent across pages: amber is
+always "still to come", green is always "done".
+
+### Segmented Filter (`components/shared/SegmentedFilter.tsx`)
+
+The status switch on tenders, EMD and expenses: one raised white segment on a `bg-muted` track,
+in the `.card-header`. It replaced three copies of a bordered button row whose active state was a
+black fill — a filter is a choice between a handful of views, and this reads as one control.
+
 ### Forms & Drawers
 
-All data entry happens in a right-side slide-over (`components/shared/Drawer.tsx`), 480px wide,
+All data entry happens in a right-side slide-over (`components/shared/Drawer.tsx`), 500px wide,
 closing on backdrop click or Escape, with background scroll locked while open. A drawer form is a
 `flex h-full flex-col` containing `<DrawerBody>` (scrolls) and `<DrawerFooter>` (pinned action bar,
 Cancel then submit).
 
-Inputs: 1px border, 0px radius, 14px text, indigo focus ring. Every field has a `<Label htmlFor>`
-and a `<FieldError>`.
+Inputs: 1px border, `rounded-lg`, 40px tall, 14px text, and an indigo focus halo (border plus a
+3px `ring-primary/15`). Every field has a `<Label htmlFor>` and a `<FieldError>`. `<DrawerSection>`
+groups the fields that belong to one idea under an `.eyebrow` heading, so a long form reads as
+three short sections rather than one column of twelve inputs.
 
 **Dropdowns come in two forms**, sharing the same field chrome:
 
@@ -220,8 +305,8 @@ confirm({
 });
 ```
 
-- Centred over a `bg-ink/30` scrim, `max-w-md`, standard `.surface` chrome: 1px
-  border, 0px radius, header block over a bordered action bar.
+- Centred over a `bg-ink/45` scrim, `max-w-md`, `rounded-xl` with `shadow-pop`: header block over
+  a bordered action bar.
 - **Cancel takes focus**, so Enter on a freshly opened dialog never deletes
   anything. Escape and a scrim click both dismiss.
 - The action button is `variant="destructive"` for `tone: "destructive"`.
@@ -237,14 +322,14 @@ Split screen. **Left:** the editorial panel on `.login-backdrop` — the brand a
 `public/login-bg.svg` over a matching navy wash, carrying the wordmark, serif headline, supporting
 line and `Internal use only` eyebrow, all in white. A left-to-right scrim sits over the artwork so
 the copy stays legible at any crop, and the artwork is anchored left so the document motif falls in
-the panel's right half. **Right:** a 400px white card on the standard off-white surface. The card
-carries no wordmark or logo — the brand lives on the other half. Below the `lg` breakpoint the
-editorial panel drops and the card takes the full width.
+the panel's right half. **Right:** a 420px white `rounded-2xl` card with `shadow-pop`, on the
+standard off-white surface. The card carries no wordmark or logo — the brand lives on the other
+half. Below the `lg` breakpoint the editorial panel drops and the card takes the full width.
 
 Two deliberate departures from the rest of the app:
 
-- The submit button is **charcoal (`variant="ink"`), not indigo.** This is the only primary action
-  in the product that isn't indigo; sign-in is a standalone surface with no competing actions.
+- The submit button is **navy (`variant="ink"`), not indigo.** This is the only primary action in
+  the product that isn't indigo; sign-in is a standalone surface with no competing actions.
 - The password field has a show/hide toggle. Purely client-side — it flips the input `type`.
 
 The wordmark's accent half uses `--primary-light` (a lifted indigo) rather than `--primary`;

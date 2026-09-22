@@ -322,7 +322,7 @@ Every type mirrors the response shape from `API_CONTRACT.md`. If the API contrac
 - **Don't use `any`.** Type it or say why in a comment. `unknown` is fine when narrowing follows.
 - **Don't skip Zod on a form.** Even trivial forms get validation — it's cheap and it catches copy-paste bugs.
 - **Don't invent new visual language.** The design system is `docs/DESIGN_SYSTEM.md`. If a screen needs something it doesn't cover, add it there first, then build it.
-- **Don't use `rounded-*`, a raw hex colour, or a font stack of your own.** Radius is globally 0, colours are tokens, and the two typefaces are set in the base layer.
+- **Don't use a raw hex colour or a font stack of your own.** Colours are tokens and the two typefaces are set in the base layer. `rounded-*` is allowed but only on the closed scale in `tailwind.config.ts` — `lg` for controls, `xl` for cards, `full` for pills.
 - **Don't put business logic in components.** If a computation is more than a one-liner, move it to a `lib/` util and unit test it.
 - **Don't hardcode the API URL.** Always `import.meta.env.VITE_API_BASE_URL`.
 
@@ -360,23 +360,29 @@ CI runs `pnpm lint && pnpm typecheck` — both must pass.
 
 ---
 
-## UI — Elevated Minimalism
+## UI — Composed Professional
 
 The visual language is specified in **`docs/DESIGN_SYSTEM.md`**. Read it before touching any
 component. The short version:
 
 - **Tokens, not values.** Colours come from the CSS variables in `src/index.css`, surfaced as
   Tailwind names (`bg-background`, `bg-card`, `text-foreground`, `text-muted-foreground`,
-  `border-border`, `bg-primary`, `bg-ink`). No raw hex in components.
-- **Zero border-radius.** The whole `borderRadius` scale is overridden to `0` in
-  `tailwind.config.ts`, so `rounded-*` classes are inert by design. Don't fight it.
-- **Type pairing.** Playfair Display for `h1`–`h3` (applied in the base layer, so a bare heading
-  is already right) and `.font-display`; Plus Jakarta Sans for everything else.
-- **Page skeleton.** `<div className="space-y-8 px-8 py-8">` → `<PageHeader>` → optional
-  `<MetricCard>` grid → a `.surface` card wrapping toolbar + `<DataTable>` + `<Pagination>`.
-  There is no top bar — `<PageHeader>` is the only place a page names itself.
+  `border-border`, `bg-primary`, `bg-ink`, `bg-sidebar*`). No raw hex in components.
+- **Rounded on a closed scale.** `rounded-lg` for controls (buttons, fields, nav items, icon
+  chips), `rounded-xl` for cards and panels, `rounded-full` for pills and dots. The scale in
+  `tailwind.config.ts` is the whole vocabulary.
+- **Type pairing.** Plus Jakarta Sans everywhere, bold and tight for `h1`–`h3` (applied in the
+  base layer, so a bare heading is already right). Playfair Display (`.font-display`) is the
+  wordmark's face only — never a page or card heading.
+- **Page skeleton.** `<div className="page">` → `<PageHeader>` (it derives its own breadcrumb) →
+  optional `<MetricCard>` grid (`gap-4`) → a `.surface` card wrapping `.card-header` +
+  optional `.toolbar` + `<DataTable>` + `<Pagination>`. There is no top bar.
+- **Every table card starts with a `.card-header`** — title, `.count-chip`, and search or a
+  `<SegmentedFilter>` opposite. It is what keeps the filled table-header strip off the card's
+  rounded top corners.
 - **Buttons inside table cells are `variant="outline"`**, never `ghost` — ghost reads as plain
-  text until hovered. Numbers (KPIs, totals) stay in the sans face, not the display serif.
+  text until hovered. Numbers (KPIs, totals) are `tabular-nums`.
+- **Identity cells pair two lines with an `<Avatar>`** (name over email, contact over company).
 - **Forms live in drawers.** `<Drawer>` + `<DrawerBody>` + `<DrawerFooter>`; the form is
   `flex h-full flex-col` so its action bar pins to the bottom.
 - **Money and dates** always go through `formatCurrency` / `formatDate`. **Statuses** are always

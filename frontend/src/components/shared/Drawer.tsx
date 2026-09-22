@@ -42,23 +42,25 @@ export function Drawer({ open, onClose, title, description, children }: DrawerPr
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
-      <div className="absolute inset-0 animate-fade-in bg-ink/20" onClick={onClose} aria-hidden />
+      <div className="absolute inset-0 animate-fade-in bg-ink/45" onClick={onClose} aria-hidden />
       <aside
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="relative flex h-full w-full animate-slide-in-right flex-col border-l border-border bg-card shadow-drawer sm:w-[480px]"
+        className="relative flex h-full w-full animate-slide-in-right flex-col bg-card shadow-drawer sm:w-[500px]"
       >
         <header className="flex items-start justify-between gap-4 border-b border-border px-5 py-5 sm:px-6">
           <div className="min-w-0">
             <h2 className="text-xl">{title}</h2>
-            {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+            {description && (
+              <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{description}</p>
+            )}
           </div>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="-mr-2 -mt-1 p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            className="-mr-2 -mt-1 rounded-lg border border-border p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             <X className="size-4" />
           </button>
@@ -72,6 +74,20 @@ export function Drawer({ open, onClose, title, description, children }: DrawerPr
 /** Scrollable field area of a drawer form. */
 export function DrawerBody({ children }: { children: ReactNode }) {
   return <div className="flex-1 space-y-5 overflow-y-auto px-5 py-6 sm:px-6">{children}</div>;
+}
+
+/**
+ * Groups the fields that belong to one idea — the client, the money, the key's
+ * current holder — under a small caps heading, so a long form reads as three
+ * short sections rather than one column of twelve inputs.
+ */
+export function DrawerSection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="space-y-4 border-b border-border pb-5 last:border-b-0 last:pb-0">
+      <p className="eyebrow tracking-[0.1em] text-muted-foreground/70">{title}</p>
+      {children}
+    </section>
+  );
 }
 
 /** Pinned action bar at the foot of a drawer form. */

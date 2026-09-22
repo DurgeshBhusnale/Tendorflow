@@ -28,7 +28,7 @@ export function DscHistoryPanel({ dscKey }: { dscKey: DscKey }) {
 
   return (
     <DrawerBody>
-      <div className="border border-border bg-muted p-4">
+      <div className="rounded-xl border border-border bg-muted/60 p-4">
         <p className="eyebrow">Client</p>
         <p className="font-medium text-foreground">{dscKey.client.contact_person_name}</p>
         <p className="text-sm text-muted-foreground">{dscKey.client.company_name}</p>
@@ -56,7 +56,7 @@ export function DscHistoryPanel({ dscKey }: { dscKey: DscKey }) {
                   on the icon's own column, so it can never fall out of step
                   with an entry's height. */}
               <div className="flex flex-col items-center">
-                <span className="flex size-8 shrink-0 items-center justify-center border border-border bg-card">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-card">
                   <Icon className="size-4 text-muted-foreground" aria-hidden />
                 </span>
                 {!isLast && <span className="w-px flex-1 bg-border" />}

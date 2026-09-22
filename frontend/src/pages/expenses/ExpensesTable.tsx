@@ -1,4 +1,5 @@
 import { Wallet } from "lucide-react";
+import { Avatar } from "@/components/shared/Avatar";
 import { DataTable, type Column } from "@/components/shared/DataTable";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { RowActions } from "@/components/shared/RowActions";
@@ -62,7 +63,15 @@ export function ExpensesTable({
     },
     {
       header: "Added/Updated By",
-      cell: (e) => <span className="text-muted-foreground">{e.created_by?.full_name ?? "—"}</span>,
+      cell: (e) =>
+        e.created_by ? (
+          <span className="flex items-center gap-2">
+            <Avatar name={e.created_by.full_name} size="sm" />
+            <span className="truncate text-muted-foreground">{e.created_by.full_name}</span>
+          </span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
     },
     {
       header: "Actions",
