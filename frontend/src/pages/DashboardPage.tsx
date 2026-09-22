@@ -4,7 +4,7 @@ import { MetricCard } from "@/components/shared/MetricCard";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusPill } from "@/components/shared/StatusPill";
 import { useDashboardSummary } from "@/hooks/useDashboard";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate, formatDay } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Client } from "@/types/client";
 import type { Tender } from "@/types/tender";
@@ -52,7 +52,7 @@ function RecentTenderRow({ tender }: { tender: Tender }) {
         </p>
         <p className="mt-0.5 truncate text-xs text-muted-foreground">
           {tender.client.company_name} · {tender.tender_department.name} ·{" "}
-          {formatDate(tender.created_at)}
+          {formatDay(tender.tender_date)}
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-3 sm:gap-4">

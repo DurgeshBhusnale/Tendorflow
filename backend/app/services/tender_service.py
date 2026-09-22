@@ -5,7 +5,6 @@ from uuid import UUID
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dates import ist_day_end_utc, ist_day_start_utc
 from app.core.exceptions import NotFoundError, ValidationError
 from app.models.client import Client
 from app.models.tender import Tender
@@ -51,12 +50,12 @@ def _apply_filters(
         query = query.where(Tender.client_id == client_id)
     if status is not None:
         query = query.where(Tender.status == status)
-    # Both bounds are IST calendar days and both are inclusive; see
-    # core/dates.py for why the upper bound is expressed as a `<`.
+    # Both bounds are inclusive. tender_date is already a calendar day (CH-22),
+    # so no timezone conversion is involved.
     if start_date is not None:
-        query = query.where(Tender.created_at >= ist_day_start_utc(start_date))
+        query = query.where(Tender.tender_date >= start_date)
     if end_date is not None:
-        query = query.where(Tender.created_at < ist_day_end_utc(end_date))
+        query = query.where(Tender.tender_date <= end_date)
     if search:
         pattern = f"%{search}%"
         if needs_join:
@@ -108,9 +107,14 @@ async def list_tenders(
     )
 
     total_count = await session.scalar(count_query)
-    # Ordered by when the tender was logged, never by when it was last edited:
-    # editing a row must not reshuffle the table (CH-11).
-    query = query.order_by(Tender.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
+    # Ordered by the tender's own date, never by when it was last edited:
+    # editing a row must not reshuffle the table (CH-11). created_at breaks
+    # ties between tenders logged for the same day (CH-22).
+    query = (
+        query.order_by(Tender.tender_date.desc(), Tender.created_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    )
     items = list((await session.scalars(_eager(query))).unique().all())
     return items, total_count or 0
 

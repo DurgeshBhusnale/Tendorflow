@@ -1,8 +1,8 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import Computed, DateTime, ForeignKey, Integer, Numeric, func, text
+from sqlalchemy import Computed, Date, DateTime, ForeignKey, Integer, Numeric, func, text
 from sqlalchemy.dialects.postgresql import ENUM as PGEnum
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -58,6 +58,12 @@ class Tender(Base):
     # Null only for Pending tenders, and for rows paid before CH-06 added the
     # field — those predate any record of how the money arrived.
     payment_mode: Mapped[str | None] = mapped_column(payment_mode_enum, nullable=True)
+    # The calendar day the tender is logged *for* (CH-22) — what the Date column,
+    # the date-range filter and the list ordering use. Client-supplied, unlike
+    # created_at; the schema defaults it to today in IST.
+    tender_date: Mapped[date] = mapped_column(
+        Date, nullable=False, server_default=text("((now() at time zone 'Asia/Kolkata')::date)")
+    )
     # Overwritten with whoever last edited the row: every module is open-edit
     # and reports the latest hand that touched it (CH-19).
     created_by: Mapped[uuid.UUID | None] = mapped_column(

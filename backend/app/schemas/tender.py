@@ -1,10 +1,11 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, model_validator
 
+from app.core.dates import today_ist
 from app.schemas.client import CreatorRef
 from app.schemas.credential import ClientRef
 
@@ -72,6 +73,9 @@ class TenderCreate(BaseModel):
     status: TenderStatus = "Pending"
     paid_amount: Decimal | None = Field(default=None, ge=0, max_digits=14, decimal_places=2)
     payment_mode: PaymentMode | None = None
+    # The day the tender is logged for (CH-22). Defaults to today in IST, so a
+    # client that never sends it behaves exactly as before the field existed.
+    tender_date: date = Field(default_factory=today_ist)
     # total_amount and remaining_amount are deliberately absent: both are
     # Postgres generated columns. Pydantic ignores unknown keys, so sending
     # either has no effect.
@@ -92,6 +96,7 @@ class TenderUpdate(BaseModel):
     status: TenderStatus | None = None
     paid_amount: Decimal | None = Field(default=None, ge=0, max_digits=14, decimal_places=2)
     payment_mode: PaymentMode | None = None
+    tender_date: date | None = None
     # No model_validator here: a PATCH may omit quantity or price, so the total
     # this has to be checked against is only knowable once the payload is merged
     # onto the stored row. tender_service.update_tender does that.
@@ -112,8 +117,10 @@ class TenderRead(BaseModel):
     payment_mode: str | None
     # Last editor, not original author — every module is open-edit (CH-19).
     created_by: CreatorRef | None = Field(validation_alias="creator")
-    # created_at is the date the tender was logged and is what the date-range
-    # filter and the default ordering use; updated_at is when it last changed.
+    # tender_date is the business date — what the table shows and what the
+    # date-range filter and ordering use (CH-22). created_at is when the row
+    # was typed in; updated_at is when it last changed.
+    tender_date: date
     created_at: datetime
     updated_at: datetime
 

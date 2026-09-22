@@ -22,9 +22,31 @@ const rupeesAndPaiseFormatter = new Intl.NumberFormat("en-IN", {
   maximumFractionDigits: 2,
 });
 
+// A bare calendar day has no timezone of its own, so it is formatted as the
+// UTC midnight it parses to — shifting it into IST could only ever be wrong.
+const dayFormatter = new Intl.DateTimeFormat("en-IN", {
+  timeZone: "UTC",
+  year: "numeric",
+  month: "short",
+  day: "2-digit",
+});
+
+// en-CA formats as YYYY-MM-DD, the shape a date input and the API both use.
+const isoDayInIst = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" });
+
 /** Renders an ISO-8601 (UTC) timestamp in Asia/Kolkata, per PRD §5. */
 export function formatDate(isoTimestamp: string): string {
   return dateFormatter.format(new Date(isoTimestamp));
+}
+
+/** Renders a `YYYY-MM-DD` calendar day (e.g. a tender's date) as `20 Sept 2026`. */
+export function formatDay(isoDay: string): string {
+  return dayFormatter.format(new Date(`${isoDay}T00:00:00Z`));
+}
+
+/** Today's calendar day in IST, as `YYYY-MM-DD` — matches the server's default. */
+export function todayInIst(): string {
+  return isoDayInIst.format(new Date());
 }
 
 /** Formats a decimal string (the API returns money as strings) as INR. */

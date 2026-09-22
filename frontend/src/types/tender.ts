@@ -24,7 +24,12 @@ export interface Tender {
   payment_mode: PaymentMode | null;
   /** Whoever last edited the row, not necessarily who first logged it. */
   created_by: { id: string; full_name: string } | null;
-  /** When the tender was logged. What the date filter and ordering use. */
+  /**
+   * The calendar day the tender is logged for, as YYYY-MM-DD (CH-22). What the
+   * Date column, the date filter and the ordering use. Render with `formatDay`.
+   */
+  tender_date: string;
+  /** When the row was typed in. An audit timestamp, not the tender's date. */
   created_at: string;
   /** When the row last changed. */
   updated_at: string;
@@ -40,6 +45,8 @@ export interface TenderCreate {
   paid_amount?: string | null;
   /** Required whenever money changed hands — Paid or Partially Paid. */
   payment_mode?: PaymentMode | null;
+  /** YYYY-MM-DD. The server defaults it to today in IST when omitted. */
+  tender_date?: string;
 }
 
 export interface TenderUpdate {
@@ -50,6 +57,7 @@ export interface TenderUpdate {
   status?: TenderStatus;
   paid_amount?: string | null;
   payment_mode?: PaymentMode | null;
+  tender_date?: string;
 }
 
 export interface TenderSummary {

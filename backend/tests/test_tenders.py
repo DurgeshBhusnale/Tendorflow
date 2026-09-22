@@ -11,11 +11,11 @@ Runs against a database holding committed demo data, so rows are uniquely
 named and assertions check membership rather than absolute counts.
 """
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
 import pytest
 
-from app.core.dates import IST
+from app.core.dates import IST, today_ist
 
 
 @pytest.fixture
@@ -554,34 +554,104 @@ async def test_date_range_excludes_rows_outside_it(
     assert resp.json()["data"]["total_count"] == 0
 
 
-async def test_late_evening_ist_still_falls_on_the_ist_day(
+# --------------------------------------------------------------------------
+# Tender date (CH-22)
+# --------------------------------------------------------------------------
+
+
+async def test_tender_date_defaults_to_today_in_ist(
     client, employee_headers, client_id, tender_department_id
 ):
-    """A tender logged at 23:00 IST is stored as the next UTC day.
+    """The IST day, not the UTC one — they differ between 00:00 and 05:30 IST."""
+    resp = await _create_tender(client, employee_headers, client_id, tender_department_id)
 
-    Filtering on its IST date must still find it — that off-by-one is the whole
-    reason the bounds are converted rather than compared as UTC dates.
-    """
-    await _create_tender(client, employee_headers, client_id, tender_department_id)
-    now_ist = datetime.now(IST)
-    # The UTC calendar date differs from the IST one only between 18:30 and
-    # midnight IST, so assert the relationship the conversion guarantees rather
-    # than a clock reading the test cannot control.
-    utc_date = datetime.now(UTC).date()
-    ist_date = now_ist.date()
-    assert (ist_date - utc_date).days in (0, 1)
+    assert resp.status_code == 201
+    assert resp.json()["data"]["tender_date"] == today_ist().isoformat()
 
-    resp = await client.get(
+
+async def test_tender_can_be_logged_for_a_past_date(
+    client, employee_headers, client_id, tender_department_id
+):
+    backdated = (today_ist() - timedelta(days=10)).isoformat()
+
+    resp = await _create_tender(
+        client, employee_headers, client_id, tender_department_id, tender_date=backdated
+    )
+
+    assert resp.status_code == 201
+    assert resp.json()["data"]["tender_date"] == backdated
+
+
+async def test_date_filter_uses_the_tender_date(
+    client, employee_headers, client_id, tender_department_id
+):
+    """A backdated tender is found on its own date, not on the day it was typed in."""
+    backdated = (today_ist() - timedelta(days=10)).isoformat()
+    today = today_ist().isoformat()
+    await _create_tender(
+        client, employee_headers, client_id, tender_department_id, tender_date=backdated
+    )
+
+    on_its_date = await client.get(
         "/api/tenders",
-        params={
-            "client_id": client_id,
-            "start_date": ist_date.isoformat(),
-            "end_date": ist_date.isoformat(),
-        },
+        params={"client_id": client_id, "start_date": backdated, "end_date": backdated},
+        headers=employee_headers,
+    )
+    on_entry_day = await client.get(
+        "/api/tenders",
+        params={"client_id": client_id, "start_date": today, "end_date": today},
         headers=employee_headers,
     )
 
-    assert resp.json()["data"]["total_count"] == 1
+    assert on_its_date.json()["data"]["total_count"] == 1
+    assert on_entry_day.json()["data"]["total_count"] == 0
+
+
+async def test_list_is_ordered_by_tender_date(
+    client, employee_headers, client_id, tender_department_id
+):
+    """Newest tender date first, even when the older-dated row was typed in later."""
+    today = today_ist().isoformat()
+    backdated = (today_ist() - timedelta(days=3)).isoformat()
+    await _create_tender(
+        client, employee_headers, client_id, tender_department_id, tender_date=today
+    )
+    await _create_tender(
+        client, employee_headers, client_id, tender_department_id, tender_date=backdated
+    )
+
+    resp = await client.get(
+        "/api/tenders", params={"client_id": client_id}, headers=employee_headers
+    )
+
+    assert [t["tender_date"] for t in resp.json()["data"]["items"]] == [today, backdated]
+
+
+async def test_tender_date_can_be_changed(
+    client, employee_headers, client_id, tender_department_id
+):
+    created = await _create_tender(client, employee_headers, client_id, tender_department_id)
+    corrected = (today_ist() - timedelta(days=1)).isoformat()
+
+    resp = await client.patch(
+        f"/api/tenders/{created.json()['data']['id']}",
+        json={"tender_date": corrected},
+        headers=employee_headers,
+    )
+
+    assert resp.status_code == 200
+    assert resp.json()["data"]["tender_date"] == corrected
+
+
+async def test_invalid_tender_date_rejected(
+    client, employee_headers, client_id, tender_department_id
+):
+    resp = await _create_tender(
+        client, employee_headers, client_id, tender_department_id, tender_date="31-02-2026"
+    )
+
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == "VALIDATION_ERROR"
 
 
 # --------------------------------------------------------------------------

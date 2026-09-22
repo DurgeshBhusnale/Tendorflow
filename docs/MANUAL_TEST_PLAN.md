@@ -287,7 +287,13 @@ The status enum now has **three** values, the KPI strip is **admin-only**, and t
 | TC-TEN-P18 | Outstanding is the balance, not the value | With only that one partial tender in the filter, read **Total Outstanding** | **₹15,000**, not ₹25,000. This is the arithmetic most likely to be wrong — check it by hand. |
 | TC-TEN-P19 | Back to Pending clears the payment | Edit that tender, set Status **Pending**, save | Paid ₹0, Remaining ₹25,000, payment mode gone. No error about a leftover mode. |
 | TC-TEN-P20 | Repricing a paid tender | On a Paid tender, change the price | Stays Paid; Paid Amount follows the new total; Remaining stays ₹0. |
-| TC-TEN-P21 | Date range filter | Set **From** and **To** to today | Today's tenders only. Set **To** to yesterday: none. Both ends are inclusive IST days. |
+| TC-TEN-P21 | Date range filter | Set **From** and **To** to today | Today's tenders only. Set **To** to yesterday: none. Both ends are inclusive. |
+| TC-TEN-P25 | Date defaults to today | Open **Log Tender** | **Tender Date** is the first field and is pre-filled with today's date (IST). Saving without touching it logs it for today. |
+| TC-TEN-P26 | Backdate a tender | Log a tender with Tender Date set to 10 days ago | The row's **Date** column shows that date, not today. |
+| TC-TEN-P26b | The filter follows the tender's date | Filter From/To to that backdated day, then to today | The backdated tender appears on **its own** date and is **absent** from today — the filter follows `tender_date`, not when it was typed (`API_CONTRACT.md` §7). |
+| TC-TEN-P26c | Ordering follows the tender's date | With both tenders from P25/P26 present, look at the table | Today's row sits **above** the backdated one, even though the backdated one was created later. |
+| TC-TEN-P27 | Correct a date | Edit any tender and change Tender Date | Saves; the Date column and the row's position both move. |
+| TC-TEN-P28 | Row shading by payment state | Look at a table holding all three statuses | Pending rows are tinted **red**, Partially Paid **blue**, Paid **green**, across the full row width. Hover a row: the tint stays (it darkens, it does not vanish). Narrow to 390px — the cards carry the same shading (`DESIGN_SYSTEM.md` §3). |
 | TC-TEN-P22 | Date filter drives the strip too | With a date range applied, compare the strip against the visible rows | They agree — the strip describes exactly the filtered set. |
 | TC-TEN-P23 | Clear filters | Set several filters, click **Clear filters** | Everything resets and the list returns to page 1. |
 | TC-TEN-P24 | Searchable client filter | Click the client filter and type | It filters as you type and offers an **×** to clear. |

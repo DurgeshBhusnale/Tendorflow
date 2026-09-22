@@ -4,7 +4,7 @@ import { DataTable, type Column } from "@/components/shared/DataTable";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { RowActions } from "@/components/shared/RowActions";
 import { StatusPill, type PillTone } from "@/components/shared/StatusPill";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatCurrency, formatDay } from "@/lib/format";
 import type { Tender, TenderStatus } from "@/types/tender";
 
 const STATUS_TONES: Record<TenderStatus, PillTone> = {
@@ -35,7 +35,7 @@ export function TendersTable({
   const columns: Column<Tender>[] = [
     {
       header: "Date",
-      cell: (t) => <span className="text-muted-foreground">{formatDate(t.created_at)}</span>,
+      cell: (t) => <span className="text-muted-foreground">{formatDay(t.tender_date)}</span>,
     },
     {
       header: "Added/Updated By",

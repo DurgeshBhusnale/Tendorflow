@@ -171,8 +171,15 @@ Flagged in `ARCHITECTURE.md` as a hardening item.
   the tender form read wrong.)
 - Seed values: PMC, Civil-Works, Govt-Supply.
 - Fields: `name` (unique), `is_active` (boolean).
+- Deletable on the same terms as portals: only while no tender references the
+  department, since it forms part of that tender's record.
 
 **Employee sub-workflow — form fields:**
+0. **Tender Date** — the day the tender is logged *for*, which is not always the
+   day it is typed in. Defaults to today (IST) and can be set to any other day,
+   so a tender missed on Friday can still be logged against Friday. It is the
+   field the Date column, the date-range filter and the table's ordering all
+   use; `created_at` stays a pure audit timestamp.
 1. Client — picked by **contact name or company name**; two searchable fields,
    one value. Choosing in either fills the other.
 2. Tender Department (searchable select — admin-managed)

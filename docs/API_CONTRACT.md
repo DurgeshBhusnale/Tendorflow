@@ -516,12 +516,14 @@ Query params:
 | `start_date` | Inclusive lower bound, `YYYY-MM-DD`. |
 | `end_date` | Inclusive upper bound, `YYYY-MM-DD`. |
 
-**Date filtering is by IST calendar day.** Timestamps are stored in UTC, but
-both bounds are interpreted in Asia/Kolkata and both ends are inclusive, so a
-tender logged at 09:00 IST on the 1st falls inside `start_date=2026-09-01`.
-The filter and the default ordering both use `created_at` — *when the tender was
-logged* — not `updated_at`, so editing a row never moves it into a different
-date bucket or reshuffles the table.
+**Filtering and ordering are by `tender_date`**, the calendar day the tender is
+logged *for*, which is not necessarily the day someone typed it in. Both bounds
+are inclusive and are compared to that date directly, with no timezone
+conversion involved — `tender_date` is already a calendar day.
+
+Neither `created_at` nor `updated_at` affects the filter or the order, so
+editing a row never moves it into a different date bucket or reshuffles the
+table. Rows sharing a `tender_date` fall back to `created_at` descending.
 
 Each item:
 ```json
@@ -537,10 +539,16 @@ Each item:
   "status": "Partially Paid",
   "payment_mode": "Online",
   "created_by": { "id": "uuid", "full_name": "..." },
+  "tender_date": "2026-09-20",
   "created_at": "...",
   "updated_at": "..."
 }
 ```
+
+`tender_date` is a bare calendar day (`YYYY-MM-DD`), not a timestamp: it is the
+business date the tender belongs to. `created_at` remains the audit timestamp
+for when the row was entered, and is never client-settable (root `CLAUDE.md`
+invariant 2) — which is exactly why the business date is a separate field.
 
 (Note: `price`, `total_amount`, `paid_amount` and `remaining_amount` are returned as strings to preserve decimal precision across JSON — frontend parses to number for display.)
 
@@ -637,13 +645,19 @@ Values are summed from the stored generated columns, so they can't drift from th
   "price": "2500.00",
   "status": "Partially Paid",
   "paid_amount": "10000.00",
-  "payment_mode": "Online"
+  "payment_mode": "Online",
+  "tender_date": "2026-09-18"
 }
 ```
 
 `status` defaults to `Pending`, in which case `paid_amount` and `payment_mode`
 are both omitted. See *The payment model* above for which combinations are
 valid.
+
+`tender_date` is optional and **defaults to today's IST calendar day** — the IST
+day, not the UTC one, since the two differ between 00:00 and 05:30 IST. Send it
+to log a tender for another day; a past date is the common case, and no upper
+bound is enforced.
 
 `total_amount` and `remaining_amount` are **not accepted** in the request — both
 are computed by Postgres.
@@ -656,7 +670,7 @@ are computed by Postgres.
 
 ### `PATCH /api/tenders/:id`
 
-**Any signed-in user.** Accepts any subset of `client_id`, `tender_department_id`, `quantity`, `price`, `status`, `paid_amount`, `payment_mode`.
+**Any signed-in user.** Accepts any subset of `client_id`, `tender_department_id`, `quantity`, `price`, `status`, `paid_amount`, `payment_mode`, `tender_date`.
 
 Payment rules are re-checked against the row **as it will be after the merge**,
 not against the payload alone — so `{ "status": "Paid" }` on its own fails with
@@ -857,7 +871,7 @@ Metric definitions, so the dashboard and the module pages can't disagree:
 | `total_paid_tender_value` | Sum of the stored `total_amount` over tenders with `status = 'Paid'`. Same value as that endpoint's `total_paid_value`. **Null for employees.** |
 | `dsc_keys_in_office` | Count of DSC keys whose `key_status` is `Key Created` **or** `Key Returned` — the two states meaning the key is physically present. `Key Issued` is excluded, as is any legacy `Key Lost` row. |
 
-`recent_tenders` and `recent_clients` are the newest five by `created_at`, in the same shape and order as the first page of their list endpoints (they are produced by the same service functions). Both are shorter than five when fewer rows exist.
+`recent_tenders` and `recent_clients` are the newest five in the same shape and order as the first page of their list endpoints, because they are produced by the same service functions — so recent tenders follow `tender_date`, and recent clients `created_at`. Both are shorter than five when fewer rows exist.
 
 **Errors:** `401 UNAUTHENTICATED`.
 

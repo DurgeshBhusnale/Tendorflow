@@ -128,6 +128,11 @@ create table tenders (
   status               tender_status not null default 'Pending',
   -- Null for Pending tenders, and for rows paid before this column existed.
   payment_mode         payment_mode,
+  -- The calendar day the tender is logged *for*, which is not necessarily the
+  -- day it was entered. What the table, the date filter and the ordering use.
+  -- The default is the IST day: between 00:00 and 05:30 IST it differs from the
+  -- UTC one, and the business thinks in IST (PRD section 5).
+  tender_date          date not null default ((now() at time zone 'Asia/Kolkata')::date),
   created_by           uuid references users (id) on delete set null,
   created_at           timestamptz not null default now(),
   updated_at           timestamptz not null default now(),
@@ -145,6 +150,9 @@ create index idx_tenders_client_id on tenders (client_id);
 create index idx_tenders_status on tenders (status);
 create index idx_tenders_created_by on tenders (created_by);
 create index idx_tenders_created_at on tenders (created_at desc);
+-- Matches the list ordering exactly: business date first, entry time as the
+-- tiebreak among tenders logged for the same day.
+create index idx_tenders_tender_date on tenders (tender_date desc, created_at desc);
 
 -- =========================================================
 -- 1.7 DSC KEYS

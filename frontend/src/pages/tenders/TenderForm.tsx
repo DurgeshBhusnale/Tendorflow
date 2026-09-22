@@ -11,7 +11,7 @@ import { FieldError, Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { useCreateTender, useUpdateTender } from "@/hooks/useTenders";
 import { useTenderDepartments } from "@/hooks/useTenderDepartments";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, todayInIst } from "@/lib/format";
 import { ApiError } from "@/types/api";
 import { PAYMENT_MODES, TENDER_STATUSES, type Tender } from "@/types/tender";
 
@@ -21,6 +21,8 @@ const tenderSchema = z
   .object({
     client_id: z.string().uuid("Select a client"),
     tender_department_id: z.string().uuid("Select a tender department"),
+    // The day the tender is logged for (CH-22), which need not be today.
+    tender_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Select a date"),
     quantity: z.coerce.number().int("Whole numbers only").positive("Must be greater than 0"),
     price: z
       .string()
@@ -105,13 +107,15 @@ export function TenderForm({ tender, onSuccess, onCancel }: TenderFormProps) {
       ? {
           client_id: tender.client.id,
           tender_department_id: tender.tender_department.id,
+          tender_date: tender.tender_date,
           quantity: tender.quantity,
           price: tender.price,
           status: tender.status,
           paid_amount: tender.status === "Partially Paid" ? tender.paid_amount : "",
           payment_mode: tender.payment_mode ?? undefined,
         }
-      : { status: "Pending" },
+      : // Today in IST, matching the server's own default.
+        { status: "Pending", tender_date: todayInIst() },
   });
 
   const clientId = watch("client_id") ?? "";
@@ -135,6 +139,7 @@ export function TenderForm({ tender, onSuccess, onCancel }: TenderFormProps) {
     const payload = {
       client_id: values.client_id,
       tender_department_id: values.tender_department_id,
+      tender_date: values.tender_date,
       quantity: values.quantity,
       price: values.price,
       status: values.status,
@@ -158,6 +163,14 @@ export function TenderForm({ tender, onSuccess, onCancel }: TenderFormProps) {
   return (
     <form onSubmit={onSubmit} className="flex h-full flex-col">
       <DrawerBody>
+        {/* First field: a tender is logged *for* a day, which is not always
+            the day it is typed in (CH-22). Defaults to today. */}
+        <div className="space-y-1.5">
+          <Label htmlFor="tender_date">Tender Date</Label>
+          <Input id="tender_date" type="date" {...register("tender_date")} />
+          <FieldError>{errors.tender_date?.message}</FieldError>
+        </div>
+
         <ClientPicker
           idPrefix="tender"
           value={clientId}
