@@ -13,6 +13,7 @@ import ExpensesPage from "@/pages/expenses/ExpensesPage";
 import TendersPage from "@/pages/tenders/TendersPage";
 import DashboardPage from "@/pages/DashboardPage";
 import LoginPage from "@/pages/LoginPage";
+import NotFoundPage from "@/pages/NotFoundPage";
 
 export const router = createBrowserRouter([
   { path: "/", element: <LoginPage /> },
@@ -37,6 +38,9 @@ export const router = createBrowserRouter([
               { path: "/admin/tender-departments", element: <TenderDepartmentsPage /> },
             ],
           },
+          // Every unmatched path, now that the host serves index.html for
+          // all of them so reloads and pasted links work.
+          { path: "*", element: <NotFoundPage /> },
         ],
       },
     ],

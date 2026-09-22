@@ -122,6 +122,28 @@ saves is worth tens of milliseconds, not seconds; the region fix is what mattere
 
 Standard static Vite build. Vercel autodetects Vite. Set `VITE_API_BASE_URL` in Vercel env vars to the backend's deployed URL (e.g. `https://tender-app-backend.vercel.app`).
 
+**The SPA rewrite is not optional.** `frontend/vercel.json` carries:
+
+```json
+{ "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }] }
+```
+
+Without it the site works until someone reloads. Routing is client-side, so
+moving between pages never touches the server — but a reload, a pasted link
+or a bookmark makes the browser ask the host for `/tenders`, the static build
+has no file at that path, and Vercel answers with its own 404. Only `/`
+survives, because `index.html` genuinely lives there.
+
+The rewrite is checked *after* the filesystem, so `/assets/*` and the other
+real files are still served as themselves; only paths with no file behind
+them fall through to the app shell. React Router then matches the URL, and
+anything it cannot match renders `NotFoundPage` rather than the router's own
+default error screen.
+
+This bites every client-routed SPA on every static host. If the frontend ever
+moves off Vercel, the equivalent is `try_files $uri /index.html` on nginx, or
+a `_redirects` file containing `/*  /index.html  200` on Netlify.
+
 CORS: the FastAPI backend must allow the frontend origin. Configured via `CORS_ORIGINS` env var, comma-separated list of allowed origins. In production this is the frontend Vercel URL; in local dev it's `http://localhost:5173`.
 
 ---

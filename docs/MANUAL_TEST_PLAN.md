@@ -58,7 +58,11 @@ Do **not** delete test rows when you're done — they're inspected in Supabase a
 | TC-AUTH-P01 | Admin sign-in | Sign in as `ADMIN-1` | Lands on `/dashboard`. Sidebar shows **Workspace** *and* **Administration** groups (Users, Portals, Tender Departments). |
 | TC-AUTH-P02 | Employee sign-in | Sign in as `EMP-1` | Lands on `/dashboard`. Sidebar shows **Workspace only** — no Administration group. |
 | TC-AUTH-P03 | Password reveal on login | Click the eye icon in the password field | Password becomes readable; icon flips to eye-off; clicking again re-masks. |
-| TC-AUTH-P04 | Session survives reload | Sign in, navigate to `/tenders`, press F5 | Brief "Loading…", then `/tenders` renders with data. You are **not** bounced to the login page. |
+| TC-AUTH-P04 | Session survives reload | Sign in, navigate to `/tenders`, press F5 | Brief "Loading…", then `/tenders` renders with data. You are **not** bounced to the login page, and **not** shown a host 404 (`ARCHITECTURE.md` §2). |
+| TC-AUTH-P04b | Reload every page **on the deployed site** | Sign in, then visit and reload each of `/dashboard`, `/clients`, `/credentials`, `/tenders`, `/emd`, `/dsc`, `/expenses`, `/admin/users`, `/admin/portals`, `/admin/tender-departments` | Every one reloads into the app. A **404 from Vercel** on any of them means the SPA rewrite is missing from `frontend/vercel.json` — the failure this case exists to catch. |
+| TC-AUTH-P04c | Pasted deep link | Copy `/tenders` from one browser and paste it into a fresh tab where you are signed in | Opens the Tenders page directly. |
+| TC-AUTH-P04d | Deep link while signed out | Sign out, paste `/emd` into the address bar, then sign in | You land on **`/emd`**, not the dashboard — the destination survives the sign-in. |
+| TC-AUTH-P04e | Unknown path | Signed in, visit `/nonsense` | The app's own **Page not found** screen with a Back to dashboard button, inside the normal shell — not the router's raw error text and not a host 404. |
 | TC-AUTH-P05 | Silent token refresh | Set `JWT_ACCESS_TTL_MINUTES=1`, restart backend, sign in, wait ~90s, then click **Clients** | Page loads normally. Network tab shows a `401 TOKEN_EXPIRED`, then `POST /api/auth/refresh`, then the original request retried and succeeding. You are never sent back to login. |
 | TC-AUTH-P06 | Logout | Click Sign out | Back to `/`. `localStorage.refresh_token` is gone (DevTools → Application). |
 | TC-AUTH-P07 | Back button after logout | After P06, press browser Back | Redirected to `/`. No protected page flashes with real data. |

@@ -2,7 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff, Info, LogIn } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { z } from "zod";
 import { useAuth } from "@/auth/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const { isAuthenticated, login } = useAuth();
+  const location = useLocation();
   const [formError, setFormError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const {
@@ -30,7 +31,9 @@ export default function LoginPage() {
   } = useForm<LoginFormValues>({ resolver: zodResolver(loginSchema) });
 
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+    // Where ProtectedRoute bounced them from, when it was a real page.
+    const from = (location.state as { from?: string } | null)?.from;
+    return <Navigate to={from && from !== "/" ? from : "/dashboard"} replace />;
   }
 
   const onSubmit = handleSubmit(async (values) => {

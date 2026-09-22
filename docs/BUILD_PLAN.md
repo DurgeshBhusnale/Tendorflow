@@ -557,3 +557,34 @@ money over or collects it back is often not the client's standing contact, and
 overwriting the client record to capture that would corrupt the client's own
 details. The form prefills from the client and stays editable, so the common
 case costs nothing and the exception is expressible.
+
+---
+
+## Phase 13 — Reload Fix
+
+| Ref | Change | Where it is specified |
+|---|---|---|
+| CH-31 | SPA rewrite so deep links and reloads work, plus a real 404 page and a sign-in that returns you to where you were headed | `ARCHITECTURE.md` §2 |
+
+No migration and no API change: this is entirely a hosting and routing fix.
+
+### What was actually broken
+
+Routing is client-side, so moving around the app never asks the server for
+anything. A reload does. The static build has no file at `/tenders`, so Vercel
+answered with its own 404 — for every page except `/`, which is the one path
+where `index.html` really exists. It looked like a session or auth problem and
+was neither.
+
+`frontend/vercel.json` now rewrites every unmatched path to `/index.html`. The
+filesystem is still checked first, so real assets keep serving as themselves.
+
+### The two things that fix uncovered
+
+- **No catch-all route.** Once the host serves the shell for any path, a
+  mistyped URL reaches React Router, which had nothing to match and fell back to
+  its own unstyled error screen. `NotFoundPage` now covers `*`.
+- **A deep link lost its destination.** `ProtectedRoute` redirected to `/` with
+  no record of where the user was going, so signing in always landed on the
+  dashboard. It now passes the path through and `LoginPage` honours it — which
+  only starts mattering once reloads and pasted links work at all.
