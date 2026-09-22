@@ -14,8 +14,8 @@ const STATUS_TONES: Record<ExpenseStatus, PillTone> = {
 // Same treatment as the tenders table (CH-23): what is still owed reads from
 // across the row, not from one pill.
 const STATUS_ROW_SHADES: Record<ExpenseStatus, string> = {
-  Pending: "bg-red-50/70 hover:bg-red-50",
-  Paid: "bg-emerald-50/70 hover:bg-emerald-50",
+  Pending: "bg-red-100/70 hover:bg-red-100",
+  Paid: "bg-emerald-100/70 hover:bg-emerald-100",
 };
 
 interface ExpensesTableProps {

@@ -17,9 +17,9 @@ const STATUS_TONES: Record<TenderStatus, PillTone> = {
 // owed is what this table gets scanned for. The hover tint is restated so the
 // shade doesn't disappear under the cursor.
 const STATUS_ROW_SHADES: Record<TenderStatus, string> = {
-  Pending: "bg-red-50/70 hover:bg-red-50",
-  "Partially Paid": "bg-blue-50/70 hover:bg-blue-50",
-  Paid: "bg-emerald-50/70 hover:bg-emerald-50",
+  Pending: "bg-red-100/70 hover:bg-red-100",
+  "Partially Paid": "bg-blue-100/70 hover:bg-blue-100",
+  Paid: "bg-emerald-100/70 hover:bg-emerald-100",
 };
 
 interface TendersTableProps {
