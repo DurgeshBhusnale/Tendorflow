@@ -166,7 +166,7 @@ All cases run as `ADMIN-1` unless stated.
 | TC-CLI-N10 | Non-existent id | `GET /api/clients/00000000-0000-0000-0000-000000000000` | `404 NOT_FOUND`. |
 | TC-CLI-N11 | Malformed id | `GET /api/clients/not-a-uuid` | `422 VALIDATION_ERROR` — not a 500. |
 | TC-CLI-N12 | Bad pagination params | `?page=0`, then `?page_size=101`, then `?page_size=0` | All `422`. Max page size is 100 (`PRD.md` §5). |
-| TC-CLI-N13 | Cancel the delete confirm | Click Delete, then Cancel in the browser dialog | Row remains. No request fires. |
+| TC-CLI-N13 | Cancel the delete confirm | Click Delete, then Cancel in the confirmation dialog | Row remains. No request fires. |
 | TC-CLI-N14 | Audit fields can't be spoofed | Swagger `POST /api/clients` with `"created_by": "<another user id>"` and `"created_at": "2020-01-01T00:00:00Z"` in the body | Both ignored. Response shows **you** as creator and now as the timestamp (root `CLAUDE.md` invariant 2). |
 | TC-CLI-N15 | Email case collision | Create `rohan@mehta.com`, then try `ROHAN@MEHTA.COM` | **⚠ Known gap:** the uniqueness check is an exact match, so the second is likely **accepted**. Two clients with the same email in different case is almost certainly wrong — log it. |
 | TC-CLI-N16 | Whitespace-only phone | Enter 7 spaces in Contact Number | Rejected: "Enter a 10-digit Indian mobile number starting with 6, 7, 8 or 9." (This closes the old known gap.) |
@@ -438,7 +438,23 @@ it must now name the editor, not the original author.
 | ID | Case | Steps | Expected |
 |---|---|---|---|
 | TC-XC-P01 | Timezone rendering | Create a record when UTC is between 18:30 and 00:00 (already the next day in IST) | The Date column shows the **IST** date, one day ahead of UTC (`PRD.md` §5). |
-| TC-XC-P01b | Date filter agrees with the Date column | In that same window, filter `/tenders` to today's **IST** date | The tender you just logged is included. If it falls out, the filter is comparing UTC days (`API_CONTRACT.md` §7). |
+| TC-XC-P01b | Date filter agrees with the Date column | In that same window, filter `/tenders` to today's **IST** date | The tender you just logged is included. Its Tender Date defaulted to the **IST** day, so a UTC default would show up here as an off-by-one (`API_CONTRACT.md` §7). |
+
+### 9.5 Confirmation dialogs — `XC-CD`
+
+Every destructive action confirms in an in-app modal (`DESIGN_SYSTEM.md` §3).
+Run these on one delete, then spot-check the rest: clients, credentials,
+tenders, DSC keys, users, portals and tender departments.
+
+| ID | Case | Steps | Expected |
+|---|---|---|---|
+| TC-XC-CD01 | No browser dialogs anywhere | Trigger every delete in the app | Each one opens a styled in-app modal — square corners, app typeface, centred over a dim scrim. **Never** the browser's own grey confirm box, and never an `alert()` for an error. |
+| TC-XC-CD02 | Cancel does nothing | Open a delete dialog, click Cancel | Closes, row untouched, no request in the network tab. |
+| TC-XC-CD03 | Escape and scrim dismiss | Reopen, press Escape. Reopen, click the dim area outside | Both close it harmlessly. |
+| TC-XC-CD04 | Enter doesn't delete | Open a delete dialog and immediately press Enter | **Nothing is deleted** — focus sits on Cancel, so Enter cancels. |
+| TC-XC-CD05 | Errors show inside the dialog | Delete a portal that has credentials (TC-MSTR-N06) | The dialog stays open with the server's message in a red block inside it. No browser alert, and the page behind is unchanged. |
+| TC-XC-CD06 | The dialog says what is lost | Read each delete dialog | It names the record and its consequences — a client says its credentials, tenders and keys go too; a user says their attribution is stripped and points at Deactivate. |
+| TC-XC-CD07 | Background is locked | With a dialog open, try to scroll the page behind it | It doesn't scroll. |
 
 ### 9.3 Searchable dropdowns — `XC-DD`
 

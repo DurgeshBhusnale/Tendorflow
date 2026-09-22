@@ -7,12 +7,12 @@ import { SearchInput } from "@/components/shared/SearchInput";
 import { Button } from "@/components/ui/button";
 import { Combobox } from "@/components/ui/combobox";
 import { useClients } from "@/hooks/useClients";
+import { useConfirm } from "@/hooks/useConfirm";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useDeleteDscKey, useDscKeys } from "@/hooks/useDsc";
 import { DscForm } from "@/pages/dsc/DscForm";
 import { DscHistoryPanel } from "@/pages/dsc/DscHistoryPanel";
 import { DscTable } from "@/pages/dsc/DscTable";
-import { ApiError } from "@/types/api";
 import { DSC_KEY_STATUSES, type DscKey, type DscKeyStatus } from "@/types/dsc";
 
 const PAGE_SIZE = 25;
@@ -42,6 +42,7 @@ export default function DscPage() {
     search: debouncedClientSearch || undefined,
   });
   const deleteDscKey = useDeleteDscKey();
+  const confirm = useConfirm();
 
   const totalCount = data?.total_count ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
@@ -51,13 +52,14 @@ export default function DscPage() {
     setPage(1);
   }
 
-  async function handleDelete(dscKey: DscKey) {
-    if (!window.confirm(`Delete the DSC key entry for ${dscKey.client.company_name}?`)) return;
-    try {
-      await deleteDscKey.mutateAsync(dscKey.id);
-    } catch (err) {
-      window.alert(err instanceof ApiError ? err.message : "Could not delete this key.");
-    }
+  function handleDelete(dscKey: DscKey) {
+    confirm({
+      title: "Delete this DSC key?",
+      description: `The key entry for ${dscKey.client.company_name} and its full issuance history will be removed permanently.`,
+      confirmLabel: "Delete Key",
+      tone: "destructive",
+      onConfirm: () => deleteDscKey.mutateAsync(dscKey.id),
+    });
   }
 
   const addButton = (

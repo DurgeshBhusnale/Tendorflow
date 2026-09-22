@@ -172,6 +172,38 @@ Grouped capture (the DSC issued-to block) sits in a bordered `bg-muted` panel
 with an `.eyebrow` heading, so it reads as one unit rather than two loose
 fields.
 
+### Confirmation Dialogs (`components/shared/ConfirmDialog.tsx`)
+
+Anything destructive confirms in an in-app modal. **`window.confirm` and
+`window.alert` are not used anywhere** — they render as unstyled browser chrome,
+sit outside the design language entirely, and look like a security prompt rather
+than part of the product.
+
+One `<ConfirmProvider>` is mounted in `App.tsx`; pages open the dialog through
+`useConfirm()` and never render one themselves:
+
+```tsx
+const confirm = useConfirm();
+confirm({
+  title: "Delete this tender?",
+  description: "…what exactly is lost…",
+  confirmLabel: "Delete Tender",
+  tone: "destructive",
+  onConfirm: () => deleteTender.mutateAsync(tender.id),
+});
+```
+
+- Centred over a `bg-ink/30` scrim, `max-w-md`, standard `.surface` chrome: 1px
+  border, 0px radius, header block over a bordered action bar.
+- **Cancel takes focus**, so Enter on a freshly opened dialog never deletes
+  anything. Escape and a scrim click both dismiss.
+- The action button is `variant="destructive"` for `tone: "destructive"`.
+- `onConfirm` owns the request. The dialog stays open while it is pending and
+  renders a failure **inline** in the same red block the forms use, so an error
+  never needs a second dialog and no call site needs its own try/catch.
+- The title asks the question; the description says what is lost. Deleting a
+  user says the attribution goes with it and points at Deactivate instead.
+
 ### Sign-in Page (`pages/LoginPage.tsx`)
 
 Split screen. **Left:** the editorial panel on `.login-backdrop` — the brand artwork at

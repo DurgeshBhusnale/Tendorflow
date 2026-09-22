@@ -7,6 +7,7 @@ import { SearchInput } from "@/components/shared/SearchInput";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { useClients } from "@/hooks/useClients";
+import { useConfirm } from "@/hooks/useConfirm";
 import { useCredentials, useDeleteCredential } from "@/hooks/useCredentials";
 import { usePortals } from "@/hooks/usePortals";
 import { CredentialForm } from "@/pages/credentials/CredentialForm";
@@ -34,6 +35,7 @@ export default function CredentialsPage() {
   const { data: clientsPage } = useClients({ page: 1, page_size: 100 });
   const { data: portals } = usePortals();
   const deleteCredential = useDeleteCredential();
+  const confirm = useConfirm();
 
   const totalCount = data?.total_count ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
@@ -45,15 +47,14 @@ export default function CredentialsPage() {
     };
   }
 
-  async function handleDelete(credential: Credential) {
-    if (
-      !window.confirm(
-        `Delete the ${credential.portal.name} credential for ${credential.client.company_name}?`,
-      )
-    ) {
-      return;
-    }
-    await deleteCredential.mutateAsync(credential.id);
+  function handleDelete(credential: Credential) {
+    confirm({
+      title: "Delete this credential?",
+      description: `The ${credential.portal.name} login for ${credential.client.company_name} will be removed permanently.`,
+      confirmLabel: "Delete Credential",
+      tone: "destructive",
+      onConfirm: () => deleteCredential.mutateAsync(credential.id),
+    });
   }
 
   const addButton = (

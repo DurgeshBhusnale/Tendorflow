@@ -11,13 +11,13 @@ import { Combobox } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useClients } from "@/hooks/useClients";
+import { useConfirm } from "@/hooks/useConfirm";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useDeleteTender, useTenderSummary, useTenders } from "@/hooks/useTenders";
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { TenderForm } from "@/pages/tenders/TenderForm";
 import { TendersTable } from "@/pages/tenders/TendersTable";
-import { ApiError } from "@/types/api";
 import type { Tender, TenderStatus } from "@/types/tender";
 
 const PAGE_SIZE = 25;
@@ -57,6 +57,7 @@ export default function TendersPage() {
     search: debouncedClientSearch || undefined,
   });
   const deleteTender = useDeleteTender();
+  const confirm = useConfirm();
 
   const totalCount = data?.total_count ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
@@ -77,13 +78,14 @@ export default function TendersPage() {
     });
   }
 
-  async function handleDelete(tender: Tender) {
-    if (!window.confirm(`Delete this ${tender.tender_department.name} tender?`)) return;
-    try {
-      await deleteTender.mutateAsync(tender.id);
-    } catch (err) {
-      window.alert(err instanceof ApiError ? err.message : "Could not delete this tender.");
-    }
+  function handleDelete(tender: Tender) {
+    confirm({
+      title: "Delete this tender?",
+      description: `The ${tender.tender_department.name} tender for ${tender.client.company_name} (${formatCurrency(tender.total_amount)}) will be removed permanently, along with its payment record.`,
+      confirmLabel: "Delete Tender",
+      tone: "destructive",
+      onConfirm: () => deleteTender.mutateAsync(tender.id),
+    });
   }
 
   const addButton = (

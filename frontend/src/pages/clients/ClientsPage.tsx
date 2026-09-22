@@ -7,6 +7,7 @@ import { Pagination } from "@/components/shared/Pagination";
 import { SearchInput } from "@/components/shared/SearchInput";
 import { Button } from "@/components/ui/button";
 import { useClients, useDeleteClient } from "@/hooks/useClients";
+import { useConfirm } from "@/hooks/useConfirm";
 import { ClientForm } from "@/pages/clients/ClientForm";
 import { ClientsTable } from "@/pages/clients/ClientsTable";
 import type { Client } from "@/types/client";
@@ -26,6 +27,7 @@ export default function ClientsPage() {
     search: search || undefined,
   });
   const deleteClient = useDeleteClient();
+  const confirm = useConfirm();
 
   const totalCount = data?.total_count ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
@@ -35,11 +37,15 @@ export default function ClientsPage() {
     setPage(1);
   }
 
-  async function handleDelete(client: Client) {
-    if (!window.confirm(`Delete ${client.company_name}? This also removes their records.`)) {
-      return;
-    }
-    await deleteClient.mutateAsync(client.id);
+  function handleDelete(client: Client) {
+    confirm({
+      title: `Delete ${client.company_name}?`,
+      description:
+        "Their credentials, tenders and DSC keys are deleted with them. This cannot be undone.",
+      confirmLabel: "Delete Client",
+      tone: "destructive",
+      onConfirm: () => deleteClient.mutateAsync(client.id),
+    });
   }
 
   const addButton = (
