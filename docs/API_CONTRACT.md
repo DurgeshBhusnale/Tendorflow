@@ -67,8 +67,8 @@ Two roles, and — since every module became open-edit — no ownership axis:
 |---|---|
 | Read anything | Any signed-in user |
 | Create anything | Any signed-in user |
-| Update a client / credential / tender / DSC key | **Any signed-in user** |
-| Delete a client / credential / tender / DSC key | **Admin only** |
+| Update a client / credential / tender / DSC key / EMD | **Any signed-in user** |
+| Delete a client / credential / tender / DSC key / EMD | **Admin only** |
 | Master lists (portals, tender departments), user management, tender summary | Admin only |
 | **Expenses — every operation, reads included** | **Admin only** |
 
@@ -1058,3 +1058,117 @@ Accepts any subset of `amount`, `details`, `status`, `expense_date`. On success
 
 Nothing references an expense, so the delete cascades to nothing and is refused
 by nothing.
+
+---
+
+## 12. EMD (Earnest Money Deposits)
+
+Money taken from a client so a tender portal's deposit can be paid online. The
+business holds it until it goes back, so `status` is either `With Us` or
+`Returned`.
+
+**Open to any signed-in user** for reads and writes, like tenders — whoever
+takes or returns a deposit records it. Only deletion is admin-gated. The summary
+is *not* admin-only, unlike the tender summary: these are client funds held, not
+the business's revenue.
+
+### `GET /api/emds`
+
+Query params: `page`, `page_size`, `client_id`, `status` (`With Us` | `Returned`),
+`search` (matches the client's contact person, their company, or the deposit's
+own contact number), `start_date`, `end_date`.
+
+Filtering and ordering use `emd_date` — the day the deposit was taken — with
+both bounds inclusive and `created_at` breaking ties within a day.
+
+Each item:
+```json
+{
+  "id": "uuid",
+  "client": { "id": "uuid", "contact_person_name": "Rohan Mehta", "company_name": "Mehta Constructions" },
+  "contact_number": "9876543210",
+  "amount": "5000.00",
+  "status": "With Us",
+  "emd_date": "2026-09-22",
+  "created_by": { "id": "uuid", "full_name": "Asha Patil" },
+  "created_at": "...",
+  "updated_at": "..."
+}
+```
+
+`contact_number` belongs to the deposit, not the client: whoever handed the
+money over is often not the client's standing contact, so the two can differ.
+It follows the same Indian-mobile rule as every other phone field (§3) and is
+stored as bare ten digits.
+
+---
+
+### `GET /api/emds/summary`
+
+Accepts the same filters as the list and describes exactly those rows.
+
+**Success 200:**
+```json
+{
+  "success": true,
+  "data": {
+    "total_with_us": "12500.00",
+    "total_returned": "4000.00",
+    "with_us_count": 3,
+    "returned_count": 1
+  }
+}
+```
+
+`total_with_us` is what the business is holding and still owes back.
+
+---
+
+### `POST /api/emds`
+
+**Request:**
+```json
+{
+  "client_id": "uuid",
+  "contact_number": "9876543210",
+  "amount": "5000.00",
+  "status": "With Us",
+  "emd_date": "2026-09-22"
+}
+```
+
+`status` defaults to `With Us` — a deposit is logged because it is being held.
+`emd_date` defaults to today's IST calendar day.
+
+**Success 201:** the created deposit.
+**Errors:** `404 CLIENT_NOT_FOUND`, `422 VALIDATION_ERROR` (amount below zero, a
+number that is not an Indian mobile, or a status outside the two).
+
+---
+
+### `GET /api/emds/:id`
+
+**Success 200:** single deposit. **Errors:** `404 NOT_FOUND`.
+
+---
+
+### `PATCH /api/emds/:id`
+
+**Any signed-in user.** Any subset of `client_id`, `contact_number`, `amount`,
+`status`, `emd_date` — marking one returned is `{ "status": "Returned" }`. On
+success `created_by` becomes the acting user and `updated_at` moves to now.
+
+**Success 200:** updated deposit.
+**Errors:** `404 NOT_FOUND`, `404 CLIENT_NOT_FOUND`, `422 VALIDATION_ERROR`.
+
+---
+
+### `DELETE /api/emds/:id`
+
+**Admin only.**
+
+**Success 200:** `{ "success": true, "data": { "id": "uuid", "deleted": true } }`
+**Errors:** `403 FORBIDDEN`, `404 NOT_FOUND`.
+
+Deleting a client also removes their deposits — `emds.client_id` is
+`ON DELETE CASCADE`.

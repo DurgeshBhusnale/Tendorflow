@@ -468,6 +468,8 @@ behaves the old way, that is the bug.
 | Manage portals / tender departments (including deleting an unused one) | ✅ | 🚫 `403` | 🚫 `403` |
 | Onboard, **edit** or delete users | ✅ | 🚫 `403` | 🚫 `403` |
 | Open `/expenses`, or call any `/api/expenses` route | ✅ | 🚫 `403` | 🚫 `403` |
+| View and log EMDs | ✅ | ✅ | ✅ (open edit) |
+| Delete an EMD | ✅ | 🚫 `403` | 🚫 `403` |
 
 After each successful cross-account edit, check the **Added/Updated By** column:
 it must now name the editor, not the original author.
@@ -624,3 +626,49 @@ Run the positive cases as `ADMIN-1`.
 | TC-EXP-N11 | Unknown status via API | `POST /api/expenses` with `"status":"Partially Paid"` | `422 VALIDATION_ERROR` — the enum is `Paid` / `Pending` only. |
 | TC-EXP-N12 | Audit fields can't be spoofed | `POST` with `"created_by"` and `"created_at"` in the body | Both ignored; the response names **you** and now (root `CLAUDE.md` invariant 2). |
 | TC-EXP-N13 | Unknown id | `PATCH`/`DELETE` a random uuid | `404 NOT_FOUND`. |
+
+---
+
+## 13. EMD — `EMD`
+
+Deposits held for a client (`PRD.md` §4.8). Open to everyone, like tenders;
+only deletion is admin-only. Run the positives as `EMP-1` unless stated — that
+is the point of the module being open.
+
+### Positive
+
+| ID | Case | Steps | Expected |
+|---|---|---|---|
+| TC-EMD-P01 | The tab is there for everyone | Sign in as `EMP-1` | **EMD** appears in the sidebar's Workspace group, under Tenders. |
+| TC-EMD-P02 | Log a deposit | **Log EMD** → pick a client, amount `5000`, leave status as **With Us** → save | Row appears: today's date, the client's name and company, ₹5,000, a blue **With Us** pill, your name under Added/Updated By. |
+| TC-EMD-P03 | The number prefills | Open the drawer and pick a client | **Contact Number** fills with that client's saved number as soon as you choose them. Pick a different client: it updates. |
+| TC-EMD-P04 | The number is still editable | After P03, type a different number over it and save | The row shows **your** number, and the client record is unchanged — check `/clients` (`PRD.md` §4.8). |
+| TC-EMD-P05 | Either name finds the client | Type a contact person in Client Name, then repeat using Company Name | Both work and each fills the other, as on the tender form. |
+| TC-EMD-P06 | Date defaults to today | Open the drawer | **Date** is pre-filled with today (IST). |
+| TC-EMD-P07 | Backdate | Log one dated a week ago | The row's Date shows that day, and it sorts below today's. |
+| TC-EMD-P08 | Return a deposit | Edit a **With Us** row, set status **Returned**, save | Pill turns green, the row shading goes blue → green, and the KPI cards move without a reload. |
+| TC-EMD-P09 | KPI strip | With a mix of both statuses, read the cards | **Total With Us** and **Total Returned**. Check With Us by hand — it is the money you are holding. |
+| TC-EMD-P10 | Strip follows the filter | Set the status filter to **Returned** | Only returned rows; the With Us card disappears and the totals describe the filtered set. |
+| TC-EMD-P11 | Client filter | Pick a client in the dropdown | Only their deposits; the cards total only that client's money. |
+| TC-EMD-P12 | Search | Search a company name, then a contact person, then a deposit's phone number | All three match (`API_CONTRACT.md` §12). |
+| TC-EMD-P13 | Date range | Set From/To to today, then To = yesterday | Today's deposits, then none. Both ends inclusive. |
+| TC-EMD-P14 | An employee edits another's row | As `EMP-2`, edit a deposit `EMP-1` logged | Allowed. **Added/Updated By** becomes `EMP-2`. |
+| TC-EMD-P15 | Admin deletes | As `ADMIN-1`, delete a deposit and confirm | The dialog names the amount and the company. Row gone, cards drop. |
+| TC-EMD-P16 | Mobile | Narrow to 390px | Cards headed by the client's name, actions opposite, nothing scrolling sideways. |
+
+### Negative
+
+| ID | Case | Steps | Expected |
+|---|---|---|---|
+| TC-EMD-N01 | No client selected | Submit with both client fields empty | "Select a client". No request fires. |
+| TC-EMD-N02 | Landline as the contact | `2212345678` | Rejected — Indian mobiles start 6-9, same rule as everywhere else. |
+| TC-EMD-N03 | Blank contact number | Clear the number and save | "Required". |
+| TC-EMD-N04 | Phone normalization | Save with `+91 98765-43210` | Accepted and stored as **9876543210**. |
+| TC-EMD-N05 | Negative amount | `-100` | Rejected before submit; `422` via Swagger. |
+| TC-EMD-N06 | Too many decimals | `100.999` | "At most 2 decimal places". |
+| TC-EMD-N07 | Employee deletes | As `EMP-1`, look at any row, then try `DELETE /api/emds/{id}` via Swagger | No Delete button in the UI; `403 FORBIDDEN` from the API. |
+| TC-EMD-N08 | Unauthenticated | `GET /api/emds` with no token | `401 UNAUTHENTICATED`. |
+| TC-EMD-N09 | Unknown client | `POST /api/emds` with a random `client_id` | `404 CLIENT_NOT_FOUND`. |
+| TC-EMD-N10 | Unknown status | `POST` with `"status":"Refunded"` | `422 VALIDATION_ERROR` — the enum is `With Us` / `Returned` exactly. |
+| TC-EMD-N11 | Deleted client's deposits | Delete a client who has EMDs | Their deposits disappear too, and the KPI cards drop. No orphan row with a blank client. |
+| TC-EMD-N12 | Audit fields can't be spoofed | `POST` with `created_by` / `created_at` in the body | Both ignored (root `CLAUDE.md` invariant 2). |

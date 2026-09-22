@@ -529,3 +529,31 @@ dashboard's Total Paid Value, permanently and retroactively. Archiving was
 offered as the alternative that keeps the revenue history intact; hard delete
 was chosen deliberately, because the intent is to remove the data rather than
 hide it. The confirmation dialog states this before anything is deleted.
+
+---
+
+## Phase 12 — EMD
+
+| Ref | Change | Where it is specified |
+|---|---|---|
+| CH-30 | EMD module: deposits held for a client, either With Us or Returned | `API_CONTRACT.md` §12, `PRD.md` §4.8 |
+
+### Migration
+
+| Revision | Does |
+|---|---|
+| `f2a6c9d4e853` | Creates the `emd_status` enum and the `emds` table, with its indexes, `updated_at` trigger and RLS-enable. |
+
+### Two decisions worth recording
+
+**Open to everyone, not admin-only.** Expenses (CH-27) went admin-only because
+what the business spends is as sensitive as what it earns. EMDs are the
+opposite case: the money belongs to the client, and the people who need to know
+whether a deposit is still held are the same people who take and return them.
+So this follows the tenders rule — open edit, admin-only delete.
+
+**`contact_number` lives on the deposit, not on the client.** Whoever hands the
+money over or collects it back is often not the client's standing contact, and
+overwriting the client record to capture that would corrupt the client's own
+details. The form prefills from the client and stays editable, so the common
+case costs nothing and the exception is expressible.

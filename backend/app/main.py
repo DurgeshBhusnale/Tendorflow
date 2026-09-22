@@ -16,6 +16,7 @@ from app.routers import (
     credentials,
     dashboard,
     dsc,
+    emds,
     expenses,
     health,
     portals,
@@ -52,6 +53,7 @@ def create_app() -> FastAPI:
     app.include_router(credentials.router)
     app.include_router(tenders.router)
     app.include_router(expenses.router)
+    app.include_router(emds.router)
     app.include_router(dsc.router)
     app.include_router(dashboard.router)
 

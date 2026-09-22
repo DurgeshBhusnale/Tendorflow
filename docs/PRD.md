@@ -19,7 +19,7 @@ Nothing about this app is public. There is no landing page, no self-signup, no S
 | Persona | Description | Primary goals |
 |---|---|---|
 | **Admin** | Business owner / senior staff. | Manage master dropdown lists (Portals, Tender Departments). Onboard, deactivate and delete user accounts. Delete records. See revenue and receivables totals. Log and review business expenses. |
-| **Employee** | Operational staff. | Onboard clients. Save portal credentials for each client. Log tender transactions and payment status. Log and locate DSC keys. |
+| **Employee** | Operational staff. | Onboard clients. Save portal credentials for each client. Log tender transactions and payment status. Log and locate DSC keys. Log EMDs taken from clients and mark them returned. |
 
 Both personas share full read access across every data module — this is a shared internal tool, not a per-user segregated system. Write access differs: Employees can create records and edit/delete records they created; Admins can edit/delete anything.
 
@@ -379,3 +379,43 @@ was typed in — the same separation as a tender's date, and for the same reason
   (All / Pending / Paid), and a **From / To date range** whose ends are both
   inclusive.
 - "+ Log Expense" opens a drawer with the four fields above.
+
+---
+
+### 4.8 Module 6 — EMD (`/emd`)
+
+**Purpose:** track earnest money deposits — money taken from a client so the
+deposit a tender portal demands can be paid online at submission. The business
+holds that money until it goes back, so every row answers one question: is this
+still with us?
+
+**Open to everyone**, like tenders and unlike expenses. Whoever takes a deposit
+or hands it back is the person who should record it, and the totals are client
+money rather than the business's own revenue. Deletion stays admin-only (§3.3).
+
+**Fields:**
+| Field | Type | Rules |
+|---|---|---|
+| `client_id` | uuid FK | required; picked by contact name **or** company name, as on the tender form |
+| `contact_number` | text | required, Indian mobile, stored as ten digits |
+| `amount` | decimal | required, ≥ 0, 2 decimal places, `numeric(12,2)` |
+| `status` | enum | `With Us` (default) or `Returned` |
+| `emd_date` | date | required, defaults to today (IST); backdating is expected |
+
+**Why the contact number is stored per deposit** rather than read from the
+client: the person handing the money over or collecting it back is often not
+the client's standing contact. The form fills in the client's saved number when
+one is picked and leaves it editable, so the common case is one click and the
+exception is still possible.
+
+**UI:**
+- KPI strip: **Total With Us** and **Total Returned**. The first is the figure
+  the page exists for — how much client money is being held right now.
+- Table columns: Date, Client Name, Company Name, Contact Number, Amount,
+  Status (coloured pill), Added/Updated By, actions.
+- Row shading: blue for `With Us`, green for `Returned`. Held money is blue
+  rather than red — it is an open obligation, not a problem.
+- Filters: search across client, company and number; a client dropdown; a
+  status segmented control (All / With Us / Returned); and a **From / To date
+  range**, both ends inclusive.
+- "+ Log EMD" opens a drawer with the five fields above.

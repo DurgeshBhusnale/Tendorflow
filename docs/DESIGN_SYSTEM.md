@@ -135,6 +135,9 @@ Two optional props cover the cases a column config cannot express:
   - A DSC key that is out of the office is tinted `bg-red-50/70` across its
     full width, because that is the one thing worth spotting from across the
     room.
+  - EMD rows are blue while the deposit is `With Us` and green once
+    `Returned`. Held money is deliberately not red: it is an open
+    obligation, not a problem.
   - Expense rows are tinted the same way, with two states rather than three:
     `bg-red-100/70` Pending, `bg-emerald-100/70` Paid.
   - Every tender row is tinted by payment state — `bg-red-100/70` Pending,
