@@ -453,6 +453,7 @@ behaves the old way, that is the bug.
 | See `total_paid_tender_value` on the dashboard | ✅ | 🚫 `null` | 🚫 `null` |
 | Manage portals / tender departments (including deleting an unused one) | ✅ | 🚫 `403` | 🚫 `403` |
 | Onboard, **edit** or delete users | ✅ | 🚫 `403` | 🚫 `403` |
+| Open `/expenses`, or call any `/api/expenses` route | ✅ | 🚫 `403` | 🚫 `403` |
 
 After each successful cross-account edit, check the **Added/Updated By** column:
 it must now name the editor, not the original author.
@@ -561,3 +562,51 @@ Evidence:    screenshot, Network tab request + response
 ```
 
 Severity guide for this app: anything that lets one employee modify another's records, exposes a password without auth, or lets `total_amount` be set by the client is **High** regardless of how hard it is to trigger.
+
+---
+
+## 12. Expenses — `EXP`
+
+Admin-only in full (`PRD.md` §4.7). Unlike every other module this includes
+reading, so the first two negative cases matter more than usual: an employee
+must not reach the page *or* the API.
+
+Run the positive cases as `ADMIN-1`.
+
+### Positive
+
+| ID | Case | Steps | Expected |
+|---|---|---|---|
+| TC-EXP-P01 | The tab exists for admins | Sign in as `ADMIN-1` | **Expenses** appears in the sidebar's Administration group. |
+| TC-EXP-P02 | Log an expense | **Log Expense** → amount `2500`, details "Diesel for the office generator", status Pending → save | Row appears with Date = today (IST), ₹2,500, a **Pending** pill, and your name under Added/Updated By. |
+| TC-EXP-P03 | Date defaults to today | Open the drawer | **Date** is pre-filled with today's date and is the first field. |
+| TC-EXP-P04 | Backdate an expense | Log one with Date set to 10 days ago | The row's Date shows that day, not today. |
+| TC-EXP-P05 | Long details are kept whole | Paste ~2,000 characters into Details and save | Accepted in full — there is no length limit (`API_CONTRACT.md` §11). Reopen the row and confirm nothing was truncated. |
+| TC-EXP-P06 | KPI strip | With a mix of Paid and Pending rows, read the three cards | **Total Expenses**, **Paid Amount**, **Pending Amount**. Paid + Pending equals Total — check it by hand. |
+| TC-EXP-P07 | Strip follows the filter | Set the status filter to **Paid** | Only paid rows listed; the Pending card disappears and Total describes just the filtered rows. |
+| TC-EXP-P08 | Date range filter | Set From/To to today, then To = yesterday | Today's expenses, then none. Both ends are inclusive. |
+| TC-EXP-P09 | Filter drives the strip too | With a date range applied, compare the cards against the visible rows | They agree. |
+| TC-EXP-P10 | Search the details | Search a word from one expense's note | Only matching rows; the pager count reflects matches. |
+| TC-EXP-P11 | Mark one paid | Edit a Pending expense, set status **Paid**, save | Pill turns green, the row shading flips red → green, and the Paid/Pending cards move without a reload. |
+| TC-EXP-P12 | Row shading | Look at a table holding both statuses | Pending rows tinted red, Paid tinted green, full width. Hovering keeps the tint. |
+| TC-EXP-P13 | Delete | Delete an expense and confirm | Confirmation dialog names the amount and the details. Row disappears and the cards drop accordingly. |
+| TC-EXP-P14 | Clear filters | Set several filters, click **Clear filters** | Everything resets to page 1. |
+| TC-EXP-P15 | Mobile | Narrow to 390px | Each row becomes a card headed by the details text, with the actions opposite. Nothing scrolls horizontally. |
+
+### Negative
+
+| ID | Case | Steps | Expected |
+|---|---|---|---|
+| TC-EXP-N01 | Employee cannot see the tab | Sign in as `EMP-1` | **No** Expenses entry in the sidebar — the whole Administration group is absent. |
+| TC-EXP-N02 | Employee cannot reach the route | As `EMP-1`, type `/expenses` in the address bar | Redirected to `/dashboard`. No flash of the table or the figures. |
+| TC-EXP-N03 | Employee cannot read the API | Swagger with `EMP-1`'s token → `GET /api/expenses`, then `GET /api/expenses/summary` | `403 FORBIDDEN` on **both**. This is the case the module exists to protect — hiding the tab alone would not be enough (`PRD.md` §4.7). |
+| TC-EXP-N04 | Employee cannot write | As `EMP-1`, `POST /api/expenses` | `403 FORBIDDEN`. |
+| TC-EXP-N05 | Unauthenticated | `GET /api/expenses` with no token | `401 UNAUTHENTICATED`. |
+| TC-EXP-N06 | Empty details | Submit with Details blank | "Required". No request fires. |
+| TC-EXP-N07 | Whitespace-only details | Enter only spaces | Rejected — a note of nothing is not a record of anything. |
+| TC-EXP-N08 | Negative amount | `-100` | Rejected before submit; `422` via Swagger. |
+| TC-EXP-N09 | Too many decimals | `100.999` | "At most 2 decimal places". |
+| TC-EXP-N10 | Non-numeric amount | `abc` | Rejected, no request fires. |
+| TC-EXP-N11 | Unknown status via API | `POST /api/expenses` with `"status":"Partially Paid"` | `422 VALIDATION_ERROR` — the enum is `Paid` / `Pending` only. |
+| TC-EXP-N12 | Audit fields can't be spoofed | `POST` with `"created_by"` and `"created_at"` in the body | Both ignored; the response names **you** and now (root `CLAUDE.md` invariant 2). |
+| TC-EXP-N13 | Unknown id | `PATCH`/`DELETE` a random uuid | `404 NOT_FOUND`. |

@@ -8,6 +8,7 @@ import UsersPage from "@/pages/admin/UsersPage";
 import ClientsPage from "@/pages/clients/ClientsPage";
 import CredentialsPage from "@/pages/credentials/CredentialsPage";
 import DscPage from "@/pages/dsc/DscPage";
+import ExpensesPage from "@/pages/expenses/ExpensesPage";
 import TendersPage from "@/pages/tenders/TendersPage";
 import DashboardPage from "@/pages/DashboardPage";
 import LoginPage from "@/pages/LoginPage";
@@ -28,6 +29,7 @@ export const router = createBrowserRouter([
           {
             element: <AdminRoute />,
             children: [
+              { path: "/expenses", element: <ExpensesPage /> },
               { path: "/admin/users", element: <UsersPage /> },
               { path: "/admin/portals", element: <PortalsPage /> },
               { path: "/admin/tender-departments", element: <TenderDepartmentsPage /> },

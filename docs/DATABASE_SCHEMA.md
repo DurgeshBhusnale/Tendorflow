@@ -22,6 +22,7 @@ create extension if not exists "pgcrypto";
 create type user_role       as enum ('admin', 'employee');
 create type tender_status   as enum ('Paid', 'Pending', 'Partially Paid');
 create type payment_mode    as enum ('Cash', 'Online');
+create type expense_status  as enum ('Paid', 'Pending');
 -- 'Key Lost' is retired: nothing may write it any more (see §7). The value
 -- stays in the type because Postgres cannot drop an enum value in place, and
 -- rows created before the change may still hold it.
@@ -207,6 +208,29 @@ create index idx_dsc_key_events_key on dsc_key_events (dsc_key_id, seq desc);
 create index idx_dsc_key_events_created_by on dsc_key_events (created_by);
 
 -- =========================================================
+-- 1.11 EXPENSES  (admin-only: what the business spends)
+-- =========================================================
+create table expenses (
+  id            uuid primary key default uuid_generate_v4(),
+  amount        numeric(12,2) not null check (amount >= 0),
+  -- Unbounded on purpose: this is the answer to "what was this for", and a
+  -- cap would truncate the one thing that makes an old row legible.
+  details       text not null,
+  status        expense_status not null default 'Pending',
+  -- The day the money was spent, not the day it was logged — the same split
+  -- as tenders.tender_date. Defaults to the IST day, and is what the date
+  -- filter and the ordering use.
+  expense_date  date not null default ((now() at time zone 'Asia/Kolkata')::date),
+  created_by    uuid references users (id) on delete set null,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);
+
+create index idx_expenses_expense_date on expenses (expense_date desc, created_at desc);
+create index idx_expenses_status on expenses (status);
+create index idx_expenses_created_by on expenses (created_by);
+
+-- =========================================================
 -- 1.10 updated_at maintenance trigger (generic)
 -- =========================================================
 create or replace function set_updated_at()
@@ -222,6 +246,7 @@ create trigger trg_clients_updated_at      before update on clients      for eac
 create trigger trg_credentials_updated_at  before update on credentials  for each row execute function set_updated_at();
 create trigger trg_tenders_updated_at      before update on tenders      for each row execute function set_updated_at();
 create trigger trg_dsc_keys_updated_at     before update on dsc_keys     for each row execute function set_updated_at();
+create trigger trg_expenses_updated_at     before update on expenses     for each row execute function set_updated_at();
 -- dsc_key_events deliberately has no trigger: it is append-only and has no
 -- updated_at to maintain.
 ```
@@ -236,6 +261,7 @@ create trigger trg_dsc_keys_updated_at     before update on dsc_keys     for eac
 | `dsc_key` | Cascades → deletes its `dsc_key_events` history. |
 | `portal` | Supported and admin-only (`DELETE /api/portals/:id`) **while unreferenced**. `on delete restrict` blocks it once any `credentials` row points at it; the service checks first and answers `409 PORTAL_IN_USE`, so admins deactivate instead of deleting. |
 | `tender_department` | Same, via `DELETE /api/tender-departments/:id`. **Blocked** (`409 TENDER_DEPARTMENT_IN_USE`) once any `tenders` row references it — the department is part of that tender's financial record. |
+| `expense` | Supported and admin-only. Nothing references an expense, so nothing cascades and nothing blocks it. |
 | `user` | Supported and admin-only (`DELETE /api/admin/users/:id`). `created_by` foreign keys are `on delete set null`, so the person's clients, tenders, credentials and DSC keys survive and simply report `created_by: null`. Two guards apply: an admin cannot delete themselves, and the last active admin cannot be deleted, demoted or deactivated. Use `is_active = false` instead when the attribution should be preserved. |
 
 ### Never order an append-only log by `created_at`

@@ -447,3 +447,44 @@ days.
 "sign in as a user with no email" into a 500 at serialization time. CH-24 turns
 the same field into something an admin can clear, which is what makes the null
 case reachable in the UI rather than only through the API.
+
+---
+
+## Phase 10 — Expenses and Bank Details
+
+Two additions once the tool was carrying real work: the cost side of the ledger,
+and the one client field that was being kept outside the system.
+
+### Migrations, in order
+
+| Revision | Does |
+|---|---|
+| `d9e4f7c2a831` | Adds `clients.bank_details` (nullable text). |
+| `e1f5a8d3b942` | Creates the `expense_status` enum and the `expenses` table, with its indexes, `updated_at` trigger and RLS-enable. |
+
+Creating a type and using it in the same migration is fine — it is only
+`ALTER TYPE ... ADD VALUE` that cannot be used in the transaction that adds it
+(`DATABASE_SCHEMA.md` §7), which is what forced `d3c9e5f1632a` to stand alone.
+
+### The changes
+
+| Ref | Change | Where it is specified |
+|---|---|---|
+| CH-26 | `bank_details` on clients — optional free text, 500 chars, editable by anyone | `API_CONTRACT.md` §3, `PRD.md` §4.2 |
+| CH-27 | Expenses: an admin-only module with a KPI strip, status and date filters | `API_CONTRACT.md` §11, `PRD.md` §4.7 |
+
+### Why expenses are admin-only for *reads* too
+
+Every other record module is readable by everyone and restricted only on
+deletion. Expenses invert that: `require_admin` sits on the list and summary
+endpoints as well as the writes. The precedent is CH-12, which withheld the
+tender KPI totals from employees — what the business spends is exactly as
+sensitive as what it earns, and hiding the nav entry while leaving
+`GET /api/expenses` open would have been the failure CH-12 was written to avoid.
+
+### Why `expense_date` exists
+
+The same reason as `tender_date` (CH-22): the module needs a date-range filter,
+`created_at` is server-set and never client-settable (root `CLAUDE.md`
+invariant 2), and an expense entered on Monday for Friday's diesel belongs to
+Friday. The filter, the ordering and the Date column all use it.

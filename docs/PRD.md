@@ -18,7 +18,7 @@ Nothing about this app is public. There is no landing page, no self-signup, no S
 
 | Persona | Description | Primary goals |
 |---|---|---|
-| **Admin** | Business owner / senior staff. | Manage master dropdown lists (Portals, Tender Departments). Onboard, deactivate and delete user accounts. Delete records. See revenue and receivables totals. |
+| **Admin** | Business owner / senior staff. | Manage master dropdown lists (Portals, Tender Departments). Onboard, deactivate and delete user accounts. Delete records. See revenue and receivables totals. Log and review business expenses. |
 | **Employee** | Operational staff. | Onboard clients. Save portal credentials for each client. Log tender transactions and payment status. Log and locate DSC keys. |
 
 Both personas share full read access across every data module — this is a shared internal tool, not a per-user segregated system. Write access differs: Employees can create records and edit/delete records they created; Admins can edit/delete anything.
@@ -54,6 +54,7 @@ Both personas share full read access across every data module — this is a shar
 | Manage master **Portals** list | ✅ | 🚫 (read-only) |
 | Manage master **Tender Departments** list | ✅ | 🚫 (read-only) |
 | Onboard / edit / delete user accounts | ✅ | 🚫 |
+| View or log **Expenses** (the whole module) | ✅ | 🚫 |
 
 **There is no ownership axis.** Editing is open to every signed-in user across
 all four record modules, and `created_by` is re-set to the acting user on each
@@ -327,3 +328,45 @@ The prototype is "done" when a developer can:
 6. Deployed successfully to Vercel with both projects (backend + frontend) live and talking to each other over HTTPS.
 
 UI polish, empty states, loading skeletons, error toasts, and visual design come in a follow-up pass.
+
+---
+
+### 4.7 Module 5 — Expenses (`/expenses`)
+
+**Purpose:** record what the business spends, so the tender income in §4.4 can be
+read against its costs.
+
+**Admin-only in full** — see §3.3. Unlike every other module, this includes
+*reading*: employees do not see the nav entry, cannot reach the route, and get
+`403` from the API. The reasoning is the same one that made the tender KPI strip
+admin-only: what the business spends is as sensitive as what it earns.
+
+**Fields:**
+| Field | Type | Rules |
+|---|---|---|
+| `amount` | decimal | required, ≥ 0, 2 decimal places, `numeric(12,2)` |
+| `details` | text | required, free text, **no length limit**, newlines allowed |
+| `status` | enum | `Pending` (default) or `Paid` |
+| `expense_date` | date | required, defaults to today (IST); backdating is expected |
+| `created_by` | uuid FK | server-set; re-set to whoever last edited the row |
+
+`details` is uncapped on purpose: it is the answer to "what was this for", and a
+character limit would truncate the one thing that makes a year-old row legible.
+
+`expense_date` is the day the money was spent, which is not always the day it
+was typed in — the same separation as a tender's date, and for the same reason:
+`created_at` is an audit timestamp and is never client-settable.
+
+**UI:**
+- KPI strip above the table: **Total Expenses**, **Paid Amount**, **Pending
+  Amount**. The three describe exactly the rows the current filter selects, and
+  paid plus pending always add up to the total. Which cards show follows the
+  status filter, as on the Tenders page.
+- Table columns: Date, Details, Amount, Status (coloured pill), Added/Updated
+  By, actions. Details is the one column allowed to wrap — it is the point of
+  the row.
+- Row shading by status, full width: red for `Pending`, green for `Paid`.
+- Filters: search over the details text, a status segmented control
+  (All / Pending / Paid), and a **From / To date range** whose ends are both
+  inclusive.
+- "+ Log Expense" opens a drawer with the four fields above.

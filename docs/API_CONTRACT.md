@@ -70,6 +70,7 @@ Two roles, and — since every module became open-edit — no ownership axis:
 | Update a client / credential / tender / DSC key | **Any signed-in user** |
 | Delete a client / credential / tender / DSC key | **Admin only** |
 | Master lists (portals, tender departments), user management, tender summary | Admin only |
+| **Expenses — every operation, reads included** | **Admin only** |
 
 Deletion is admin-only precisely *because* editing is open: with `created_by`
 tracking the last editor, an ownership check on delete would hand deletion
@@ -905,3 +906,130 @@ Metric definitions, so the dashboard and the module pages can't disagree:
 Public. Used for uptime checks.
 
 **Success 200:** `{ "success": true, "data": { "status": "ok", "timestamp": "..." } }`
+
+---
+
+## 11. Expenses
+
+**Admin only, in full.** Every route below — reads included — depends on
+`require_admin`; a non-admin gets `403 FORBIDDEN`. This is the cost side of the
+ledger whose revenue totals are already withheld from employees (§7, §9), so
+the restriction lives on the endpoints rather than on the page that calls them.
+
+(Numbered 11 rather than slotted next to Tenders so the existing section
+numbers, which other docs and code comments cite, keep pointing at the same
+sections.)
+
+### `GET /api/expenses`
+
+Query params:
+
+| Param | Meaning |
+|---|---|
+| `page`, `page_size` | Pagination. |
+| `status` | `Paid` \| `Pending`. |
+| `search` | Matches the `details` text. |
+| `start_date` | Inclusive lower bound, `YYYY-MM-DD`. |
+| `end_date` | Inclusive upper bound, `YYYY-MM-DD`. |
+
+Filtering and ordering both use `expense_date` — the day the money was spent,
+which is not necessarily the day it was typed in. Both bounds are inclusive and
+compared to that date directly, with no timezone conversion, exactly as for a
+tender's `tender_date`. Rows sharing a date fall back to `created_at`
+descending, so editing a row never reshuffles the table.
+
+Each item:
+```json
+{
+  "id": "uuid",
+  "amount": "2500.00",
+  "details": "Diesel for the office generator, two cans",
+  "status": "Pending",
+  "expense_date": "2026-09-22",
+  "created_by": { "id": "uuid", "full_name": "Asha Patil" },
+  "created_at": "...",
+  "updated_at": "..."
+}
+```
+
+`amount` is a string for the same decimal-precision reason as every other money
+field. `details` is free text with **no length cap** and may contain newlines —
+it is the record of where the money went, and truncating it would lose the one
+thing that explains an old row later.
+
+---
+
+### `GET /api/expenses/summary`
+
+Backs the KPI strip above the table. Accepts the **same** filter params as the
+list (`status`, `search`, `start_date`, `end_date`; pagination is ignored) and
+describes exactly the rows that filter selects, so the strip always agrees with
+the table beneath it.
+
+**Success 200:**
+```json
+{
+  "success": true,
+  "data": {
+    "total_amount": "12500.00",
+    "paid_amount": "9000.00",
+    "pending_amount": "3500.00",
+    "total_count": 7,
+    "paid_count": 5,
+    "pending_count": 2
+  }
+}
+```
+
+`paid_amount` and `pending_amount` split the same set, so the two always add up
+to `total_amount`. Values are summed in Postgres, so they cannot drift from the
+rows.
+
+---
+
+### `POST /api/expenses`
+
+**Request:**
+```json
+{
+  "amount": "2500.00",
+  "details": "Diesel for the office generator, two cans",
+  "status": "Pending",
+  "expense_date": "2026-09-22"
+}
+```
+
+`status` defaults to `Pending`. `expense_date` is optional and **defaults to
+today's IST calendar day** — the IST day, not the UTC one, since the two differ
+between 00:00 and 05:30 IST. Backdating is the common case and no upper bound is
+enforced.
+
+**Success 201:** the created expense.
+
+**Errors:** `422 VALIDATION_ERROR` (amount below zero or over `numeric(12,2)`,
+empty `details`, or a status outside `Paid` / `Pending`).
+
+---
+
+### `GET /api/expenses/:id`
+
+**Success 200:** single expense. **Errors:** `404 NOT_FOUND`.
+
+---
+
+### `PATCH /api/expenses/:id`
+
+Accepts any subset of `amount`, `details`, `status`, `expense_date`. On success
+`created_by` becomes the acting user and `updated_at` moves to now.
+
+**Success 200:** updated expense. **Errors:** `404 NOT_FOUND`, `422 VALIDATION_ERROR`.
+
+---
+
+### `DELETE /api/expenses/:id`
+
+**Success 200:** `{ "success": true, "data": { "id": "uuid", "deleted": true } }`
+**Errors:** `404 NOT_FOUND`.
+
+Nothing references an expense, so the delete cascades to nothing and is refused
+by nothing.

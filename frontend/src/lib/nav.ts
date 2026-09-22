@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   Tags,
   Users,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 
@@ -39,6 +40,9 @@ export const navGroups: NavGroup[] = [
     label: "Administration",
     adminOnly: true,
     items: [
+      // A record module rather than a master list, but admin-only (CH-27),
+      // so it lives in the group that is hidden from employees entirely.
+      { to: "/expenses", label: "Expenses", icon: Wallet },
       { to: "/admin/users", label: "Users", icon: Users },
       { to: "/admin/portals", label: "Portals", icon: Globe },
       { to: "/admin/tender-departments", label: "Tender Departments", icon: Tags },
