@@ -12,6 +12,7 @@ import { Select } from "@/components/ui/select";
 import { useCreateTender, useUpdateTender } from "@/hooks/useTenders";
 import { useTenderDepartments } from "@/hooks/useTenderDepartments";
 import { formatCurrency, todayInIst } from "@/lib/format";
+import { optionalPhoneSchema } from "@/lib/validation";
 import { ApiError } from "@/types/api";
 import { PAYMENT_MODES, TENDER_STATUSES, type Tender } from "@/types/tender";
 
@@ -30,6 +31,10 @@ const tenderSchema = z
       .refine((v) => MONEY.test(v), "At most 2 decimal places")
       .refine((v) => Number(v) >= 0, "Must be 0 or more"),
     status: z.enum(["Pending", "Partially Paid", "Paid"]),
+    // Who physically came in to pay (CH-32). Both optional — plenty of
+    // tenders are settled with nobody walking in.
+    payer_name: z.string().trim().max(120, "At most 120 characters"),
+    payer_contact: optionalPhoneSchema,
     paid_amount: z.string().optional(),
     payment_mode: z.enum(["Cash", "Online"]).optional(),
   })
@@ -113,9 +118,11 @@ export function TenderForm({ tender, onSuccess, onCancel }: TenderFormProps) {
           status: tender.status,
           paid_amount: tender.status === "Partially Paid" ? tender.paid_amount : "",
           payment_mode: tender.payment_mode ?? undefined,
+          payer_name: tender.payer_name ?? "",
+          payer_contact: tender.payer_contact ?? "",
         }
       : // Today in IST, matching the server's own default.
-        { status: "Pending", tender_date: todayInIst() },
+        { status: "Pending", tender_date: todayInIst(), payer_name: "", payer_contact: "" },
   });
 
   const clientId = watch("client_id") ?? "";
@@ -147,6 +154,9 @@ export function TenderForm({ tender, onSuccess, onCancel }: TenderFormProps) {
       // actually wipes the stored payment record instead of leaving it behind.
       paid_amount: values.status === "Partially Paid" ? (values.paid_amount ?? null) : null,
       payment_mode: values.status === "Pending" ? null : (values.payment_mode ?? null),
+      // Blank stays blank rather than becoming an empty string on the row.
+      payer_name: values.payer_name || null,
+      payer_contact: values.payer_contact || null,
     };
     try {
       if (tender) {
@@ -253,6 +263,32 @@ export function TenderForm({ tender, onSuccess, onCancel }: TenderFormProps) {
             <FieldError>{errors.payment_mode?.message}</FieldError>
           </div>
         )}
+
+        {/* Who actually came in with the money (CH-32). Always shown and always
+            optional: the payer changes from visit to visit, and often nobody
+            comes in at all. */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="tender_payer_name">Payment Received From</Label>
+            <Input
+              id="tender_payer_name"
+              placeholder="Name of the person who paid"
+              {...register("payer_name")}
+            />
+            <FieldError>{errors.payer_name?.message}</FieldError>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="tender_payer_contact">Payer&apos;s Contact Number</Label>
+            <Input
+              id="tender_payer_contact"
+              type="tel"
+              inputMode="numeric"
+              placeholder="9876543210"
+              {...register("payer_contact")}
+            />
+            <FieldError>{errors.payer_contact?.message}</FieldError>
+          </div>
+        </div>
 
         {/* Calculated fields — visibly inert, never submitted. */}
         <div className="space-y-3 rounded-xl border border-primary/15 bg-primary/5 p-4">

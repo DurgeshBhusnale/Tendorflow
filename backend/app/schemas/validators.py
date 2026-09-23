@@ -50,3 +50,16 @@ def normalize_username(value: str) -> str:
             "dot, underscore or hyphen."
         )
     return candidate
+
+
+def normalize_optional_phone(value: str | None) -> str | None:
+    """The same rule where the field may be left blank (CH-32).
+
+    Blank, whitespace or absent all mean "not recorded" and store as NULL; a
+    number that *is* given still has to be a real Indian mobile, because a
+    half-typed one is worse than none. Mirrors `optionalPhoneSchema` on the
+    frontend.
+    """
+    if value is None or not value.strip():
+        return None
+    return normalize_phone(value)

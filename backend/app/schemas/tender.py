@@ -3,11 +3,19 @@ from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_serializer, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_serializer,
+    field_validator,
+    model_validator,
+)
 
 from app.core.dates import today_ist
 from app.schemas.client import CreatorRef
 from app.schemas.credential import ClientRef
+from app.schemas.validators import normalize_optional_phone
 
 TenderStatus = Literal["Paid", "Pending", "Partially Paid"]
 PaymentMode = Literal["Cash", "Online"]
@@ -58,6 +66,13 @@ def validate_payment(
     return paid_amount
 
 
+def _blank_to_none(value: str | None) -> str | None:
+    """An empty payer box means nothing was recorded, not an empty string."""
+    if value is None or not value.strip():
+        return None
+    return value.strip()
+
+
 class TenderDepartmentRef(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -76,9 +91,22 @@ class TenderCreate(BaseModel):
     # The day the tender is logged for (CH-22). Defaults to today in IST, so a
     # client that never sends it behaves exactly as before the field existed.
     tender_date: date = Field(default_factory=today_ist)
+    # Who came in to pay (CH-32). Optional, and blank is stored as nothing.
+    payer_name: str | None = Field(default=None, max_length=120)
+    payer_contact: str | None = None
     # total_amount and remaining_amount are deliberately absent: both are
     # Postgres generated columns. Pydantic ignores unknown keys, so sending
     # either has no effect.
+
+    @field_validator("payer_name")
+    @classmethod
+    def clean_payer_name(cls, v: str | None) -> str | None:
+        return _blank_to_none(v)
+
+    @field_validator("payer_contact")
+    @classmethod
+    def clean_payer_contact(cls, v: str | None) -> str | None:
+        return normalize_optional_phone(v)
 
     @model_validator(mode="after")
     def check_payment(self) -> "TenderCreate":
@@ -97,9 +125,21 @@ class TenderUpdate(BaseModel):
     paid_amount: Decimal | None = Field(default=None, ge=0, max_digits=14, decimal_places=2)
     payment_mode: PaymentMode | None = None
     tender_date: date | None = None
+    payer_name: str | None = Field(default=None, max_length=120)
+    payer_contact: str | None = None
     # No model_validator here: a PATCH may omit quantity or price, so the total
     # this has to be checked against is only knowable once the payload is merged
     # onto the stored row. tender_service.update_tender does that.
+
+    @field_validator("payer_name")
+    @classmethod
+    def clean_payer_name(cls, v: str | None) -> str | None:
+        return _blank_to_none(v)
+
+    @field_validator("payer_contact")
+    @classmethod
+    def clean_payer_contact(cls, v: str | None) -> str | None:
+        return normalize_optional_phone(v)
 
 
 class TenderBulkDelete(BaseModel):
@@ -136,6 +176,8 @@ class TenderRead(BaseModel):
     # date-range filter and ordering use (CH-22). created_at is when the row
     # was typed in; updated_at is when it last changed.
     tender_date: date
+    payer_name: str | None
+    payer_contact: str | None
     created_at: datetime
     updated_at: datetime
 

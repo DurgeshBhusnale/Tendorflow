@@ -135,6 +135,10 @@ create table tenders (
   status               tender_status not null default 'Pending',
   -- Null for Pending tenders, and for rows paid before this column existed.
   payment_mode         payment_mode,
+  -- Who physically came in to pay, and on what number. Both optional: the
+  -- payer changes from visit to visit, and often nobody comes in at all.
+  payer_name           text,
+  payer_contact        text,
   -- The calendar day the tender is logged *for*, which is not necessarily the
   -- day it was entered. What the table, the date filter and the ordering use.
   -- The default is the IST day: between 00:00 and 05:30 IST it differs from the
@@ -236,21 +240,23 @@ create index idx_expenses_created_by on expenses (created_by);
 -- =========================================================
 create table emds (
   id              uuid primary key default uuid_generate_v4(),
-  client_id       uuid not null references clients (id) on delete cascade,
-  -- Captured per deposit, not read off the client: whoever hands the money
-  -- over is not always the standing contact. Ten digits, same rule as
-  -- clients.contact_number.
+  -- Typed in, not a foreign key: a deposit often arrives with someone not yet
+  -- onboarded. The cost is no cascade, no filtering by client entity, and two
+  -- spellings of one company being two different strings.
+  client_name     text not null,
+  company_name    text not null,
   contact_number  text not null,
   amount          numeric(12,2) not null check (amount >= 0),
   status          emd_status not null default 'With Us',
   -- The day the deposit was taken. What the date filter and ordering use.
   emd_date        date not null default ((now() at time zone 'Asia/Kolkata')::date),
+  -- Which account the deposit was paid into. Free text and optional.
+  paid_to_bank_account text,
   created_by      uuid references users (id) on delete set null,
   created_at      timestamptz not null default now(),
   updated_at      timestamptz not null default now()
 );
 
-create index idx_emds_client_id on emds (client_id);
 create index idx_emds_status on emds (status);
 create index idx_emds_created_by on emds (created_by);
 create index idx_emds_emd_date on emds (emd_date desc, created_at desc);
@@ -283,7 +289,7 @@ create trigger trg_emds_updated_at         before update on emds         for eac
 
 | Deleting a... | Effect |
 |---|---|
-| `client` | Cascades → deletes all their `credentials`, `tenders`, `dsc_keys`, `emds` rows. Admin-only, for exactly that reason. |
+| `client` | Cascades → deletes all their `credentials`, `tenders`, `dsc_keys` rows. **Not** their `emds`: those hold typed text rather than a foreign key. Admin-only, for exactly that reason. |
 | `dsc_key` | Cascades → deletes its `dsc_key_events` history. |
 | `portal` | Supported and admin-only (`DELETE /api/portals/:id`) **while unreferenced**. `on delete restrict` blocks it once any `credentials` row points at it; the service checks first and answers `409 PORTAL_IN_USE`, so admins deactivate instead of deleting. |
 | `tender_department` | Same, via `DELETE /api/tender-departments/:id`. **Blocked** (`409 TENDER_DEPARTMENT_IN_USE`) once any `tenders` row references it — the department is part of that tender's financial record. |

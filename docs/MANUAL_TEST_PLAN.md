@@ -64,7 +64,8 @@ Do **not** delete test rows when you're done — they're inspected in Supabase a
 | TC-AUTH-P04d | Deep link while signed out | Sign out, paste `/emd` into the address bar, then sign in | You land on **`/emd`**, not the dashboard — the destination survives the sign-in. |
 | TC-AUTH-P04e | Unknown path | Signed in, visit `/nonsense` | The app's own **Page not found** screen with a Back to dashboard button, inside the normal shell — not the router's raw error text and not a host 404. |
 | TC-AUTH-P05 | Silent token refresh | Set `JWT_ACCESS_TTL_MINUTES=1`, restart backend, sign in, wait ~90s, then click **Clients** | Page loads normally. Network tab shows a `401 TOKEN_EXPIRED`, then `POST /api/auth/refresh`, then the original request retried and succeeding. You are never sent back to login. |
-| TC-AUTH-P06 | Logout | Click Sign out | Back to `/`. `localStorage.refresh_token` is gone (DevTools → Application). |
+| TC-AUTH-P06 | Logout | Click Sign out, then **Confirm** in the dialog | A confirmation appears first. On confirming: back to `/`, and `localStorage.refresh_token` is gone (DevTools → Application). |
+| TC-AUTH-P06b | Cancelling the sign-out | Click Sign out, then **Cancel** | You stay exactly where you were, still signed in. No request fires. |
 | TC-AUTH-P07 | Back button after logout | After P06, press browser Back | Redirected to `/`. No protected page flashes with real data. |
 | TC-AUTH-P08 | Login page while signed in | Signed in, navigate to `http://localhost:5173/` | Redirected straight to `/dashboard`. |
 | TC-AUTH-P09 | Health is public | Open `http://localhost:8000/api/health` in a fresh private window | `200`, success envelope. No auth needed (`API_CONTRACT.md` §10). |
@@ -645,15 +646,15 @@ is the point of the module being open.
 |---|---|---|---|
 | TC-EMD-P01 | The tab is there for everyone | Sign in as `EMP-1` | **EMD** appears in the sidebar's Workspace group, under Tenders. |
 | TC-EMD-P02 | Log a deposit | **Log EMD** → pick a client, amount `5000`, leave status as **With Us** → save | Row appears: today's date, the client's name and company, ₹5,000, a blue **With Us** pill, your name under Added/Updated By. |
-| TC-EMD-P03 | The number prefills | Open the drawer and pick a client | **Contact Number** fills with that client's saved number as soon as you choose them. Pick a different client: it updates. |
-| TC-EMD-P04 | The number is still editable | After P03, type a different number over it and save | The row shows **your** number, and the client record is unchanged — check `/clients` (`PRD.md` §4.8). |
-| TC-EMD-P05 | Either name finds the client | Type a contact person in Client Name, then repeat using Company Name | Both work and each fills the other, as on the tender form. |
+| TC-EMD-P03 | Everything is typed | Open the drawer | **Client Name**, **Company Name** and **Contact Number** are plain text boxes — no dropdown, no search, nothing prefilled (`PRD.md` §4.8). |
+| TC-EMD-P04 | A stranger can be logged | Log a deposit for a name that exists nowhere in `/clients` | Saves normally. This is the point of the change — no client record is required. |
+| TC-EMD-P05 | Bank account is recorded | Fill **Paid To — Bank Account Details** with three lines | Saves. The **Paid To** column shows it clamped to one line, full value on hover. Leaving it empty shows **—**. |
 | TC-EMD-P06 | Date defaults to today | Open the drawer | **Date** is pre-filled with today (IST). |
 | TC-EMD-P07 | Backdate | Log one dated a week ago | The row's Date shows that day, and it sorts below today's. |
 | TC-EMD-P08 | Return a deposit | Edit a **With Us** row, set status **Returned**, save | Pill turns green, the row shading goes blue → green, and the KPI cards move without a reload. |
 | TC-EMD-P09 | KPI strip | With a mix of both statuses, read the cards | **Total With Us** and **Total Returned**. Check With Us by hand — it is the money you are holding. |
 | TC-EMD-P10 | Strip follows the filter | Set the status filter to **Returned** | Only returned rows; the With Us card disappears and the totals describe the filtered set. |
-| TC-EMD-P11 | Client filter | Pick a client in the dropdown | Only their deposits; the cards total only that client's money. |
+| TC-EMD-P11 | Bulk delete | As `ADMIN-1`, tick two rows → **Delete selected** → confirm | Both disappear in one go and the cards drop. Same behaviour as the Tenders page: header checkbox covers the page, "Select all N matching" appears beyond it, and the selection clears when the filter or page changes. |
 | TC-EMD-P12 | Search | Search a company name, then a contact person, then a deposit's phone number | All three match (`API_CONTRACT.md` §12). |
 | TC-EMD-P13 | Date range | Set From/To to today, then To = yesterday | Today's deposits, then none. Both ends inclusive. |
 | TC-EMD-P14 | An employee edits another's row | As `EMP-2`, edit a deposit `EMP-1` logged | Allowed. **Added/Updated By** becomes `EMP-2`. |
@@ -674,5 +675,22 @@ is the point of the module being open.
 | TC-EMD-N08 | Unauthenticated | `GET /api/emds` with no token | `401 UNAUTHENTICATED`. |
 | TC-EMD-N09 | Unknown client | `POST /api/emds` with a random `client_id` | `404 CLIENT_NOT_FOUND`. |
 | TC-EMD-N10 | Unknown status | `POST` with `"status":"Refunded"` | `422 VALIDATION_ERROR` — the enum is `With Us` / `Returned` exactly. |
-| TC-EMD-N11 | Deleted client's deposits | Delete a client who has EMDs | Their deposits disappear too, and the KPI cards drop. No orphan row with a blank client. |
+| TC-EMD-N11 | Deleting a client leaves deposits | Log a deposit naming a client, then delete that client from `/clients` | The deposit **remains** — it holds typed text, not a link (`DATABASE_SCHEMA.md` §2). This is the documented trade-off of typing the names. |
+| TC-EMD-N13 | Blank client or company | Submit with either box empty | "Required". No request fires. |
+| TC-EMD-N14 | Employee sees no checkboxes | As `EMP-1`, open `/emd` | No checkbox column and no selection bar — deletion is admin-only. |
 | TC-EMD-N12 | Audit fields can't be spoofed | `POST` with `created_by` / `created_at` in the body | Both ignored (root `CLAUDE.md` invariant 2). |
+
+---
+
+## 14. Payer details on tenders — `TEN-PAY`
+
+Who came in with the money (`PRD.md` §4.4). Both fields are optional.
+
+| ID | Case | Steps | Expected |
+|---|---|---|---|
+| TC-TEN-PAY01 | Both blank | Log a tender without touching either field | Saves. The **Paid By** column shows **—**. |
+| TC-TEN-PAY02 | Name and number | Log one with a name and `+91 98765 43210` | Saves. Paid By shows the name with **9876543210** beneath it — the number is normalized like every other phone field. |
+| TC-TEN-PAY03 | Name only | Fill the name, leave the number empty | Saves. Only the name shows. |
+| TC-TEN-PAY04 | A different payer next time | Edit the tender and change the name and number | Both update. This is the point: the person who comes in is different each visit. |
+| TC-TEN-PAY05 | Half-typed number | Enter `12345` | Rejected — optional, but a number that *is* given must be a real Indian mobile. |
+| TC-TEN-PAY06 | Whitespace only | Type spaces into the name and save | Stored as nothing, not as a blank string: the column shows **—**. |

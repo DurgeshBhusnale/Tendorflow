@@ -1,6 +1,7 @@
 import { FileText, LogOut, X } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "@/auth/AuthContext";
+import { useConfirm } from "@/hooks/useConfirm";
 import { navGroups } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +32,18 @@ interface SidebarProps {
  */
 export function Sidebar({ open, onClose }: SidebarProps) {
   const { user, logout, isAdmin } = useAuth();
+  const confirm = useConfirm();
+
+  // Signing out is one click next to the nav, and coming back means finding
+  // the password again — cheap to confirm, annoying to do by accident.
+  function handleLogout() {
+    confirm({
+      title: "Sign out?",
+      description: "You will need your username and password to get back in.",
+      confirmLabel: "Sign out",
+      onConfirm: () => logout(),
+    });
+  }
   const groups = navGroups.filter((group) => !group.adminOnly || isAdmin);
 
   return (
@@ -115,7 +128,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             </div>
             <button
               type="button"
-              onClick={() => void logout()}
+              onClick={handleLogout}
               aria-label="Log out"
               title="Log out"
               className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-white/10 text-sidebar-foreground transition-colors hover:bg-white/10 hover:text-white"

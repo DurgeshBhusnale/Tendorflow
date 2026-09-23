@@ -316,6 +316,11 @@ confirm({
 - The title asks the question; the description says what is lost. Deleting a
   user says the attribution goes with it and points at Deactivate instead.
 
+**Signing out confirms too.** It sits one click from the nav, and the way back
+is finding a password again — cheap to confirm, irritating to trigger by
+accident. It is the one non-destructive action that asks, so its dialog uses
+the default tone rather than the red one.
+
 ### Sign-in Page (`pages/LoginPage.tsx`)
 
 Split screen. **Left:** the editorial panel on `.login-backdrop` — the brand artwork at

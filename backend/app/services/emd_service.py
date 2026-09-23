@@ -2,11 +2,10 @@ from datetime import date
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundError
-from app.models.client import Client
 from app.models.emd import Emd
 from app.models.user import User
 from app.schemas.emd import EmdCreate, EmdSummary, EmdUpdate
@@ -16,19 +15,12 @@ from app.schemas.emd import EmdCreate, EmdSummary, EmdUpdate
 # gated to admins at the router.
 
 
-async def _assert_client_exists(session: AsyncSession, client_id: UUID | None) -> None:
-    if client_id is not None and await session.get(Client, client_id) is None:
-        raise NotFoundError(code="CLIENT_NOT_FOUND", message="Client not found.")
-
-
-def _apply_filters(query, client_id, status, search, start_date, end_date, *, needs_join: bool):
+def _apply_filters(query, status, search, start_date, end_date):
     """Apply the shared list/summary filters.
 
     One function, two callers, so the KPI strip can never describe a different
     set of rows than the table beneath it.
     """
-    if client_id is not None:
-        query = query.where(Emd.client_id == client_id)
     if status is not None:
         query = query.where(Emd.status == status)
     # Both bounds are inclusive; emd_date is already a calendar day.
@@ -38,12 +30,11 @@ def _apply_filters(query, client_id, status, search, start_date, end_date, *, ne
         query = query.where(Emd.emd_date <= end_date)
     if search:
         pattern = f"%{search}%"
-        if needs_join:
-            query = query.join(Client, Emd.client_id == Client.id)
+        # All three are columns on the row now, so no join is involved.
         query = query.where(
             or_(
-                Client.contact_person_name.ilike(pattern),
-                Client.company_name.ilike(pattern),
+                Emd.client_name.ilike(pattern),
+                Emd.company_name.ilike(pattern),
                 Emd.contact_number.ilike(pattern),
             )
         )
@@ -63,23 +54,14 @@ async def list_emds(
     session: AsyncSession,
     page: int,
     page_size: int,
-    client_id: UUID | None = None,
     status: str | None = None,
     search: str | None = None,
     start_date: date | None = None,
     end_date: date | None = None,
 ) -> tuple[list[Emd], int]:
-    query = _apply_filters(
-        select(Emd), client_id, status, search, start_date, end_date, needs_join=True
-    )
+    query = _apply_filters(select(Emd), status, search, start_date, end_date)
     count_query = _apply_filters(
-        select(func.count()).select_from(Emd),
-        client_id,
-        status,
-        search,
-        start_date,
-        end_date,
-        needs_join=True,
+        select(func.count()).select_from(Emd), status, search, start_date, end_date
     )
 
     total_count = await session.scalar(count_query)
@@ -96,7 +78,6 @@ async def list_emds(
 
 async def summarize_emds(
     session: AsyncSession,
-    client_id: UUID | None = None,
     status: str | None = None,
     search: str | None = None,
     start_date: date | None = None,
@@ -105,12 +86,10 @@ async def summarize_emds(
     """Totals for exactly the rows the same filters select, summed in Postgres."""
     query = _apply_filters(
         select(Emd.status, func.coalesce(func.sum(Emd.amount), 0), func.count()),
-        client_id,
         status,
         search,
         start_date,
         end_date,
-        needs_join=True,
     ).group_by(Emd.status)
 
     zero = (Decimal("0"), 0)
@@ -137,8 +116,6 @@ async def get_emd(session: AsyncSession, emd_id: UUID) -> Emd:
 
 
 async def create_emd(session: AsyncSession, current_user: User, payload: EmdCreate) -> Emd:
-    await _assert_client_exists(session, payload.client_id)
-
     emd = Emd(**payload.model_dump(), created_by=current_user.id)
     session.add(emd)
     await session.commit()
@@ -151,7 +128,6 @@ async def update_emd(
     emd = await get_emd(session, emd_id)
 
     data = payload.model_dump(exclude_unset=True)
-    await _assert_client_exists(session, data.get("client_id"))
 
     for field, value in data.items():
         setattr(emd, field, value)
@@ -167,3 +143,15 @@ async def delete_emd(session: AsyncSession, emd_id: UUID) -> None:
     emd = await get_emd(session, emd_id)
     await session.delete(emd)
     await session.commit()
+
+
+async def bulk_delete_emds(session: AsyncSession, ids: list[UUID]) -> int:
+    """Delete several deposits in one statement (CH-34). Admin-only at the router.
+
+    Returns how many rows were actually removed, which can be fewer than were
+    asked for if someone else deleted one first. See tender_service for why an
+    already-deleted id is not an error.
+    """
+    result = await session.execute(delete(Emd).where(Emd.id.in_(ids)))
+    await session.commit()
+    return result.rowcount or 0

@@ -22,6 +22,10 @@ export interface Tender {
   status: TenderStatus;
   /** Null for Pending tenders, and for rows paid before this field existed. */
   payment_mode: PaymentMode | null;
+  /** Who came in to pay, when that was recorded. Optional (CH-32). */
+  payer_name: string | null;
+  /** Their number, ten digits. Optional, and only set when a name was. */
+  payer_contact: string | null;
   /** Whoever last edited the row, not necessarily who first logged it. */
   created_by: { id: string; full_name: string } | null;
   /**
@@ -47,6 +51,8 @@ export interface TenderCreate {
   payment_mode?: PaymentMode | null;
   /** YYYY-MM-DD. The server defaults it to today in IST when omitted. */
   tender_date?: string;
+  payer_name?: string | null;
+  payer_contact?: string | null;
 }
 
 export interface TenderUpdate {
@@ -58,6 +64,8 @@ export interface TenderUpdate {
   paid_amount?: string | null;
   payment_mode?: PaymentMode | null;
   tender_date?: string;
+  payer_name?: string | null;
+  payer_contact?: string | null;
 }
 
 export interface TenderSummary {

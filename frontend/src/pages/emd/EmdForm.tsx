@@ -1,14 +1,13 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { ClientPicker } from "@/components/shared/ClientPicker";
 import { DrawerBody, DrawerFooter } from "@/components/shared/Drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FieldError, Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
-import { useClient } from "@/hooks/useClients";
+import { Textarea } from "@/components/ui/textarea";
 import { useCreateEmd, useUpdateEmd } from "@/hooks/useEmds";
 import { todayInIst } from "@/lib/format";
 import { phoneSchema } from "@/lib/validation";
@@ -19,7 +18,11 @@ const MONEY = /^\d+(\.\d{1,2})?$/;
 
 const emdSchema = z.object({
   emd_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Select a date"),
-  client_id: z.string().uuid("Select a client"),
+  // Typed in rather than picked from the client list (CH-33): a deposit often
+  // arrives with someone not yet on file, and stopping to onboard them first
+  // is not how the front desk works.
+  client_name: z.string().trim().min(1, "Required").max(120),
+  company_name: z.string().trim().min(1, "Required").max(200),
   // Indian mobile only, normalized to ten digits before it is sent (CH-17).
   contact_number: phoneSchema,
   amount: z
@@ -28,6 +31,9 @@ const emdSchema = z.object({
     .refine((v) => MONEY.test(v), "At most 2 decimal places")
     .refine((v) => Number(v) >= 0, "Must be 0 or more"),
   status: z.enum(["With Us", "Returned"]),
+  // Free text and optional: the detail arrives in whatever shape the bank gave
+  // it, and it is often not known at the moment the deposit is taken.
+  paid_to_bank_account: z.string().trim(),
 });
 type EmdFormValues = z.infer<typeof emdSchema>;
 
@@ -46,44 +52,43 @@ export function EmdForm({ emd, onSuccess, onCancel }: EmdFormProps) {
   const {
     register,
     handleSubmit,
-    watch,
-    setValue,
     formState: { errors, isSubmitting },
   } = useForm<EmdFormValues>({
     resolver: zodResolver(emdSchema),
     defaultValues: emd
       ? {
           emd_date: emd.emd_date,
-          client_id: emd.client.id,
+          client_name: emd.client_name,
+          company_name: emd.company_name,
           contact_number: emd.contact_number,
           amount: emd.amount,
           status: emd.status,
+          paid_to_bank_account: emd.paid_to_bank_account ?? "",
         }
-      : { emd_date: todayInIst(), status: "With Us", contact_number: "", amount: "" },
+      : {
+          // Today in IST, matching the server's own default.
+          emd_date: todayInIst(),
+          status: "With Us",
+          client_name: "",
+          company_name: "",
+          contact_number: "",
+          amount: "",
+          paid_to_bank_account: "",
+        },
   });
-
-  const clientId = watch("client_id") ?? "";
-  const { data: pickedClient } = useClient(clientId);
-
-  // Picking a client fills in their saved number, which is right most of the
-  // time and always editable — the person handing the deposit over is not
-  // always the standing contact. Keyed on the client *changing*, so an existing
-  // row's stored number survives being opened for editing.
-  const lastFilledFor = useRef(emd?.client.id ?? "");
-  useEffect(() => {
-    if (!clientId || clientId === lastFilledFor.current) return;
-    if (pickedClient?.id !== clientId) return;
-    lastFilledFor.current = clientId;
-    setValue("contact_number", pickedClient.contact_number, { shouldValidate: true });
-  }, [clientId, pickedClient, setValue]);
 
   const onSubmit = handleSubmit(async (values) => {
     setFormError(null);
+    // Blank stays blank rather than becoming an empty string on the row.
+    const payload = {
+      ...values,
+      paid_to_bank_account: values.paid_to_bank_account || null,
+    };
     try {
       if (emd) {
-        await updateEmd.mutateAsync({ id: emd.id, payload: values });
+        await updateEmd.mutateAsync({ id: emd.id, payload });
       } else {
-        await createEmd.mutateAsync(values);
+        await createEmd.mutateAsync(payload);
       }
       onSuccess();
     } catch (err) {
@@ -100,13 +105,25 @@ export function EmdForm({ emd, onSuccess, onCancel }: EmdFormProps) {
           <FieldError>{errors.emd_date?.message}</FieldError>
         </div>
 
-        <ClientPicker
-          idPrefix="emd"
-          value={clientId}
-          onChange={(id) => setValue("client_id", id, { shouldValidate: true })}
-          selected={emd?.client}
-          error={errors.client_id?.message}
-        />
+        <div className="space-y-1.5">
+          <Label htmlFor="emd_client_name">Client Name</Label>
+          <Input
+            id="emd_client_name"
+            placeholder="Who the deposit is for"
+            {...register("client_name")}
+          />
+          <FieldError>{errors.client_name?.message}</FieldError>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="emd_company_name">Company Name</Label>
+          <Input id="emd_company_name" placeholder="Their firm" {...register("company_name")} />
+          <FieldError>{errors.company_name?.message}</FieldError>
+          <p className="text-xs text-muted-foreground">
+            Typed in, not picked from the client list — a deposit can be logged for someone not
+            onboarded yet.
+          </p>
+        </div>
 
         <div className="space-y-1.5">
           <Label htmlFor="emd_contact_number">Contact Number</Label>
@@ -118,9 +135,6 @@ export function EmdForm({ emd, onSuccess, onCancel }: EmdFormProps) {
             {...register("contact_number")}
           />
           <FieldError>{errors.contact_number?.message}</FieldError>
-          <p className="text-xs text-muted-foreground">
-            Filled from the client, and editable — use whoever actually handed the deposit over.
-          </p>
         </div>
 
         <div className="space-y-1.5">
@@ -133,6 +147,20 @@ export function EmdForm({ emd, onSuccess, onCancel }: EmdFormProps) {
             {...register("amount")}
           />
           <FieldError>{errors.amount?.message}</FieldError>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="emd_paid_to_bank_account">Paid To — Bank Account Details</Label>
+          <Textarea
+            id="emd_paid_to_bank_account"
+            rows={4}
+            placeholder={"Bank and branch\nA/C number\nIFSC / UPI"}
+            {...register("paid_to_bank_account")}
+          />
+          <FieldError>{errors.paid_to_bank_account?.message}</FieldError>
+          <p className="text-xs text-muted-foreground">
+            Optional — which account the deposit was actually paid into.
+          </p>
         </div>
 
         <div className="space-y-1.5">

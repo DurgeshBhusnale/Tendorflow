@@ -208,6 +208,11 @@ Flagged in `ARCHITECTURE.md` as a hardening item.
    changed hands: both `Paid` and `Partially Paid`.
 9. **Remaining Amount** — derived, `total_amount - paid_amount`. A second
    Postgres generated column.
+10. **Payment Received From** and **Payer's Contact Number** — who physically
+    came in with the money. Both optional: the payer is different from visit
+    to visit, is often not the client's standing contact, and frequently
+    nobody comes in at all. A number that *is* given must be a real Indian
+    mobile. Shown in the table beside Status, under **Paid By**.
 
 **UI:**
 - Table columns, in order: Date (the tender's own date), Added/Updated By,
@@ -396,26 +401,40 @@ money rather than the business's own revenue. Deletion stays admin-only (§3.3).
 **Fields:**
 | Field | Type | Rules |
 |---|---|---|
-| `client_id` | uuid FK | required; picked by contact name **or** company name, as on the tender form |
+| `client_name` | text | required, 1–120 chars, **typed in** |
+| `company_name` | text | required, 1–200 chars, **typed in** |
 | `contact_number` | text | required, Indian mobile, stored as ten digits |
+| `paid_to_bank_account` | text | optional, free text, no length limit, newlines allowed |
 | `amount` | decimal | required, ≥ 0, 2 decimal places, `numeric(12,2)` |
 | `status` | enum | `With Us` (default) or `Returned` |
 | `emd_date` | date | required, defaults to today (IST); backdating is expected |
 
-**Why the contact number is stored per deposit** rather than read from the
-client: the person handing the money over or collecting it back is often not
-the client's standing contact. The form fills in the client's saved number when
-one is picked and leaves it editable, so the common case is one click and the
-exception is still possible.
+**Why the client details are typed rather than picked.** A deposit often
+arrives with someone who is not on file yet, and stopping to onboard a client
+before the money can be recorded is not how the front desk works. The three
+fields are therefore plain text on the deposit itself.
+
+The trade-off is real and worth stating: these rows no longer point at a client
+record, so deleting a client leaves their deposits behind, there is no filtering
+by client entity (search covers the text), and two spellings of one company are
+two different strings.
+
+**`paid_to_bank_account`** records which account the deposit was actually paid
+into — free text, because the detail arrives in whatever shape the bank gave it,
+and optional, because it is often not known when the deposit is first logged.
 
 **UI:**
 - KPI strip: **Total With Us** and **Total Returned**. The first is the figure
   the page exists for — how much client money is being held right now.
-- Table columns: Date, Client Name, Company Name, Contact Number, Amount,
-  Status (coloured pill), Added/Updated By, actions.
+- Table columns: Date, Client Name (company beneath), Contact Number, Amount,
+  Paid To (clamped to one line, full value on hover), Status (coloured pill),
+  Added/Updated By, actions.
+- **Bulk delete**, admin-only, exactly as on the Tenders page: checkboxes per
+  row, a header checkbox covering the current page, an explicit "Select all N
+  matching this filter" beyond it, and a confirmation naming the count.
 - Row shading: blue for `With Us`, green for `Returned`. Held money is blue
   rather than red — it is an open obligation, not a problem.
-- Filters: search across client, company and number; a client dropdown; a
-  status segmented control (All / With Us / Returned); and a **From / To date
-  range**, both ends inclusive.
+- Filters: search across client name, company and number; a status segmented
+  control (All / With Us / Returned); and a **From / To date range**, both
+  ends inclusive. There is no client dropdown — the names are text, not links.
 - "+ Log EMD" opens a drawer with the five fields above.

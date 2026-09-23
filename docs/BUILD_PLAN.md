@@ -588,3 +588,45 @@ filesystem is still checked first, so real assets keep serving as themselves.
   no record of where the user was going, so signing in always landed on the
   dashboard. It now passes the path through and `LoginPage` honours it — which
   only starts mattering once reloads and pasted links work at all.
+
+---
+
+## Phase 14 — Payer Details, Manual EMD Entry, and Two Small Guards
+
+| Ref | Change | Where it is specified |
+|---|---|---|
+| CH-31b | Signing out asks for confirmation | `DESIGN_SYSTEM.md` §3 |
+| CH-32 | `payer_name` / `payer_contact` on tenders — who came in to pay | `API_CONTRACT.md` §7, `PRD.md` §4.4 |
+| CH-33 | EMD client details typed in, plus `paid_to_bank_account` | `API_CONTRACT.md` §12, `PRD.md` §4.8 |
+| CH-34 | Bulk delete on EMD, mirroring tenders (CH-29) | `API_CONTRACT.md` §12 |
+
+### Migrations, in order
+
+| Revision | Does |
+|---|---|
+| `a1b2c3d4e5f6` | Adds `tenders.payer_name` and `tenders.payer_contact`, both nullable. |
+| `b2c3d4e5f6a7` | Adds `emds.client_name`, `emds.company_name` and `emds.paid_to_bank_account`, backfills the two names from the client each row referenced, then drops `emds.client_id`. |
+
+### What CH-33 costs, recorded because it will not be obvious later
+
+Deposits no longer point at `clients`. That was the request — a deposit often
+arrives with someone not yet onboarded, and stopping to create a client first is
+not how the front desk works — but three things follow:
+
+1. **Deleting a client no longer removes their deposits.** There is no cascade,
+   because there is no foreign key.
+2. **The client dropdown filter is gone** from the EMD page. Search covers the
+   typed names instead.
+3. **Two spellings are two companies.** Nothing reconciles "Mehta Constructions"
+   with "Mehta Construction Pvt Ltd".
+
+Existing rows were backfilled from the client they referenced, so nothing that
+had already been logged lost its names.
+
+### Why the payer fields are not tied to payment status
+
+They sit outside the Pending / Partially Paid / Paid rules and are always
+visible. Coupling them to status would mean clearing them when a tender moves
+back to Pending — quietly destroying a note about who came in, to enforce a
+consistency nobody asked for. Optional and always present is the simpler
+contract.

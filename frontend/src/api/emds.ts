@@ -3,9 +3,8 @@ import type { ApiSuccess, PaginatedResponse } from "@/types/api";
 import type { Emd, EmdCreate, EmdStatus, EmdSummary, EmdUpdate } from "@/types/emd";
 
 export interface EmdFilters {
-  client_id?: string;
   status?: EmdStatus;
-  /** Matches the client's contact person, company, or the deposit's number. */
+  /** Matches the typed client name, company or contact number. */
   search?: string;
   /** Inclusive calendar days, as YYYY-MM-DD. */
   start_date?: string;
@@ -38,5 +37,26 @@ export const emdsApi = {
       `/api/emds/${id}`,
     );
     return data.data;
+  },
+  /** Deletes several deposits in one call (CH-34). Admin-only, capped at 100. */
+  bulkRemove: async (ids: string[]) => {
+    const { data } = await apiClient.post<ApiSuccess<{ deleted: number; requested: number }>>(
+      "/api/emds/bulk-delete",
+      { ids },
+    );
+    return data.data;
+  },
+  /** Every id matching a filter, for the "select all N matching" affordance. */
+  listIds: async (filters: EmdFilters, cap = 1000) => {
+    const pageSize = 100;
+    const ids: string[] = [];
+    for (let page = 1; ids.length < cap; page += 1) {
+      const { data } = await apiClient.get<ApiSuccess<PaginatedResponse<Emd>>>("/api/emds", {
+        params: { ...filters, page, page_size: pageSize },
+      });
+      ids.push(...data.data.items.map((e) => e.id));
+      if (data.data.items.length < pageSize || ids.length >= data.data.total_count) break;
+    }
+    return ids.slice(0, cap);
   },
 };

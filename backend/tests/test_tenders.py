@@ -1002,3 +1002,86 @@ async def test_bulk_delete_route_not_shadowed_by_the_id_route(client, admin_head
     )
 
     assert resp.status_code == 200
+
+
+# --------------------------------------------------------------------------
+# Payer details (CH-32)
+# --------------------------------------------------------------------------
+
+
+async def test_payer_details_are_optional(
+    client, employee_headers, client_id, tender_department_id
+):
+    """Plenty of tenders are settled with nobody walking in."""
+    resp = await _create_tender(client, employee_headers, client_id, tender_department_id)
+
+    assert resp.status_code == 201
+    assert resp.json()["data"]["payer_name"] is None
+    assert resp.json()["data"]["payer_contact"] is None
+
+
+async def test_payer_details_are_recorded(
+    client, employee_headers, client_id, tender_department_id
+):
+    resp = await _create_tender(
+        client,
+        employee_headers,
+        client_id,
+        tender_department_id,
+        payer_name="Suresh Patil",
+        payer_contact="+91 98765 43210",
+    )
+
+    assert resp.status_code == 201
+    data = resp.json()["data"]
+    assert data["payer_name"] == "Suresh Patil"
+    # Normalized to ten digits, like every other phone field (CH-17).
+    assert data["payer_contact"] == "9876543210"
+
+
+async def test_blank_payer_details_are_stored_as_nothing(
+    client, employee_headers, client_id, tender_department_id
+):
+    resp = await _create_tender(
+        client,
+        employee_headers,
+        client_id,
+        tender_department_id,
+        payer_name="   ",
+        payer_contact="",
+    )
+
+    assert resp.status_code == 201
+    assert resp.json()["data"]["payer_name"] is None
+    assert resp.json()["data"]["payer_contact"] is None
+
+
+async def test_a_given_payer_contact_must_be_a_real_mobile(
+    client, employee_headers, client_id, tender_department_id
+):
+    """Optional, but a half-typed number is worse than none."""
+    resp = await _create_tender(
+        client, employee_headers, client_id, tender_department_id, payer_contact="12345"
+    )
+
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+async def test_payer_can_change_between_payments(
+    client, employee_headers, client_id, tender_department_id
+):
+    """The point of the field: a different person can come in next time."""
+    created = await _create_tender(
+        client, employee_headers, client_id, tender_department_id, payer_name="Suresh Patil"
+    )
+
+    resp = await client.patch(
+        f"/api/tenders/{created.json()['data']['id']}",
+        json={"payer_name": "Anita Joshi", "payer_contact": "9123456780"},
+        headers=employee_headers,
+    )
+
+    assert resp.status_code == 200
+    assert resp.json()["data"]["payer_name"] == "Anita Joshi"
+    assert resp.json()["data"]["payer_contact"] == "9123456780"

@@ -1,4 +1,4 @@
-import { Landmark, Plus, Undo2 } from "lucide-react";
+import { Landmark, Plus, Trash2, Undo2 } from "lucide-react";
 import { useState } from "react";
 import { Drawer } from "@/components/shared/Drawer";
 import { MetricCard } from "@/components/shared/MetricCard";
@@ -7,13 +7,12 @@ import { Pagination } from "@/components/shared/Pagination";
 import { SearchInput } from "@/components/shared/SearchInput";
 import { SegmentedFilter } from "@/components/shared/SegmentedFilter";
 import { Button } from "@/components/ui/button";
-import { Combobox } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useClients } from "@/hooks/useClients";
 import { useConfirm } from "@/hooks/useConfirm";
-import { useDebouncedValue } from "@/hooks/useDebouncedValue";
-import { useDeleteEmd, useEmdSummary, useEmds } from "@/hooks/useEmds";
+import { emdsApi } from "@/api/emds";
+import { useAuth } from "@/auth/AuthContext";
+import { useBulkDeleteEmds, useDeleteEmd, useEmdSummary, useEmds } from "@/hooks/useEmds";
 import { formatCurrency } from "@/lib/format";
 import { EmdForm } from "@/pages/emd/EmdForm";
 import { EmdTable } from "@/pages/emd/EmdTable";
@@ -26,16 +25,15 @@ type StatusOption = (typeof STATUS_OPTIONS)[number];
 export default function EmdPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
-  const [clientFilter, setClientFilter] = useState("");
-  const [clientSearch, setClientSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusOption>("All");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [formState, setFormState] = useState<{ open: boolean; emd?: Emd }>({ open: false });
+  // Ids only, cleared whenever the filter or page moves (CH-34).
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Shared by the table and the KPI strip so they always agree.
   const filters = {
-    client_id: clientFilter || undefined,
     status: statusFilter === "All" ? undefined : (statusFilter as EmdStatus),
     search: search || undefined,
     start_date: startDate || undefined,
@@ -44,28 +42,70 @@ export default function EmdPage() {
 
   const { data, isLoading } = useEmds({ ...filters, page, page_size: PAGE_SIZE });
   const { data: summary } = useEmdSummary(filters);
-  const debouncedClientSearch = useDebouncedValue(clientSearch);
-  const { data: clientsPage } = useClients({
-    page: 1,
-    page_size: 50,
-    search: debouncedClientSearch || undefined,
-  });
   const deleteEmd = useDeleteEmd();
+  const bulkDeleteEmds = useBulkDeleteEmds();
   const confirm = useConfirm();
+  const { isAdmin } = useAuth();
 
+  const rows = data?.items ?? [];
   const totalCount = data?.total_count ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   const hasDateRange = Boolean(startDate || endDate);
+  const allOnPageSelected = rows.length > 0 && rows.every((e) => selectedIds.has(e.id));
 
   function changeFilter(apply: () => void) {
     apply();
     setPage(1);
+    setSelectedIds(new Set());
+  }
+
+  function changePage(next: number) {
+    setPage(next);
+    setSelectedIds(new Set());
+  }
+
+  function toggleRow(id: string) {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  /** The header checkbox covers this page only, never the whole filter. */
+  function toggleAllOnPage() {
+    setSelectedIds((current) => {
+      const allSelected = rows.length > 0 && rows.every((e) => current.has(e.id));
+      return allSelected ? new Set() : new Set(rows.map((e) => e.id));
+    });
+  }
+
+  /** The opt-in beyond the page: every id the current filter matches. */
+  async function selectAllMatching() {
+    setSelectedIds(new Set(await emdsApi.listIds(filters)));
+  }
+
+  function handleBulkDelete() {
+    const ids = [...selectedIds];
+    confirm({
+      title: `Delete ${ids.length} EMD${ids.length === 1 ? "" : "s"}?`,
+      description:
+        ids.length === 1
+          ? "The record of this deposit will be removed permanently. This cannot be undone."
+          : `The records of these ${ids.length} deposits will be removed permanently, including any still marked With Us. This cannot be undone.`,
+      confirmLabel: `Delete ${ids.length}`,
+      tone: "destructive",
+      onConfirm: async () => {
+        await bulkDeleteEmds.mutateAsync(ids);
+        setSelectedIds(new Set());
+      },
+    });
   }
 
   function clearFilters() {
     changeFilter(() => {
       setSearch("");
-      setClientFilter("");
       setStatusFilter("All");
       setStartDate("");
       setEndDate("");
@@ -75,7 +115,7 @@ export default function EmdPage() {
   function handleDelete(emd: Emd) {
     confirm({
       title: "Delete this EMD?",
-      description: `${formatCurrency(emd.amount)} logged against ${emd.client.company_name}. The record of the deposit goes with it. This cannot be undone.`,
+      description: `${formatCurrency(emd.amount)} logged against ${emd.company_name}. The record of the deposit goes with it. This cannot be undone.`,
       confirmLabel: "Delete EMD",
       tone: "destructive",
       onConfirm: () => deleteEmd.mutateAsync(emd.id),
@@ -141,28 +181,10 @@ export default function EmdPage() {
           />
         </div>
 
-        {/* Client and dates on their own row: two labelled date fields do not
-            fit beside the tabs at tablet width without wrapping mid-pair. */}
+        {/* Dates on their own row: two labelled fields do not fit beside the
+            tabs at tablet width without wrapping mid-pair. The client filter is
+            gone with the foreign key (CH-33) — search covers the typed names. */}
         <div className="flex flex-wrap items-end gap-3 px-4 pb-4 sm:px-5">
-          <div className="space-y-1.5">
-            <Label htmlFor="emd_client_filter">Client</Label>
-            <Combobox
-              id="emd_client_filter"
-              aria-label="Filter by client"
-              className="w-full sm:w-56"
-              options={(clientsPage?.items ?? []).map((c) => ({
-                value: c.id,
-                label: c.contact_person_name,
-                hint: c.company_name,
-              }))}
-              value={clientFilter}
-              onChange={(value) => changeFilter(() => setClientFilter(value))}
-              onSearchChange={setClientSearch}
-              placeholder="All clients"
-              emptyMessage="No client matches"
-              clearable
-            />
-          </div>
           <div className="space-y-1.5">
             <Label htmlFor="emd_start_date">From</Label>
             <Input
@@ -193,12 +215,51 @@ export default function EmdPage() {
           </Button>
         </div>
 
+        {/* Only appears once something is ticked (CH-34). */}
+        {isAdmin && selectedIds.size > 0 && (
+          <div className="flex flex-wrap items-center gap-3 border-y border-border bg-primary/5 px-4 py-3 sm:px-5">
+            <span className="text-sm font-semibold text-foreground">
+              {selectedIds.size} selected
+            </span>
+            {allOnPageSelected && selectedIds.size < totalCount && (
+              <Button type="button" variant="outline" size="sm" onClick={selectAllMatching}>
+                Select all {totalCount} matching this filter
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedIds(new Set())}
+            >
+              Clear selection
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              className="ml-auto"
+              onClick={handleBulkDelete}
+            >
+              <Trash2 />
+              Delete selected
+            </Button>
+          </div>
+        )}
+
         <EmdTable
-          emds={data?.items ?? []}
+          emds={rows}
           isLoading={isLoading}
           onEdit={(emd) => setFormState({ open: true, emd })}
           onDelete={handleDelete}
           emptyAction={addButton}
+          // Checkboxes only where the selection can be acted on: deletion is
+          // admin-only, so an employee gets the table exactly as before.
+          selection={
+            isAdmin
+              ? { selectedIds, onToggle: toggleRow, onToggleAll: toggleAllOnPage }
+              : undefined
+          }
         />
 
         {totalCount > PAGE_SIZE && (
@@ -206,7 +267,7 @@ export default function EmdPage() {
             page={page}
             totalPages={totalPages}
             totalCount={totalCount}
-            onPageChange={setPage}
+            onPageChange={changePage}
           />
         )}
       </div>

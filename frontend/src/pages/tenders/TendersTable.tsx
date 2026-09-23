@@ -129,6 +129,22 @@ export function TendersTable({
       ),
     },
     {
+      header: "Paid By",
+      cell: (t) =>
+        t.payer_name || t.payer_contact ? (
+          <span className="min-w-0">
+            <span className="block truncate text-foreground">{t.payer_name ?? "—"}</span>
+            {t.payer_contact && (
+              <span className="block truncate text-[13px] tabular-nums text-muted-foreground">
+                {t.payer_contact}
+              </span>
+            )}
+          </span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
+    },
+    {
       header: "Actions",
       align: "right",
       mobile: "actions",

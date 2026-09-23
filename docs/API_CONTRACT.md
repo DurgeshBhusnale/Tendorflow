@@ -562,10 +562,19 @@ Each item:
   "payment_mode": "Online",
   "created_by": { "id": "uuid", "full_name": "..." },
   "tender_date": "2026-09-20",
+  "payer_name": "Suresh Patil",
+  "payer_contact": "9876543210",
   "created_at": "...",
   "updated_at": "..."
 }
 ```
+
+`payer_name` and `payer_contact` record **who physically came in to pay**,
+which changes from visit to visit and is often not the client's standing
+contact. Both are optional and both are `null` when nothing was recorded —
+plenty of tenders are settled with nobody walking in. A `payer_contact` that
+*is* given must be a valid Indian mobile and is stored as ten digits; blank
+or whitespace stores `null` rather than an empty string.
 
 `tender_date` is a bare calendar day (`YYYY-MM-DD`), not a timestamp: it is the
 business date the tender belongs to. `created_at` remains the audit timestamp
@@ -692,7 +701,7 @@ are computed by Postgres.
 
 ### `PATCH /api/tenders/:id`
 
-**Any signed-in user.** Accepts any subset of `client_id`, `tender_department_id`, `quantity`, `price`, `status`, `paid_amount`, `payment_mode`, `tender_date`.
+**Any signed-in user.** Accepts any subset of `client_id`, `tender_department_id`, `quantity`, `price`, `status`, `paid_amount`, `payment_mode`, `tender_date`, `payer_name`, `payer_contact`.
 
 Payment rules are re-checked against the row **as it will be after the merge**,
 not against the payload alone — so `{ "status": "Paid" }` on its own fails with
@@ -1072,11 +1081,19 @@ takes or returns a deposit records it. Only deletion is admin-gated. The summary
 is *not* admin-only, unlike the tender summary: these are client funds held, not
 the business's revenue.
 
+**A deposit does not reference a client record.** `client_name`, `company_name`
+and `contact_number` are plain text typed on the form, because a deposit often
+arrives with someone not yet onboarded and the office would rather write the
+name down than stop to create a client first. Three consequences, none of them
+obvious later: deleting a client does **not** remove their deposits, there is no
+`client_id` filter (search covers the text instead), and two spellings of the
+same company are two different strings.
+
 ### `GET /api/emds`
 
-Query params: `page`, `page_size`, `client_id`, `status` (`With Us` | `Returned`),
-`search` (matches the client's contact person, their company, or the deposit's
-own contact number), `start_date`, `end_date`.
+Query params: `page`, `page_size`, `status` (`With Us` | `Returned`),
+`search` (matches the typed client name, company name or contact number),
+`start_date`, `end_date`.
 
 Filtering and ordering use `emd_date` — the day the deposit was taken — with
 both bounds inclusive and `created_at` breaking ties within a day.
@@ -1085,21 +1102,28 @@ Each item:
 ```json
 {
   "id": "uuid",
-  "client": { "id": "uuid", "contact_person_name": "Rohan Mehta", "company_name": "Mehta Constructions" },
+  "client_name": "Rohan Mehta",
+  "company_name": "Mehta Constructions",
   "contact_number": "9876543210",
   "amount": "5000.00",
   "status": "With Us",
   "emd_date": "2026-09-22",
+  "paid_to_bank_account": "HDFC Bank, Pune Camp
+A/C 50100123456
+IFSC HDFC0000123",
   "created_by": { "id": "uuid", "full_name": "Asha Patil" },
   "created_at": "...",
   "updated_at": "..."
 }
 ```
 
-`contact_number` belongs to the deposit, not the client: whoever handed the
-money over is often not the client's standing contact, so the two can differ.
-It follows the same Indian-mobile rule as every other phone field (§3) and is
-stored as bare ten digits.
+`contact_number` follows the same Indian-mobile rule as every other phone
+field (§3) and is stored as bare ten digits.
+
+`paid_to_bank_account` records **which account the deposit was paid into**. Free
+text with no length cap, newlines allowed, and optional — the detail arrives in
+whatever shape the bank gave it, and often after the deposit is first logged.
+Blank or whitespace stores `null`.
 
 ---
 
@@ -1129,20 +1153,25 @@ Accepts the same filters as the list and describes exactly those rows.
 **Request:**
 ```json
 {
-  "client_id": "uuid",
+  "client_name": "Rohan Mehta",
+  "company_name": "Mehta Constructions",
   "contact_number": "9876543210",
   "amount": "5000.00",
   "status": "With Us",
-  "emd_date": "2026-09-22"
+  "emd_date": "2026-09-22",
+  "paid_to_bank_account": "HDFC Bank, Pune Camp"
 }
 ```
 
 `status` defaults to `With Us` — a deposit is logged because it is being held.
 `emd_date` defaults to today's IST calendar day.
 
+`client_name` and `company_name` are required; `paid_to_bank_account` is not.
+
 **Success 201:** the created deposit.
-**Errors:** `404 CLIENT_NOT_FOUND`, `422 VALIDATION_ERROR` (amount below zero, a
-number that is not an Indian mobile, or a status outside the two).
+**Errors:** `422 VALIDATION_ERROR` (empty client or company name, amount below
+zero, a number that is not an Indian mobile, or a status outside the two). There
+is no `CLIENT_NOT_FOUND`: nothing is looked up.
 
 ---
 
@@ -1154,9 +1183,11 @@ number that is not an Indian mobile, or a status outside the two).
 
 ### `PATCH /api/emds/:id`
 
-**Any signed-in user.** Any subset of `client_id`, `contact_number`, `amount`,
-`status`, `emd_date` — marking one returned is `{ "status": "Returned" }`. On
-success `created_by` becomes the acting user and `updated_at` moves to now.
+**Any signed-in user.** Any subset of `client_name`, `company_name`,
+`contact_number`, `amount`, `status`, `emd_date`, `paid_to_bank_account` —
+marking one returned is `{ "status": "Returned" }`, and a misspelled company is
+just an edit. On success `created_by` becomes the acting user and `updated_at`
+moves to now.
 
 **Success 200:** updated deposit.
 **Errors:** `404 NOT_FOUND`, `404 CLIENT_NOT_FOUND`, `422 VALIDATION_ERROR`.
@@ -1170,5 +1201,18 @@ success `created_by` becomes the acting user and `updated_at` moves to now.
 **Success 200:** `{ "success": true, "data": { "id": "uuid", "deleted": true } }`
 **Errors:** `403 FORBIDDEN`, `404 NOT_FOUND`.
 
-Deleting a client also removes their deposits — `emds.client_id` is
-`ON DELETE CASCADE`.
+Deleting a client no longer touches their deposits: the rows hold typed text,
+not a foreign key.
+
+---
+
+### `POST /api/emds/bulk-delete`
+
+**Admin only.** Identical in shape and reasoning to
+`POST /api/tenders/bulk-delete` (§7): explicit ids rather than a filter, 1 to
+100 per call, and an id that is already gone counts as `deleted: 0` rather than
+a `404`.
+
+**Request:** `{ "ids": ["uuid", "uuid", ...] }`
+**Success 200:** `{ "success": true, "data": { "deleted": 20, "requested": 20 } }`
+**Errors:** `403 FORBIDDEN`, `422 VALIDATION_ERROR` (empty list, or over 100 ids).

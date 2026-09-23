@@ -26,9 +26,22 @@ interface EmdTableProps {
   onEdit: (emd: Emd) => void;
   onDelete: (emd: Emd) => void;
   emptyAction?: React.ReactNode;
+  /** Passed straight to DataTable; the page supplies it for admins only (CH-34). */
+  selection?: {
+    selectedIds: Set<string>;
+    onToggle: (id: string) => void;
+    onToggleAll: () => void;
+  };
 }
 
-export function EmdTable({ emds, isLoading, onEdit, onDelete, emptyAction }: EmdTableProps) {
+export function EmdTable({
+  emds,
+  isLoading,
+  onEdit,
+  onDelete,
+  emptyAction,
+  selection,
+}: EmdTableProps) {
   const { isAdmin } = useAuth();
 
   const columns: Column<Emd>[] = [
@@ -42,13 +55,11 @@ export function EmdTable({ emds, isLoading, onEdit, onDelete, emptyAction }: Emd
       mobile: "title",
       cell: (e) => (
         <span className="flex items-center gap-3">
-          <Avatar name={e.client.contact_person_name} />
+          <Avatar name={e.client_name} />
           <span className="min-w-0">
-            <span className="block truncate font-semibold text-foreground">
-              {e.client.contact_person_name}
-            </span>
+            <span className="block truncate font-semibold text-foreground">{e.client_name}</span>
             <span className="block truncate text-[13px] text-muted-foreground">
-              {e.client.company_name}
+              {e.company_name}
             </span>
           </span>
         </span>
@@ -62,6 +73,19 @@ export function EmdTable({ emds, isLoading, onEdit, onDelete, emptyAction }: Emd
       header: "Amount",
       align: "right",
       cell: (e) => <span className="font-semibold">{formatCurrency(e.amount)}</span>,
+    },
+    {
+      header: "Paid To",
+      // Free text that often runs to several lines, in a table whose cells do
+      // not wrap: clamped to one line with the full value on hover.
+      cell: (e) =>
+        e.paid_to_bank_account ? (
+          <span className="block max-w-[14rem] truncate" title={e.paid_to_bank_account}>
+            {e.paid_to_bank_account}
+          </span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
     },
     {
       header: "Status",
@@ -97,6 +121,7 @@ export function EmdTable({ emds, isLoading, onEdit, onDelete, emptyAction }: Emd
       rowKey={(e) => e.id}
       isLoading={isLoading}
       rowClassName={(e) => STATUS_ROW_SHADES[e.status]}
+      selection={selection}
       empty={
         <EmptyState
           icon={Landmark}
