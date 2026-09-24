@@ -1,4 +1,4 @@
-import { FileText, LogOut, X } from "lucide-react";
+import { LogOut, X } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "@/auth/AuthContext";
 import { useConfirm } from "@/hooks/useConfirm";
@@ -67,9 +67,6 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         )}
       >
         <div className="flex h-[76px] shrink-0 items-center gap-3 border-b border-sidebar-border px-5">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-[0_4px_12px_rgb(41_82_227/0.45)]">
-            <FileText className="size-[18px]" />
-          </span>
           <span className="font-display text-xl font-bold tracking-tight text-white">
             Tender<span className="text-[hsl(var(--primary-light))]">Flow</span>
           </span>
@@ -119,7 +116,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         {/* Signed-in identity and sign-out live at the foot of the rail. */}
         <div className="shrink-0 border-t border-sidebar-border p-3">
           <div className="flex items-center gap-3 rounded-xl bg-white/5 p-2.5">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary text-xs font-bold text-primary-foreground">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
               {initials(user?.full_name)}
             </span>
             <div className="min-w-0 flex-1 leading-tight">

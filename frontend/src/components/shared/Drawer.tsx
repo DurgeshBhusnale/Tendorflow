@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 interface DrawerProps {
@@ -18,6 +19,13 @@ interface DrawerProps {
  *
  * The panel is a flex column with a fixed header; children are expected to be
  * a `flex h-full flex-col` form so their action bar pins to the bottom.
+ *
+ * Rendered through a portal into `document.body`. `position: fixed` is measured
+ * against the nearest ancestor carrying a transform, filter or containing-block
+ * property rather than the viewport, so a drawer left inside the page tree can
+ * be pushed off the top edge by a wrapper it knows nothing about. Escaping to
+ * the body makes "covers the whole screen" true by construction instead of by
+ * luck.
  */
 export function Drawer({ open, onClose, title, description, children }: DrawerProps) {
   useEffect(() => {
@@ -40,7 +48,7 @@ export function Drawer({ open, onClose, title, description, children }: DrawerPr
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 animate-fade-in bg-ink/45" onClick={onClose} aria-hidden />
       <aside
@@ -49,7 +57,7 @@ export function Drawer({ open, onClose, title, description, children }: DrawerPr
         aria-label={title}
         className="relative flex h-full w-full animate-slide-in-right flex-col bg-card shadow-drawer sm:w-[500px]"
       >
-        <header className="flex items-start justify-between gap-4 border-b border-border px-5 py-5 sm:px-6">
+        <header className="flex items-start justify-between gap-4 border-b border-border px-5 py-4 sm:px-6">
           <div className="min-w-0">
             <h2 className="text-xl">{title}</h2>
             {description && (
@@ -67,7 +75,8 @@ export function Drawer({ open, onClose, title, description, children }: DrawerPr
         </header>
         <div className="flex-1 overflow-hidden">{children}</div>
       </aside>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useId, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { ConfirmContext, type ConfirmOptions } from "@/hooks/useConfirm";
 import { ApiError } from "@/types/api";
@@ -60,7 +61,9 @@ function ConfirmDialog({ options, onClose }: { options: ConfirmOptions; onClose:
     }
   }
 
-  return (
+  // Portalled for the same reason as the drawer: a fixed overlay must be
+  // measured against the viewport, not whatever wrapper it was rendered in.
+  return createPortal(
     // Above the drawer (z-50), so a confirmation raised from inside one still shows.
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 animate-fade-in bg-ink/45" onClick={dismiss} aria-hidden />
@@ -101,6 +104,7 @@ function ConfirmDialog({ options, onClose }: { options: ConfirmOptions; onClose:
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

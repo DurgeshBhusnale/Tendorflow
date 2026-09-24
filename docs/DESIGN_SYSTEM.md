@@ -116,7 +116,9 @@ come back from the API on an old row (`DATABASE_SCHEMA.md` §7), so index with
 ### Sidebar (`components/layout/Sidebar.tsx`)
 
 256px fixed, full height, navy (`bg-sidebar`), no border — the colour change is the edge. A 76px
-header carries an indigo brand tile and the serif wordmark, its second half in `--primary-light`.
+header carries the serif wordmark alone, its second half in `--primary-light`. The indigo icon
+tile that sat beside it is gone: a wordmark *is* the mark, and a generic document glyph next to
+it claimed a logo the product does not have.
 Links are grouped ("Workspace", "Administration") with `.eyebrow` section labels in
 `text-sidebar-muted`; the Administration group renders only for admins, and `lib/nav.ts` is the
 single source for both groups.
@@ -125,8 +127,9 @@ Active state: a filled `bg-sidebar-active` rounded item with white semibold text
 the 2px charcoal edge indicator of the prototype — a fill survives being glanced at, a hairline on
 the far edge of the rail does not.
 
-The footer carries the signed-in identity in a `bg-white/5` card — indigo avatar with initials,
-name, role — with an icon-only Log out button beside it. This is the only place either appears.
+The footer carries the signed-in identity in a `bg-white/5` card — a **circular** indigo avatar
+with initials (round because it stands for a person, where every other tinted square in the app
+stands for a record), name, role — with an icon-only Log out button beside it. This is the only place either appears.
 
 Below `lg` the rail slides off-canvas over a `bg-ink/50` scrim, and a 56px white bar carries the
 open button and the wordmark (`components/layout/AppShell.tsx`).
@@ -143,10 +146,14 @@ Revisit only if a genuine cross-entity search endpoint is added.
 
 ### Page Header (`components/shared/PageHeader.tsx`)
 
-Breadcrumb, title, supporting line, actions pinned right. The breadcrumb (`Section / Page`) is
-derived from `lib/nav.ts` and the current route rather than passed in, so a page added to the rail
-gets its trail for free and the two cannot drift; a route that isn't in the rail simply gets no
-trail.
+Title, supporting line, actions pinned right.
+
+**No breadcrumb.** It was derived from `lib/nav.ts` and rendered as
+`Section / Page` above every title. In an app two levels deep, whose rail
+already shows the section and highlights the current page, it restated what was
+on screen a centimetre to the left and pushed the title down. Removed for the
+same reason the top bar was: it duplicated something the user was already
+looking at.
 
 ### Table Cards
 
@@ -243,6 +250,15 @@ in the `.card-header`. It replaced three copies of a bordered button row whose a
 black fill — a filter is a choice between a handful of views, and this reads as one control.
 
 ### Forms & Drawers
+
+**Overlays render through a portal into `document.body`** — the drawer and the
+confirmation dialog both. `position: fixed` is resolved against the nearest
+ancestor with a transform, filter or containing-block property rather than the
+viewport, so an overlay left in the page tree can be shifted by a wrapper it
+knows nothing about. Portalling makes "covers the screen" true by construction.
+
+Its header uses the same `py-4` as a card header, not a taller one: a drawer
+opening beside a card should not appear to start lower than it.
 
 All data entry happens in a right-side slide-over (`components/shared/Drawer.tsx`), 500px wide,
 closing on backdrop click or Escape, with background scroll locked while open. A drawer form is a
