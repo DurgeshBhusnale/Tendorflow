@@ -10,7 +10,16 @@ from app.models.client import Client
 from app.models.tender import Tender
 from app.models.tender_department import TenderDepartment
 from app.models.user import User
-from app.schemas.tender import TenderCreate, TenderSummary, TenderUpdate, validate_payment
+from app.schemas.tender import (
+    ClientOutstanding,
+    TenderAllocation,
+    TenderCreate,
+    TenderSettlement,
+    TenderSettlementResult,
+    TenderSummary,
+    TenderUpdate,
+    validate_payment,
+)
 
 # No ownership check in this module any more (CH-19): any signed-in user may
 # edit any tender, and the row reports whoever touched it last. Deletion is
@@ -245,3 +254,131 @@ async def bulk_delete_tenders(session: AsyncSession, ids: list[UUID]) -> int:
     result = await session.execute(delete(Tender).where(Tender.id.in_(ids)))
     await session.commit()
     return result.rowcount or 0
+
+
+# --------------------------------------------------------------------------
+# Settling a client's dues (CH-35)
+# --------------------------------------------------------------------------
+
+# Unpaid means something is still owed on it. A tender at 'Paid' is finished and
+# is never touched by a settlement.
+UNPAID_STATUSES = ("Pending", "Partially Paid")
+
+
+async def _unpaid_tenders(session: AsyncSession, client_id: UUID) -> list[Tender]:
+    """A client's unsettled tenders, oldest first.
+
+    Oldest first is the allocation order: money handed over without being
+    attached to a particular tender pays down the longest-standing debt, which
+    is both what the office does by hand and the only order that does not need
+    explaining to the person paying.
+    """
+    query = (
+        select(Tender)
+        .where(Tender.client_id == client_id, Tender.status.in_(UNPAID_STATUSES))
+        .order_by(Tender.tender_date, Tender.created_at)
+    )
+    return list((await session.scalars(_eager(query))).unique().all())
+
+
+async def get_client_outstanding(session: AsyncSession, client_id: UUID) -> ClientOutstanding:
+    """What one client still owes in total. Readable by any signed-in user."""
+    await _assert_refs_exist(session, client_id, None)
+
+    row = (
+        await session.execute(
+            select(
+                func.coalesce(func.sum(Tender.remaining_amount), 0),
+                func.count(),
+            ).where(Tender.client_id == client_id, Tender.status.in_(UNPAID_STATUSES))
+        )
+    ).one()
+    return ClientOutstanding(outstanding=row[0], unpaid_count=row[1])
+
+
+async def settle_client_dues(
+    session: AsyncSession, current_user: User, payload: TenderSettlement
+) -> TenderSettlementResult:
+    """Spread one payment across a client's unpaid tenders, oldest first.
+
+    A client pays a lump sum that has nothing to do with any single tender's
+    value, so the money is consumed tender by tender: each is settled in full
+    until what is left cannot cover one, and that last tender becomes partly
+    paid. The result is the same arithmetic the office would do by hand, done
+    once and atomically.
+
+    Refuses to take more than is owed (CH-35). Accepting the excess would mean
+    either inventing a credit the schema cannot hold or silently keeping money
+    the app cannot account for.
+    """
+    await _assert_refs_exist(session, payload.client_id, None)
+
+    tenders = await _unpaid_tenders(session, payload.client_id)
+    outstanding_before = sum((t.remaining_amount for t in tenders), Decimal("0"))
+
+    if outstanding_before == 0:
+        raise ValidationError(
+            code="NOTHING_OUTSTANDING",
+            message="This client has nothing outstanding — there is no payment to record.",
+        )
+    if payload.amount > outstanding_before:
+        raise ValidationError(
+            code="AMOUNT_EXCEEDS_OUTSTANDING",
+            message=(
+                f"This client owes {outstanding_before:.2f}, which is less than the "
+                f"{payload.amount:.2f} entered. Enter that amount or less."
+            ),
+        )
+
+    remaining_to_apply = payload.amount
+    allocations: list[TenderAllocation] = []
+
+    for tender in tenders:
+        if remaining_to_apply <= 0:
+            break
+
+        applied = min(tender.remaining_amount, remaining_to_apply)
+        if applied <= 0:
+            continue
+
+        new_paid = tender.paid_amount + applied
+        # Equality decides the status rather than a tolerance: both sides are
+        # Decimals read from numeric(14,2), so this is exact.
+        new_status = "Paid" if new_paid == tender.total_amount else "Partially Paid"
+
+        allocations.append(
+            TenderAllocation(
+                tender_id=tender.id,
+                tender_date=tender.tender_date,
+                tender_department=tender.tender_department.name,
+                total_amount=tender.total_amount,
+                previously_paid=tender.paid_amount,
+                applied=applied,
+                new_paid_amount=new_paid,
+                new_status=new_status,
+            )
+        )
+
+        if not payload.preview:
+            tender.paid_amount = new_paid
+            tender.status = new_status
+            tender.payment_mode = payload.payment_mode
+            # Attribution follows the latest edit, as everywhere else (CH-19).
+            tender.created_by = current_user.id
+
+        remaining_to_apply -= applied
+
+    if payload.preview:
+        # Nothing was written, but the ORM may still be holding the rows; make
+        # sure no stray state reaches the database.
+        session.expunge_all()
+    else:
+        await session.commit()
+
+    return TenderSettlementResult(
+        preview=payload.preview,
+        amount_applied=payload.amount,
+        outstanding_before=outstanding_before,
+        outstanding_after=outstanding_before - payload.amount,
+        allocations=allocations,
+    )

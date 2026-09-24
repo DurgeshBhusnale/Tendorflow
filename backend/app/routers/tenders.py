@@ -12,6 +12,7 @@ from app.schemas.tender import (
     TenderBulkDelete,
     TenderCreate,
     TenderRead,
+    TenderSettlement,
     TenderStatus,
     TenderUpdate,
 )
@@ -70,6 +71,39 @@ async def create_tender(
 ):
     tender = await tender_service.create_tender(session, current_user, payload)
     return ok(TenderRead.model_validate(tender))
+
+
+@router.get("/outstanding")
+async def client_outstanding(
+    client_id: UUID = Query(...),
+    session: AsyncSession = Depends(get_db_session),
+    current_user: User = Depends(get_current_user),
+):
+    """What one client still owes (CH-35).
+
+    Not admin-gated, unlike `/summary`. CH-12 withheld the business's own
+    revenue from employees; a single client's balance is the number the person
+    taking their money needs in front of them.
+    """
+    outstanding = await tender_service.get_client_outstanding(session, client_id)
+    return ok(outstanding)
+
+
+@router.post("/settle")
+async def settle_client_dues(
+    payload: TenderSettlement,
+    session: AsyncSession = Depends(get_db_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Spread one payment across a client's unpaid tenders, oldest first (CH-35).
+
+    Any signed-in user, like every other tender edit. With `preview: true` the
+    same allocation is returned without being written, so the plan shown to the
+    user comes from the code that carries it out rather than a second copy of
+    the arithmetic in the browser.
+    """
+    result = await tender_service.settle_client_dues(session, current_user, payload)
+    return ok(result)
 
 
 @router.post("/bulk-delete")

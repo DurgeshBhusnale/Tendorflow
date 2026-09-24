@@ -694,3 +694,39 @@ Who came in with the money (`PRD.md` §4.4). Both fields are optional.
 | TC-TEN-PAY04 | A different payer next time | Edit the tender and change the name and number | Both update. This is the point: the person who comes in is different each visit. |
 | TC-TEN-PAY05 | Half-typed number | Enter `12345` | Rejected — optional, but a number that *is* given must be a real Indian mobile. |
 | TC-TEN-PAY06 | Whitespace only | Type spaces into the name and save | Stored as nothing, not as a blank string: the column shows **—**. |
+
+---
+
+## 15. Settling a client's dues — `TEN-SET`
+
+The lump-sum payment flow (`PRD.md` §4.4). Available to **everyone**, not just
+admins. Set up: one client with three pending tenders of ₹3,000, ₹3,000 and
+₹4,000, logged on three different days so the order is unambiguous.
+
+### Positive
+
+| ID | Case | Steps | Expected |
+|---|---|---|---|
+| TC-TEN-SET01 | The panel appears | On `/tenders`, pick that client in the Client filter | Under the rows: **Pending for this client ₹10,000**, "across 3 unpaid tender(s)", and a **Record Payment** button. |
+| TC-TEN-SET02 | Only for one client | Clear the client filter | The panel disappears. A lump sum belongs to a person, not to a filter. |
+| TC-TEN-SET03 | Preview first | Record Payment → amount `5000`, mode Cash → **Preview allocation** | Shows **₹3,000 to the oldest → Paid** and **₹2,000 to the next → Partially Paid**, and "₹5,000 will still be outstanding". Nothing has changed in the table yet — check a row behind the drawer. |
+| TC-TEN-SET04 | Apply it | Press **Apply ₹5,000** | Drawer closes. Oldest tender is **Paid** (remaining ₹0), second is **Partially Paid** at ₹2,000 of ₹3,000 (remaining ₹1,000), third is untouched **Pending**. The panel now reads ₹5,000 across 2 tenders. |
+| TC-TEN-SET05 | Row shading follows | Look at the three rows | Green, blue and red respectively — the shading tracks the new statuses. |
+| TC-TEN-SET06 | Editing the amount re-previews | Reopen, type `1000`, preview, then change it to `2000` | The button returns to **Preview allocation**; a stale plan is never applied. |
+| TC-TEN-SET07 | Payment mode is recorded | Settle with **Online** | Every tender the payment touched shows `Online` under its status pill. |
+| TC-TEN-SET08 | Tops up a partial tender | With one tender at ₹1,000 of ₹3,000, pay ₹2,000 | That tender goes to **Paid** — the oldest debt is filled before the next is started. |
+| TC-TEN-SET09 | Clearing everything | Pay exactly the outstanding figure | All tenders go Paid, the panel reads **₹0** and Record Payment is disabled. |
+| TC-TEN-SET10 | An employee can do it | Repeat TC-TEN-SET04 signed in as `EMP-1` | Works. The panel and its figure are visible to employees — this is one client's balance, not the business's revenue (`PRD.md` §4.4). |
+
+### Negative
+
+| ID | Case | Steps | Expected |
+|---|---|---|---|
+| TC-TEN-SET-N01 | Overpayment | Owing ₹10,000, enter `12000` and preview | Refused: "This client owes 10000.00, which is less than the 12000.00 entered." Nothing changes — re-check the outstanding figure. |
+| TC-TEN-SET-N02 | Nothing outstanding | Filter to a client whose tenders are all Paid | Record Payment is disabled. Via Swagger, `POST /api/tenders/settle` for them → `422 NOTHING_OUTSTANDING`. |
+| TC-TEN-SET-N03 | Zero or negative | Enter `0`, then `-100` | Rejected before submit. |
+| TC-TEN-SET-N04 | Missing payment mode | Swagger: `POST /api/tenders/settle` without `payment_mode` | `422 VALIDATION_ERROR` — money moved, so the mode is required exactly as on a tender. |
+| TC-TEN-SET-N05 | Someone else's debt | Client A owes ₹10,000, client B owes ₹5,000. Settle ₹5,000 for A | B's outstanding is still ₹5,000. Money must never pay down another client's debt. |
+| TC-TEN-SET-N06 | Preview writes nothing | Preview ₹5,000, then close the drawer without applying | The table and the panel are unchanged. |
+| TC-TEN-SET-N07 | Unknown client | Swagger with a random `client_id` | `404 CLIENT_NOT_FOUND`. |
+| TC-TEN-SET-N08 | Paid tenders are never touched | Settle an amount, then check any tender that was already Paid before | Its `paid_amount`, mode and status are exactly as they were. |

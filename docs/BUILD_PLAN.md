@@ -630,3 +630,37 @@ visible. Coupling them to status would mean clearing them when a tender moves
 back to Pending — quietly destroying a note about who came in, to enforce a
 consistency nobody asked for. Optional and always present is the simpler
 contract.
+
+---
+
+## Phase 15 — Settling a Client's Dues
+
+| Ref | Change | Where it is specified |
+|---|---|---|
+| CH-35 | Record a lump-sum payment against one client, spread oldest-tender-first | `API_CONTRACT.md` §7, `PRD.md` §4.4 |
+
+No migration: the allocation only moves `paid_amount` and `status` on rows that
+already exist.
+
+### Why the allocation lives on the server
+
+`POST /api/tenders/settle` walks the client's unpaid tenders in one transaction.
+The browser could have done the same loop with a PATCH per tender, and that is
+exactly the version that leaves a client half-settled when the third call fails.
+It would also have been a second implementation of the payment rules that the
+Pydantic layer, the service and a Postgres CHECK already enforce between them.
+
+`preview: true` runs the identical code path and returns the plan without
+writing, so the confirmation screen cannot drift from the behaviour.
+
+### Four decisions, all the user's
+
+- **Employees too, not admin-only.** CH-12 withheld the business's revenue; one
+  client's balance is what the person at the desk needs to take their money.
+- **Overpayment refused**, not capped or credited: nothing in the schema can
+  hold a credit, and silently keeping the excess is worse than an error.
+- **One payment mode** for the whole payment, written onto every tender it
+  touches.
+- **No payments ledger.** Balances move; the visit itself is not recorded. The
+  cost — not being able to reconstruct a single day's takings later — was named
+  and accepted.

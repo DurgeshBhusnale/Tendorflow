@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { tendersApi, type TenderFilters } from "@/api/tenders";
-import type { TenderUpdate } from "@/types/tender";
+import type { TenderSettlement, TenderUpdate } from "@/types/tender";
 
 export const tendersKeys = {
   all: ["tenders"] as const,
   list: (params: object) => [...tendersKeys.all, "list", params] as const,
   summary: (params: object) => [...tendersKeys.all, "summary", params] as const,
+  outstanding: (clientId: string) => [...tendersKeys.all, "outstanding", clientId] as const,
 };
 
 export function useTenders(params: TenderFilters & { page: number; page_size: number }) {
@@ -24,6 +25,31 @@ export function useTenderSummary(params: TenderFilters, enabled = true) {
     queryKey: tendersKeys.summary(params),
     queryFn: () => tendersApi.summary(params),
     enabled,
+  });
+}
+
+/** One client's balance. Skipped entirely until a single client is chosen. */
+export function useClientOutstanding(clientId: string) {
+  return useQuery({
+    queryKey: tendersKeys.outstanding(clientId),
+    queryFn: () => tendersApi.outstanding(clientId),
+    enabled: Boolean(clientId),
+  });
+}
+
+/**
+ * Records a payment against a client's dues (CH-35).
+ *
+ * A preview call is deliberately *not* a mutation: it writes nothing, so it
+ * must not invalidate anything either.
+ */
+export function useSettleClientDues() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: TenderSettlement) => tendersApi.settle(payload),
+    onSuccess: (result) => {
+      if (!result.preview) qc.invalidateQueries({ queryKey: tendersKeys.all });
+    },
   });
 }
 

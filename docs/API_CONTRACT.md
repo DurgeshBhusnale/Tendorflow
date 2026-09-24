@@ -716,6 +716,104 @@ how it was paid.)
 
 ---
 
+### `GET /api/tenders/outstanding`
+
+**Any signed-in user.** Query param: `client_id` (required).
+
+What one client still owes, across every tender of theirs that is `Pending` or
+`Partially Paid`.
+
+**Not** admin-gated, unlike `/summary`. CH-12 withheld the *business's* revenue
+from employees; a single client's balance is the number the person taking their
+money needs in front of them.
+
+**Success 200:**
+```json
+{ "success": true, "data": { "outstanding": "10000.00", "unpaid_count": 3 } }
+```
+
+**Errors:** `404 CLIENT_NOT_FOUND`.
+
+---
+
+### `POST /api/tenders/settle`
+
+**Any signed-in user.** Records a lump sum against a client's dues and spreads
+it across their unpaid tenders.
+
+The case it exists for: a client owes money over several tenders, walks in, and
+pays an amount that matches none of them.
+
+**Request:**
+```json
+{
+  "client_id": "uuid",
+  "amount": "5000.00",
+  "payment_mode": "Cash",
+  "preview": false
+}
+```
+
+**Allocation is oldest tender first**, by `tender_date` then `created_at`. Each
+tender is settled in full until what remains cannot cover one; that tender
+becomes `Partially Paid` and the rest are untouched. A tender already part-paid
+is topped up before the next one is started. `Paid` tenders are never touched.
+
+Given 3,000 + 3,000 + 4,000 all pending and a payment of 5,000: the first goes
+to `Paid`, the second to `Partially Paid` at 2,000 of 3,000, the third is left
+alone, and 5,000 remains outstanding.
+
+`payment_mode` is required — money changed hands, exactly as for a tender — and
+one mode covers the whole payment. It is written onto every tender the payment
+touches. On success `created_by` becomes the acting user on those rows.
+
+**`preview: true` returns the identical plan without writing anything.** The UI
+shows that plan and then re-sends with `preview: false`, so what the user
+confirms is produced by the code that carries it out rather than by a second
+copy of the arithmetic in the browser.
+
+**Success 200:**
+```json
+{
+  "success": true,
+  "data": {
+    "preview": false,
+    "amount_applied": "5000.00",
+    "outstanding_before": "10000.00",
+    "outstanding_after": "5000.00",
+    "allocations": [
+      {
+        "tender_id": "uuid",
+        "tender_date": "2026-09-21",
+        "tender_department": "PMC",
+        "total_amount": "3000.00",
+        "previously_paid": "0.00",
+        "applied": "3000.00",
+        "new_paid_amount": "3000.00",
+        "new_status": "Paid"
+      }
+    ]
+  }
+}
+```
+
+`allocations` lists only the tenders the money reached.
+
+**Errors:**
+
+| HTTP | Code | Meaning |
+|---|---|---|
+| 404 | `CLIENT_NOT_FOUND` | No such client. |
+| 422 | `AMOUNT_EXCEEDS_OUTSTANDING` | More than the client owes. Refused rather than capped: the schema has nowhere to hold a credit, so the excess would be money the app could not account for. |
+| 422 | `NOTHING_OUTSTANDING` | The client owes nothing. |
+| 422 | `VALIDATION_ERROR` | Amount at or below zero, or a missing/unknown payment mode. |
+
+There is no record of the payment itself — only its effect on each tender's
+balance. Answering "what did they pay on the 24th" later would need a payments
+ledger, which was considered and deliberately left out.
+
+---
+
 ### `POST /api/tenders/bulk-delete`
 
 **Admin only.** Clears a selection in one call — the case it exists for is a

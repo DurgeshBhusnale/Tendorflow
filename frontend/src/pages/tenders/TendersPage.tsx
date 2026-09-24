@@ -1,4 +1,4 @@
-import { Clock, PieChart, Plus, Trash2, Wallet } from "lucide-react";
+import { Clock, IndianRupee, PieChart, Plus, Trash2, Wallet } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/auth/AuthContext";
 import { Drawer } from "@/components/shared/Drawer";
@@ -17,12 +17,14 @@ import { useConfirm } from "@/hooks/useConfirm";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import {
   useBulkDeleteTenders,
+  useClientOutstanding,
   useDeleteTender,
   useTenderSummary,
   useTenders,
 } from "@/hooks/useTenders";
 import { formatCurrency } from "@/lib/format";
 import { TenderForm } from "@/pages/tenders/TenderForm";
+import { SettleDuesForm } from "@/pages/tenders/SettleDuesForm";
 import { TendersTable } from "@/pages/tenders/TendersTable";
 import type { Tender, TenderStatus } from "@/types/tender";
 
@@ -46,6 +48,7 @@ export default function TendersPage() {
   // whenever the filter or page moves, so a tender can never be deleted from
   // behind a view the user has already left (CH-29).
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [settleOpen, setSettleOpen] = useState(false);
 
   // Shared by the table and the summary strip so they always agree.
   const filters = {
@@ -66,6 +69,9 @@ export default function TendersPage() {
     page_size: 50,
     search: debouncedClientSearch || undefined,
   });
+  // Only meaningful for one client at a time: a lump sum is paid by a person,
+  // not by a filter (CH-35).
+  const { data: outstanding } = useClientOutstanding(clientFilter);
   const deleteTender = useDeleteTender();
   const bulkDeleteTenders = useBulkDeleteTenders();
   const confirm = useConfirm();
@@ -75,6 +81,10 @@ export default function TendersPage() {
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   const hasDateRange = Boolean(startDate || endDate);
   const allOnPageSelected = rows.length > 0 && rows.every((t) => selectedIds.has(t.id));
+  const selectedClient = (clientsPage?.items ?? []).find((c) => c.id === clientFilter);
+  const clientLabel = selectedClient
+    ? `${selectedClient.contact_person_name} · ${selectedClient.company_name}`
+    : "this client";
 
   function changeFilter(apply: () => void) {
     apply();
@@ -330,6 +340,33 @@ export default function TendersPage() {
           }
         />
 
+        {/* Sits under the rows it summarises, and only once a single client is
+            chosen: a lump sum is paid by a person, not by a filter (CH-35). */}
+        {clientFilter && outstanding && (
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-border bg-muted/60 px-4 py-4 sm:px-5">
+            <div className="min-w-0">
+              <p className="eyebrow">Pending for this client</p>
+              <p className="mt-0.5 text-xl font-bold tabular-nums text-foreground">
+                {formatCurrency(outstanding.outstanding)}
+              </p>
+              <p className="mt-0.5 truncate text-[13px] text-muted-foreground">
+                {outstanding.unpaid_count === 0
+                  ? "Nothing outstanding"
+                  : `across ${outstanding.unpaid_count} unpaid tender(s) · ${clientLabel}`}
+              </p>
+            </div>
+            <Button
+              type="button"
+              className="ml-auto"
+              disabled={outstanding.unpaid_count === 0}
+              onClick={() => setSettleOpen(true)}
+            >
+              <IndianRupee />
+              Record Payment
+            </Button>
+          </div>
+        )}
+
         {totalCount > PAGE_SIZE && (
           <Pagination
             page={page}
@@ -351,6 +388,22 @@ export default function TendersPage() {
           onSuccess={() => setFormState({ open: false })}
           onCancel={() => setFormState({ open: false })}
         />
+      </Drawer>
+      <Drawer
+        open={settleOpen}
+        onClose={() => setSettleOpen(false)}
+        title="Record Payment"
+        description="Spread what the client paid across their unpaid tenders, oldest first."
+      >
+        {clientFilter && outstanding && (
+          <SettleDuesForm
+            clientId={clientFilter}
+            clientName={clientLabel}
+            outstanding={outstanding.outstanding}
+            onSuccess={() => setSettleOpen(false)}
+            onCancel={() => setSettleOpen(false)}
+          />
+        )}
       </Drawer>
     </div>
   );

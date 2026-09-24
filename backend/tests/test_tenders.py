@@ -1085,3 +1085,254 @@ async def test_payer_can_change_between_payments(
     assert resp.status_code == 200
     assert resp.json()["data"]["payer_name"] == "Anita Joshi"
     assert resp.json()["data"]["payer_contact"] == "9123456780"
+
+
+# --------------------------------------------------------------------------
+# Settling a client's dues (CH-35)
+# --------------------------------------------------------------------------
+
+
+async def _settle(client, headers, client_id, amount, **overrides):
+    payload = {
+        "client_id": client_id,
+        "amount": amount,
+        "payment_mode": "Cash",
+        **overrides,
+    }
+    return await client.post("/api/tenders/settle", json=payload, headers=headers)
+
+
+async def _three_pending(client, headers, client_id, tender_department_id):
+    """The worked example: 3000, 3000 and 4000 pending, oldest first."""
+    ids = []
+    for days_ago, price in ((3, "3000.00"), (2, "3000.00"), (1, "4000.00")):
+        created = await _create_tender(
+            client,
+            headers,
+            client_id,
+            tender_department_id,
+            quantity=1,
+            price=price,
+            tender_date=(today_ist() - timedelta(days=days_ago)).isoformat(),
+        )
+        ids.append(created.json()["data"]["id"])
+    return ids
+
+
+async def test_outstanding_reports_what_is_owed(
+    client, employee_headers, client_id, tender_department_id
+):
+    await _three_pending(client, employee_headers, client_id, tender_department_id)
+
+    resp = await client.get(
+        "/api/tenders/outstanding", params={"client_id": client_id}, headers=employee_headers
+    )
+
+    assert resp.status_code == 200
+    assert resp.json()["data"] == {"outstanding": "10000.00", "unpaid_count": 3}
+
+
+async def test_outstanding_is_not_admin_only(client, employee_headers, client_id):
+    """One client's balance is desk information, unlike the business totals (CH-12)."""
+    resp = await client.get(
+        "/api/tenders/outstanding", params={"client_id": client_id}, headers=employee_headers
+    )
+
+    assert resp.status_code == 200
+
+
+async def test_settlement_spreads_across_tenders_oldest_first(
+    client, employee_headers, client_id, tender_department_id
+):
+    """The worked example: 5000 against 3000 + 3000 + 4000."""
+    first, second, third = await _three_pending(
+        client, employee_headers, client_id, tender_department_id
+    )
+
+    resp = await _settle(client, employee_headers, client_id, "5000.00")
+
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert data["amount_applied"] == "5000.00"
+    assert data["outstanding_before"] == "10000.00"
+    assert data["outstanding_after"] == "5000.00"
+
+    # The oldest is settled in full, the next takes the remainder, the third is
+    # never touched.
+    assert [a["applied"] for a in data["allocations"]] == ["3000.00", "2000.00"]
+    assert [a["new_status"] for a in data["allocations"]] == ["Paid", "Partially Paid"]
+
+    listed = await client.get(
+        "/api/tenders", params={"client_id": client_id}, headers=employee_headers
+    )
+    rows = {t["id"]: t for t in listed.json()["data"]["items"]}
+    assert rows[first]["status"] == "Paid"
+    assert rows[first]["remaining_amount"] == "0.00"
+    assert rows[second]["status"] == "Partially Paid"
+    assert rows[second]["paid_amount"] == "2000.00"
+    assert rows[second]["remaining_amount"] == "1000.00"
+    assert rows[third]["status"] == "Pending"
+    assert rows[third]["paid_amount"] == "0.00"
+
+
+async def test_settlement_records_the_payment_mode(
+    client, employee_headers, client_id, tender_department_id
+):
+    first, _, _ = await _three_pending(client, employee_headers, client_id, tender_department_id)
+
+    await _settle(client, employee_headers, client_id, "3000.00", payment_mode="Online")
+
+    resp = await client.get(f"/api/tenders/{first}", headers=employee_headers)
+    assert resp.json()["data"]["payment_mode"] == "Online"
+
+
+async def test_settlement_tops_up_an_already_partial_tender(
+    client, employee_headers, client_id, tender_department_id
+):
+    """A part-paid tender is the oldest debt, so it is filled before the next."""
+    created = await _create_tender(
+        client,
+        employee_headers,
+        client_id,
+        tender_department_id,
+        quantity=1,
+        price="3000.00",
+        status="Partially Paid",
+        paid_amount="1000.00",
+        payment_mode="Cash",
+    )
+    tender_id = created.json()["data"]["id"]
+
+    resp = await _settle(client, employee_headers, client_id, "2000.00")
+
+    assert resp.status_code == 200
+    assert resp.json()["data"]["allocations"][0]["previously_paid"] == "1000.00"
+    follow_up = await client.get(f"/api/tenders/{tender_id}", headers=employee_headers)
+    assert follow_up.json()["data"]["status"] == "Paid"
+
+
+async def test_settlement_can_clear_everything(
+    client, employee_headers, client_id, tender_department_id
+):
+    await _three_pending(client, employee_headers, client_id, tender_department_id)
+
+    resp = await _settle(client, employee_headers, client_id, "10000.00")
+
+    assert resp.json()["data"]["outstanding_after"] == "0.00"
+    after = await client.get(
+        "/api/tenders/outstanding", params={"client_id": client_id}, headers=employee_headers
+    )
+    assert after.json()["data"] == {"outstanding": "0.00", "unpaid_count": 0}
+
+
+async def test_overpayment_is_refused(client, employee_headers, client_id, tender_department_id):
+    """Taking more than is owed would be money the app cannot account for."""
+    await _three_pending(client, employee_headers, client_id, tender_department_id)
+
+    resp = await _settle(client, employee_headers, client_id, "12000.00")
+
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == "AMOUNT_EXCEEDS_OUTSTANDING"
+    # Nothing moved.
+    after = await client.get(
+        "/api/tenders/outstanding", params={"client_id": client_id}, headers=employee_headers
+    )
+    assert after.json()["data"]["outstanding"] == "10000.00"
+
+
+async def test_settling_with_nothing_outstanding_is_refused(
+    client, employee_headers, client_id, tender_department_id
+):
+    await _create_tender(
+        client,
+        employee_headers,
+        client_id,
+        tender_department_id,
+        status="Paid",
+        payment_mode="Cash",
+    )
+
+    resp = await _settle(client, employee_headers, client_id, "100.00")
+
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == "NOTHING_OUTSTANDING"
+
+
+async def test_preview_changes_nothing(client, employee_headers, client_id, tender_department_id):
+    """The plan the user confirms comes from the code that carries it out."""
+    await _three_pending(client, employee_headers, client_id, tender_department_id)
+
+    resp = await _settle(client, employee_headers, client_id, "5000.00", preview=True)
+
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert data["preview"] is True
+    assert [a["applied"] for a in data["allocations"]] == ["3000.00", "2000.00"]
+    # ...and the tenders are untouched.
+    after = await client.get(
+        "/api/tenders/outstanding", params={"client_id": client_id}, headers=employee_headers
+    )
+    assert after.json()["data"]["outstanding"] == "10000.00"
+
+
+async def test_settlement_rejects_a_zero_amount(client, employee_headers, client_id):
+    resp = await _settle(client, employee_headers, client_id, "0.00")
+
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+async def test_settlement_requires_a_payment_mode(client, employee_headers, client_id):
+    resp = await client.post(
+        "/api/tenders/settle",
+        json={"client_id": client_id, "amount": "100.00"},
+        headers=employee_headers,
+    )
+
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+async def test_settlement_unknown_client(client, employee_headers):
+    resp = await _settle(client, employee_headers, "00000000-0000-0000-0000-000000000000", "100.00")
+
+    assert resp.status_code == 404
+    assert resp.json()["error"]["code"] == "CLIENT_NOT_FOUND"
+
+
+async def test_settlement_requires_auth(client, client_id):
+    resp = await client.post(
+        "/api/tenders/settle",
+        json={"client_id": client_id, "amount": "100.00", "payment_mode": "Cash"},
+    )
+
+    assert resp.status_code == 401
+    assert resp.json()["error"]["code"] == "UNAUTHENTICATED"
+
+
+async def test_settlement_only_touches_the_named_client(
+    client, employee_headers, client_id, tender_department_id, uniq
+):
+    """Money paid by one client must never pay down the debt of another."""
+    other = await client.post(
+        "/api/clients",
+        json={
+            "contact_person_name": f"Other Person {uniq}",
+            "company_name": f"Other Company {uniq}",
+            "contact_number": "9123456780",
+            "email": f"other-{uniq}@example.com",
+        },
+        headers=employee_headers,
+    )
+    other_id = other.json()["data"]["id"]
+    await _create_tender(
+        client, employee_headers, other_id, tender_department_id, quantity=1, price="5000.00"
+    )
+    await _three_pending(client, employee_headers, client_id, tender_department_id)
+
+    await _settle(client, employee_headers, client_id, "5000.00")
+
+    untouched = await client.get(
+        "/api/tenders/outstanding", params={"client_id": other_id}, headers=employee_headers
+    )
+    assert untouched.json()["data"]["outstanding"] == "5000.00"

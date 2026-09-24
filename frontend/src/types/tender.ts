@@ -78,3 +78,37 @@ export interface TenderSummary {
   paid_count: number;
   partially_paid_count: number;
 }
+
+/** What one client still owes across every unpaid tender of theirs (CH-35). */
+export interface ClientOutstanding {
+  outstanding: string;
+  unpaid_count: number;
+}
+
+export interface TenderSettlement {
+  client_id: string;
+  amount: string;
+  payment_mode: PaymentMode;
+  /** True asks the server for the plan without writing it. */
+  preview?: boolean;
+}
+
+/** What one tender receives out of a settlement. */
+export interface TenderAllocation {
+  tender_id: string;
+  tender_date: string;
+  tender_department: string;
+  total_amount: string;
+  previously_paid: string;
+  applied: string;
+  new_paid_amount: string;
+  new_status: TenderStatus;
+}
+
+export interface TenderSettlementResult {
+  preview: boolean;
+  amount_applied: string;
+  outstanding_before: string;
+  outstanding_after: string;
+  allocations: TenderAllocation[];
+}

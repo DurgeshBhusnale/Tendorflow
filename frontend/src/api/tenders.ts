@@ -1,9 +1,12 @@
 import { apiClient } from "@/api/client";
 import type { ApiSuccess, PaginatedResponse } from "@/types/api";
 import type {
+  ClientOutstanding,
   Tender,
   TenderCreate,
   TenderStatus,
+  TenderSettlement,
+  TenderSettlementResult,
   TenderSummary,
   TenderUpdate,
 } from "@/types/tender";
@@ -29,6 +32,26 @@ export const tendersApi = {
     const { data } = await apiClient.get<ApiSuccess<TenderSummary>>("/api/tenders/summary", {
       params,
     });
+    return data.data;
+  },
+  /** One client's balance. Readable by everyone, unlike `summary` (CH-35). */
+  outstanding: async (clientId: string) => {
+    const { data } = await apiClient.get<ApiSuccess<ClientOutstanding>>(
+      "/api/tenders/outstanding",
+      { params: { client_id: clientId } },
+    );
+    return data.data;
+  },
+  /**
+   * Spreads a lump sum across the client's unpaid tenders, oldest first.
+   * With `preview: true` the server returns the plan without writing it, so
+   * what the user confirms is produced by the code that carries it out.
+   */
+  settle: async (payload: TenderSettlement) => {
+    const { data } = await apiClient.post<ApiSuccess<TenderSettlementResult>>(
+      "/api/tenders/settle",
+      payload,
+    );
     return data.data;
   },
   create: async (payload: TenderCreate) => {

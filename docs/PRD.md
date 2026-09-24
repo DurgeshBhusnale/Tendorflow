@@ -240,6 +240,31 @@ Flagged in `ARCHITECTURE.md` as a hardening item.
   totals with them. The selection clears whenever the filter or page changes,
   so nothing can be deleted from behind a view the user has left.
   The workflow it exists for: filter to a client, select all, delete.
+- **Recording a lump-sum payment.** Filtering to a single client reveals a
+  panel under their rows showing **Pending for this client** and a Record
+  Payment action. A client who owes money across several tenders and pays an
+  amount matching none of them is the normal case, and doing that arithmetic
+  by hand across three rows is where mistakes come from.
+  - The payment is applied **oldest tender first**: each is settled in full
+    until what is left cannot cover one, and that tender becomes Partially
+    Paid. Already part-paid tenders are topped up before the next is started.
+  - Example: 3,000 + 3,000 + 4,000 all pending, 5,000 paid → the first goes
+    Paid, the second sits at 2,000 of 3,000, the third is untouched, 5,000
+    remains outstanding.
+  - **More than the client owes is refused.** There is nowhere in the schema
+    to hold a credit, so the excess would be money the app could not account
+    for.
+  - Payment mode is required and covers the whole payment, exactly as on a
+    single tender.
+  - The drawer previews the allocation tender by tender before anything is
+    written. The preview comes from the same endpoint that performs it.
+  - **Open to employees as well as admins.** The figure is one client's
+    balance, not the business's revenue, and the person taking the money is
+    usually not an admin. §3.3's restriction covers the whole-business KPI
+    strip only.
+  - **No payment record is kept** — only the effect on each tender's balance.
+    Answering "what did they pay on the 24th" later would need a payments
+    ledger, which was considered and deliberately left out.
 - **No row-level "mark paid" quick action.** Marking a tender paid now requires
   a payment mode, so it goes through the form.
 

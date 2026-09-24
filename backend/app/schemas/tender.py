@@ -157,6 +157,69 @@ class TenderBulkDelete(BaseModel):
     ids: list[UUID] = Field(min_length=1, max_length=100)
 
 
+class ClientOutstanding(BaseModel):
+    """What one client still owes, across every unpaid tender of theirs (CH-35).
+
+    Not admin-gated, unlike the whole-business summary: a single client's
+    balance is what the person at the desk needs in order to take their money,
+    where the figures CH-12 withheld were the business's own revenue.
+    """
+
+    outstanding: Decimal
+    unpaid_count: int
+
+    @field_serializer("outstanding")
+    def serialize_money(self, value: Decimal) -> str:
+        return f"{value:.2f}"
+
+
+class TenderSettlement(BaseModel):
+    """A lump sum paid against a client's dues, to be spread over their tenders.
+
+    `preview` runs the same allocation and reports it without writing, so the
+    plan the user confirms is produced by the code that carries it out rather
+    than by a second implementation in the browser.
+    """
+
+    client_id: UUID
+    amount: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
+    # Money changed hands, so the mode is required exactly as it is on a tender.
+    # One mode covers the whole payment.
+    payment_mode: PaymentMode
+    preview: bool = False
+
+
+class TenderAllocation(BaseModel):
+    """What one tender receives out of a settlement."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    tender_id: UUID
+    tender_date: date
+    tender_department: str
+    total_amount: Decimal
+    previously_paid: Decimal
+    applied: Decimal
+    new_paid_amount: Decimal
+    new_status: str
+
+    @field_serializer("total_amount", "previously_paid", "applied", "new_paid_amount")
+    def serialize_money(self, value: Decimal) -> str:
+        return f"{value:.2f}"
+
+
+class TenderSettlementResult(BaseModel):
+    preview: bool
+    amount_applied: Decimal
+    outstanding_before: Decimal
+    outstanding_after: Decimal
+    allocations: list[TenderAllocation]
+
+    @field_serializer("amount_applied", "outstanding_before", "outstanding_after")
+    def serialize_money(self, value: Decimal) -> str:
+        return f"{value:.2f}"
+
+
 class TenderRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
