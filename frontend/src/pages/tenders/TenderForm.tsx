@@ -189,6 +189,32 @@ export function TenderForm({ tender, onSuccess, onCancel }: TenderFormProps) {
           error={errors.client_id?.message}
         />
 
+        {/* Who handed the tender over (CH-32) — sits with the client it belongs
+            to, above the department. Always shown and always optional: the
+            person changes from visit to visit, and often nobody comes in. */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="tender_payer_name">Tender Received From</Label>
+            <Input
+              id="tender_payer_name"
+              placeholder="Name of the person who paid"
+              {...register("payer_name")}
+            />
+            <FieldError>{errors.payer_name?.message}</FieldError>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="tender_payer_contact">Contact Number</Label>
+            <Input
+              id="tender_payer_contact"
+              type="tel"
+              inputMode="numeric"
+              placeholder="9876543210"
+              {...register("payer_contact")}
+            />
+            <FieldError>{errors.payer_contact?.message}</FieldError>
+          </div>
+        </div>
+
         <div className="space-y-1.5">
           <Label htmlFor="tender_department_id">Tender Department</Label>
           <Combobox
@@ -263,32 +289,6 @@ export function TenderForm({ tender, onSuccess, onCancel }: TenderFormProps) {
             <FieldError>{errors.payment_mode?.message}</FieldError>
           </div>
         )}
-
-        {/* Who actually came in with the money (CH-32). Always shown and always
-            optional: the payer changes from visit to visit, and often nobody
-            comes in at all. */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="tender_payer_name">Payment Received From</Label>
-            <Input
-              id="tender_payer_name"
-              placeholder="Name of the person who paid"
-              {...register("payer_name")}
-            />
-            <FieldError>{errors.payer_name?.message}</FieldError>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="tender_payer_contact">Payer&apos;s Contact Number</Label>
-            <Input
-              id="tender_payer_contact"
-              type="tel"
-              inputMode="numeric"
-              placeholder="9876543210"
-              {...register("payer_contact")}
-            />
-            <FieldError>{errors.payer_contact?.message}</FieldError>
-          </div>
-        </div>
 
         {/* Calculated fields — visibly inert, never submitted. */}
         <div className="space-y-3 rounded-xl border border-primary/15 bg-primary/5 p-4">

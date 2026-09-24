@@ -129,7 +129,7 @@ export function TendersTable({
       ),
     },
     {
-      header: "Paid By",
+      header: "Received From",
       cell: (t) =>
         t.payer_name || t.payer_contact ? (
           <span className="min-w-0">

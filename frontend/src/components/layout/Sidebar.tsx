@@ -38,7 +38,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   // the password again — cheap to confirm, annoying to do by accident.
   function handleLogout() {
     confirm({
-      title: "Sign out?",
+      title: "Are you sure you want to sign out?",
       description: "You will need your username and password to get back in.",
       confirmLabel: "Sign out",
       onConfirm: () => logout(),
