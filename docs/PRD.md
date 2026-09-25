@@ -240,11 +240,16 @@ Flagged in `ARCHITECTURE.md` as a hardening item.
   totals with them. The selection clears whenever the filter or page changes,
   so nothing can be deleted from behind a view the user has left.
   The workflow it exists for: filter to a client, select all, delete.
-- **Recording a lump-sum payment.** Filtering to a single client reveals a
-  panel under their rows showing **Pending for this client** and a Record
-  Payment action. A client who owes money across several tenders and pays an
-  amount matching none of them is the normal case, and doing that arithmetic
-  by hand across three rows is where mistakes come from.
+- **Recording a lump-sum payment.** Narrowing the page to a single client
+  reveals a panel under their rows showing **Pending for this client** and a
+  Record Payment action. A client who owes money across several tenders and
+  pays an amount matching none of them is the normal case, and doing that
+  arithmetic by hand across three rows is where mistakes come from.
+  - "Narrowing" means either picking the client in the filter **or typing
+    their name into search** — people reach the same view both ways, and the
+    panel used to appear only for the filter. A search only counts when every
+    matching row is on screen and they all belong to one client: page one
+    being all one client says nothing about page two.
   - The payment is applied **oldest tender first**: each is settled in full
     until what is left cannot cover one, and that tender becomes Partially
     Paid. Already part-paid tenders are topped up before the next is started.

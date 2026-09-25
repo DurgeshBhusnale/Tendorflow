@@ -383,15 +383,20 @@ component. The short version:
 - **Buttons inside table cells are `variant="outline"`**, never `ghost` — ghost reads as plain
   text until hovered. Numbers (KPIs, totals) are `tabular-nums`.
 - **Identity cells pair two lines with an `<Avatar>`** (name over email, contact over company).
+- **Below `lg` it is a phone app** (CH-30): `<TabBar>` instead of the rail, `<PageHeader>` as the
+  app bar with the description hidden and the primary action as a FAB (`primaryAction`), metrics
+  two to a row, filters in a `<FilterSheet>`, and table rows that identify a record with the rest
+  in a detail sheet — so give every new column a `mobile` role (`title` / `amount` / `status` /
+  `actions` / `hide`), and prefix any row tint with `md:`.
 - **Forms live in drawers.** `<Drawer>` + `<DrawerBody>` + `<DrawerFooter>`; the form is
   `flex h-full flex-col` so its action bar pins to the bottom.
 - **Money and dates** always go through `formatCurrency` / `formatDate`. **Statuses** are always
   a `<StatusPill>`, never plain text.
 - Loading states: `Loading…` in muted text (the smoke test keys off that string). Error states: a
   bordered `bg-red-50` block in `text-destructive`. Toasts still to come.
-- **Responsive is required.** Desktop-first at 1440px, usable down to 360px, nothing scrolling
-  horizontally at any width. Use the `.page` and `.toolbar` classes instead of hand-rolling the
-  padding ladder, and give each new table column a `mobile` role so it lands correctly in the
-  stacked card layout `DataTable` renders below `md`. `scripts/smoke-mobile.mjs` is the check —
-  it fails on any element that overflows the viewport, which is the failure mode that is hardest
-  to spot by eye.
+- **Responsive is required.** Desktop at 1440px and a phone app at 390px are two designs of the
+  same screen, not one layout squeezed — see "The Phone Layout" in `docs/DESIGN_SYSTEM.md`. Use
+  the `.page`, `.card-header` and `.toolbar` classes instead of hand-rolling the padding ladder,
+  and give each new table column a `mobile` role so it lands correctly in the phone row and its
+  detail sheet. `scripts/smoke-mobile.mjs` is the check — it fails on any element that overflows
+  the viewport, which is the failure mode that is hardest to spot by eye.

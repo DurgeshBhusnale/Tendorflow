@@ -6,6 +6,7 @@ import {
   Landmark,
   KeyRound,
   LayoutDashboard,
+  Menu,
   Tags,
   Users,
   Wallet,
@@ -24,6 +25,24 @@ export interface NavGroup {
   adminOnly?: boolean;
   items: NavItem[];
 }
+
+export interface TabItem extends NavItem {
+  /** `end` matching, so More doesn't stay lit on the pages it links to. */
+  end?: boolean;
+}
+
+/**
+ * The phone's bottom tab bar (CH-30): the three destinations people reach for,
+ * plus More for everything else. Derived from the same nav vocabulary as the
+ * desktop rail below, and deliberately four — five is the point where labels
+ * start truncating at 360px.
+ */
+export const primaryTabs: TabItem[] = [
+  { to: "/dashboard", label: "Home", icon: LayoutDashboard },
+  { to: "/clients", label: "Clients", icon: Building2 },
+  { to: "/tenders", label: "Tenders", icon: FileText },
+  { to: "/more", label: "More", icon: Menu, end: true },
+];
 
 /** Single source for the sidebar navigation. */
 export const navGroups: NavGroup[] = [

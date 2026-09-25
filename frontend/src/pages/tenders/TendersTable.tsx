@@ -17,10 +17,12 @@ const STATUS_TONES: Record<TenderStatus, PillTone> = {
 // Payment state shades the whole row, not just the pill (CH-23): what is still
 // owed is what this table gets scanned for. The hover tint is restated so the
 // shade doesn't disappear under the cursor.
+// Desktop only (CH-30): on a phone a full-bleed tint behind every row reads as
+// an error state, and the amount and pill already carry the status there.
 const STATUS_ROW_SHADES: Record<TenderStatus, string> = {
-  Pending: "bg-red-100/70 hover:bg-red-100",
-  "Partially Paid": "bg-blue-100/70 hover:bg-blue-100",
-  Paid: "bg-emerald-100/70 hover:bg-emerald-100",
+  Pending: "md:bg-red-100/70 md:hover:bg-red-100",
+  "Partially Paid": "md:bg-blue-100/70 md:hover:bg-blue-100",
+  Paid: "md:bg-emerald-100/70 md:hover:bg-emerald-100",
 };
 
 interface TendersTableProps {
@@ -78,7 +80,13 @@ export function TendersTable({
             <span className="block truncate font-semibold text-foreground">
               {t.client.contact_person_name}
             </span>
-            <span className="block truncate text-[13px] text-muted-foreground">
+            {/* The desktop table has a Date column; the phone row does not,
+                and a tender without its date is half a record (CH-30). Two
+                lines rather than a nested span, so each one truncates. */}
+            <span className="block truncate text-[13px] text-muted-foreground md:hidden">
+              {formatDay(t.tender_date)} · {t.client.company_name}
+            </span>
+            <span className="hidden truncate text-[13px] text-muted-foreground md:block">
               {t.client.company_name}
             </span>
           </span>
@@ -99,6 +107,7 @@ export function TendersTable({
       header: "Total Amount",
       cell: (t) => <span className="font-semibold">{formatCurrency(t.total_amount)}</span>,
       align: "right",
+      mobile: "amount",
     },
     {
       header: "Paid Amount",
@@ -119,6 +128,7 @@ export function TendersTable({
     },
     {
       header: "Status",
+      mobile: "status",
       cell: (t) => (
         <div className="flex flex-col items-start gap-1">
           <StatusPill label={t.status} tone={STATUS_TONES[t.status] ?? "slate"} />

@@ -23,26 +23,33 @@ interface MetricCardProps {
   tone?: MetricTone;
 }
 
+/**
+ * On a phone these sit two to a row, so everything that isn't the number or
+ * its name is dropped: the icon chip shrinks and the hint line is desktop only
+ * (CH-30). Four metrics then take the height one used to.
+ */
 export function MetricCard({ label, value, icon: Icon, hint, tone = "indigo" }: MetricCardProps) {
   return (
-    <div className="surface p-5">
-      <div className="flex items-start justify-between gap-3">
-        <p className="text-[13px] font-medium leading-5 text-muted-foreground">{label}</p>
+    <div className="surface p-3.5 sm:p-5">
+      <div className="flex items-start justify-between gap-2 sm:gap-3">
+        <p className="text-xs font-medium leading-4 text-muted-foreground sm:text-[13px] sm:leading-5">
+          {label}
+        </p>
         {Icon && (
           <span
             className={cn(
-              "flex size-9 shrink-0 items-center justify-center rounded-lg",
+              "flex size-7 shrink-0 items-center justify-center rounded-lg sm:size-9",
               TONES[tone],
             )}
           >
-            <Icon className="size-[18px]" />
+            <Icon className="size-3.5 sm:size-[18px]" />
           </span>
         )}
       </div>
-      <p className="mt-3.5 text-3xl font-bold tabular-nums tracking-[-0.03em] text-foreground">
+      <p className="mt-2 text-2xl font-bold tabular-nums tracking-[-0.03em] text-foreground sm:mt-3.5 sm:text-3xl">
         {value}
       </p>
-      {hint && <p className="mt-2 text-xs leading-5 text-muted-foreground">{hint}</p>}
+      {hint && <p className="mt-2 hidden text-xs leading-5 text-muted-foreground sm:block">{hint}</p>}
     </div>
   );
 }

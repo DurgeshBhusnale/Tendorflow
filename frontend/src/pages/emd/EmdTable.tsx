@@ -16,8 +16,8 @@ const STATUS_TONES: Record<EmdStatus, PillTone> = {
 // Held money is blue rather than red: it is an open obligation, not a problem.
 // Returned is green because that deposit is settled and needs no further action.
 const STATUS_ROW_SHADES: Record<EmdStatus, string> = {
-  "With Us": "bg-blue-100/70 hover:bg-blue-100",
-  Returned: "bg-emerald-100/70 hover:bg-emerald-100",
+  "With Us": "md:bg-blue-100/70 md:hover:bg-blue-100",
+  Returned: "md:bg-emerald-100/70 md:hover:bg-emerald-100",
 };
 
 interface EmdTableProps {
@@ -58,7 +58,10 @@ export function EmdTable({
           <Avatar name={e.client_name} />
           <span className="min-w-0">
             <span className="block truncate font-semibold text-foreground">{e.client_name}</span>
-            <span className="block truncate text-[13px] text-muted-foreground">
+            <span className="block truncate text-[13px] text-muted-foreground md:hidden">
+              {formatDay(e.emd_date)} · {e.company_name}
+            </span>
+            <span className="hidden truncate text-[13px] text-muted-foreground md:block">
               {e.company_name}
             </span>
           </span>
@@ -72,6 +75,7 @@ export function EmdTable({
     {
       header: "Amount",
       align: "right",
+      mobile: "amount",
       cell: (e) => <span className="font-semibold">{formatCurrency(e.amount)}</span>,
     },
     {
@@ -89,6 +93,7 @@ export function EmdTable({
     },
     {
       header: "Status",
+      mobile: "status",
       cell: (e) => <StatusPill label={e.status} tone={STATUS_TONES[e.status] ?? "slate"} />,
     },
     {

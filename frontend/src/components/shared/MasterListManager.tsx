@@ -106,6 +106,7 @@ export function MasterListManager({
     },
     {
       header: "Status",
+      mobile: "status",
       cell: (item) => (
         <StatusPill
           label={item.is_active ? "Active" : "Inactive"}
@@ -154,6 +155,7 @@ export function MasterListManager({
         title={title}
         description={`Inactive entries disappear from employee-facing dropdowns, but existing records that reference them are unaffected. Deleting is permanent, and only possible once no ${inUseBy} use the entry.`}
         actions={addButton}
+        primaryAction={{ label: `Add ${entityLabel}`, onClick: () => setShowForm(true) }}
       />
 
       <div className="surface">
@@ -172,7 +174,7 @@ export function MasterListManager({
           rowKey={(item) => item.id}
           isLoading={isLoading}
           // A deactivated entry stays legible but visibly out of service.
-          rowClassName={(item) => (item.is_active ? undefined : "bg-muted/40")}
+          rowClassName={(item) => (item.is_active ? undefined : "md:bg-muted/40")}
           empty={
             <EmptyState
               icon={Tags}

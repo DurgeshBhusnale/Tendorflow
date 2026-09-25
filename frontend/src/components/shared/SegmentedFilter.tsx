@@ -23,7 +23,9 @@ export function SegmentedFilter<T extends string>({
 }: SegmentedFilterProps<T>) {
   return (
     <div
-      className="inline-flex items-center gap-1 self-start rounded-lg bg-muted p-1"
+      // Four segments do not fit 390px, so the track scrolls on a phone rather
+      // than wrapping into two rows of half-width buttons.
+      className="-mx-1 flex max-w-full items-center gap-1 self-start overflow-x-auto rounded-lg bg-muted p-1 [scrollbar-width:none] sm:mx-0 sm:inline-flex sm:overflow-visible"
       role="group"
       aria-label={label}
     >
@@ -34,7 +36,7 @@ export function SegmentedFilter<T extends string>({
           aria-pressed={value === option}
           onClick={() => onChange(option)}
           className={cn(
-            "h-8 whitespace-nowrap rounded-md px-3 text-[13px] transition-colors",
+            "h-8 shrink-0 whitespace-nowrap rounded-md px-3 text-[13px] transition-colors",
             value === option
               ? "bg-card font-semibold text-foreground shadow-card"
               : "font-medium text-muted-foreground hover:text-foreground",

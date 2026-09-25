@@ -46,7 +46,7 @@ function Panel({
 
 function RecentTenderRow({ tender }: { tender: Tender }) {
   return (
-    <div className="flex flex-col gap-2 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5">
+    <div className="flex items-center justify-between gap-3 px-4 py-3 sm:gap-4 sm:px-5 sm:py-3.5">
       <div className="flex min-w-0 items-center gap-3">
         <Avatar name={tender.client.contact_person_name} />
         <div className="min-w-0">
@@ -59,7 +59,8 @@ function RecentTenderRow({ tender }: { tender: Tender }) {
           </p>
         </div>
       </div>
-      <div className="flex shrink-0 items-center gap-3 sm:gap-4">
+      {/* Figure over pill on a phone, side by side once there is room. */}
+      <div className="flex shrink-0 flex-col items-end gap-1.5 sm:flex-row sm:items-center sm:gap-4">
         <span className="text-sm font-bold tabular-nums text-foreground">
           {formatCurrency(tender.total_amount)}
         </span>
@@ -76,7 +77,7 @@ function RecentTenderRow({ tender }: { tender: Tender }) {
 
 function RecentClientRow({ client }: { client: Client }) {
   return (
-    <div className="flex flex-col gap-2 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5">
+    <div className="flex items-center justify-between gap-3 px-4 py-3 sm:gap-4 sm:px-5 sm:py-3.5">
       <div className="flex min-w-0 items-center gap-3">
         <Avatar name={client.company_name} />
         <div className="min-w-0">
@@ -86,9 +87,10 @@ function RecentClientRow({ client }: { client: Client }) {
           </p>
         </div>
       </div>
-      <div className="shrink-0 sm:text-right">
+      <div className="shrink-0 text-right">
         <p className="text-xs text-muted-foreground">{formatDate(client.created_at)}</p>
-        <p className="mt-0.5 text-xs text-muted-foreground">
+        {/* Who onboarded them is desktop detail; the phone row keeps the date. */}
+        <p className="mt-0.5 hidden text-xs text-muted-foreground sm:block">
           by {client.created_by?.full_name ?? "—"}
         </p>
       </div>
@@ -124,7 +126,7 @@ export default function DashboardPage() {
           back null for anyone who is not an admin (CH-12). */}
       <div
         className={cn(
-          "grid grid-cols-1 gap-4 md:grid-cols-2",
+          "grid grid-cols-2 gap-3 sm:gap-4",
           data.total_paid_tender_value === null ? "xl:grid-cols-3" : "xl:grid-cols-4",
         )}
       >

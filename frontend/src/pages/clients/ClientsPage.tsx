@@ -60,6 +60,7 @@ export default function ClientsPage() {
         title="Clients"
         description="Everyone onboarded to the workspace. Any signed-in user can edit a client; only admins can delete one."
         actions={addButton}
+        primaryAction={{ label: "Add Client", onClick: () => setFormState({ open: true }) }}
       />
 
       <div className="surface">

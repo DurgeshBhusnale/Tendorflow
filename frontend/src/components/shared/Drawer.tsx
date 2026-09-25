@@ -61,7 +61,12 @@ export function Drawer({ open, onClose, title, description, children }: DrawerPr
           <div className="min-w-0">
             <h2 className="text-xl">{title}</h2>
             {description && (
-              <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{description}</p>
+              // Clamped rather than dropped on a phone: some of these lines
+              // carry a real rule (a password only changes if you type one),
+              // but three lines of it above the first field is too much.
+              <p className="mt-1.5 line-clamp-2 text-sm leading-relaxed text-muted-foreground sm:line-clamp-none">
+                {description}
+              </p>
             )}
           </div>
           <button
@@ -99,10 +104,15 @@ export function DrawerSection({ title, children }: { title: string; children: Re
   );
 }
 
-/** Pinned action bar at the foot of a drawer form. */
+/**
+ * Pinned action bar at the foot of a drawer form.
+ *
+ * On a phone the buttons split the width and sit above the home indicator, so
+ * the submit is a thumb-sized target rather than a 96px button in the corner.
+ */
 export function DrawerFooter({ children }: { children: ReactNode }) {
   return (
-    <div className="flex items-center justify-end gap-3 border-t border-border bg-card px-5 py-4 sm:px-6">
+    <div className="flex items-center justify-end gap-3 border-t border-border bg-card px-4 pb-[max(env(safe-area-inset-bottom,0px),16px)] pt-4 [&>*]:h-12 [&>*]:flex-1 sm:px-6 sm:pb-4 sm:[&>*]:h-10 sm:[&>*]:flex-none">
       {children}
     </div>
   );

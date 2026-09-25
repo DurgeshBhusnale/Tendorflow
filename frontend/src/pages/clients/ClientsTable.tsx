@@ -42,9 +42,24 @@ export function ClientsTable({
       ),
     },
     {
+      // The phone row is headed by the company, since that is how a client is
+      // asked for; the avatar comes along so the list is scannable, and the
+      // contact person and email wait in the detail sheet (CH-30).
       header: "Company Name",
       mobile: "title",
-      cell: (c) => <span className="font-medium text-foreground">{c.company_name}</span>,
+      cell: (c) => (
+        <span className="flex items-center gap-3">
+          <Avatar name={c.company_name} className="md:hidden" />
+          <span className="min-w-0">
+            <span className="block truncate font-semibold text-foreground md:font-medium">
+              {c.company_name}
+            </span>
+            <span className="block truncate text-[13px] text-muted-foreground md:hidden">
+              {c.contact_person_name}
+            </span>
+          </span>
+        </span>
+      ),
     },
     {
       header: "Contact Number",

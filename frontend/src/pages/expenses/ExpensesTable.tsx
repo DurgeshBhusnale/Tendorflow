@@ -15,8 +15,8 @@ const STATUS_TONES: Record<ExpenseStatus, PillTone> = {
 // Same treatment as the tenders table (CH-23): what is still owed reads from
 // across the row, not from one pill.
 const STATUS_ROW_SHADES: Record<ExpenseStatus, string> = {
-  Pending: "bg-red-100/70 hover:bg-red-100",
-  Paid: "bg-emerald-100/70 hover:bg-emerald-100",
+  Pending: "md:bg-red-100/70 md:hover:bg-red-100",
+  Paid: "md:bg-emerald-100/70 md:hover:bg-emerald-100",
 };
 
 interface ExpensesTableProps {
@@ -47,18 +47,23 @@ export function ExpensesTable({
       // The one column worth reading in full, so it wraps instead of being
       // clipped like the rest of the table's cells.
       cell: (e) => (
-        <span className="block max-w-md whitespace-normal font-medium text-foreground">
-          {e.details}
+        <span className="block max-w-md">
+          <span className="block whitespace-normal font-medium text-foreground">{e.details}</span>
+          <span className="mt-0.5 block text-[13px] text-muted-foreground md:hidden">
+            {formatDay(e.expense_date)}
+          </span>
         </span>
       ),
     },
     {
       header: "Amount",
       align: "right",
+      mobile: "amount",
       cell: (e) => <span className="font-semibold">{formatCurrency(e.amount)}</span>,
     },
     {
       header: "Status",
+      mobile: "status",
       cell: (e) => <StatusPill label={e.status} tone={STATUS_TONES[e.status] ?? "slate"} />,
     },
     {

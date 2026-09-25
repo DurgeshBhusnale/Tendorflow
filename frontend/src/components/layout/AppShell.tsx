@@ -1,59 +1,30 @@
-import { Menu } from "lucide-react";
-import { useEffect, useState } from "react";
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet } from "react-router-dom";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { TabBar } from "@/components/layout/TabBar";
 
 /**
- * Sidebar rail plus a scrolling content column.
+ * Navigation plus a scrolling content column.
  *
- * There is no desktop top bar: it only ever repeated the page title, which each
- * page already renders through <PageHeader>. Identity and sign-out live at the
- * foot of the rail.
+ * Desktop is the navy rail beside the content; there is no top bar, because it
+ * only ever repeated the page title each page already renders.
  *
- * Below `lg` the rail slides off-canvas, so a slim bar carries the button that
- * opens it. That bar shows the wordmark rather than the page title — the title
- * is still the page's own job.
+ * Below `lg` the rail is not there at all (CH-30). A phone gets a bottom tab
+ * bar instead of an off-canvas copy of the desktop navigation: the four
+ * destinations sit in the thumb zone, and `<PageHeader>` becomes the app bar.
+ * The content column keeps enough bottom padding to clear the tab bar.
  */
 export function AppShell() {
-  const [navOpen, setNavOpen] = useState(false);
-  const { pathname } = useLocation();
-
-  // Navigating with the rail open (or hitting Escape) should close it.
-  useEffect(() => setNavOpen(false), [pathname]);
-
-  useEffect(() => {
-    if (!navOpen) return;
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setNavOpen(false);
-    }
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [navOpen]);
-
   return (
     <div className="flex h-dvh overflow-hidden bg-background">
-      <Sidebar open={navOpen} onClose={() => setNavOpen(false)} />
+      <Sidebar />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-card px-3 lg:hidden">
-          <button
-            type="button"
-            onClick={() => setNavOpen(true)}
-            aria-label="Open navigation"
-            aria-expanded={navOpen}
-            className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          >
-            <Menu className="size-5" />
-          </button>
-          <span className="font-display text-base font-bold tracking-tight text-ink">
-            Tender<span className="text-primary">Flow</span>
-          </span>
-        </header>
-
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto pb-[calc(76px+env(safe-area-inset-bottom,0px))] lg:pb-0">
           <Outlet />
         </main>
       </div>
+
+      <TabBar />
     </div>
   );
 }

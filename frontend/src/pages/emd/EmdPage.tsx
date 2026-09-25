@@ -1,6 +1,7 @@
 import { Landmark, Plus, Trash2, Undo2 } from "lucide-react";
 import { useState } from "react";
 import { Drawer } from "@/components/shared/Drawer";
+import { FilterSheet } from "@/components/shared/FilterSheet";
 import { MetricCard } from "@/components/shared/MetricCard";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Pagination } from "@/components/shared/Pagination";
@@ -140,10 +141,11 @@ export default function EmdPage() {
         title="EMD"
         description="Earnest money deposits taken from clients so a tender's deposit can be paid online. Each one is either still with us or returned."
         actions={addButton}
+        primaryAction={{ label: "Log EMD", onClick: () => setFormState({ open: true }) }}
       />
 
       {summary && (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
           {showWithUs && (
             <MetricCard
               label="Total With Us"
@@ -184,8 +186,12 @@ export default function EmdPage() {
         {/* Dates on their own row: two labelled fields do not fit beside the
             tabs at tablet width without wrapping mid-pair. The client filter is
             gone with the foreign key (CH-33) — search covers the typed names. */}
-        <div className="flex flex-wrap items-end gap-3 px-4 pb-4 sm:px-5">
-          <div className="space-y-1.5">
+        <FilterSheet
+          activeCount={[startDate, endDate].filter(Boolean).length}
+          onClear={clearFilters}
+          resultCount={totalCount}
+        >
+          <div className="w-full space-y-1.5 sm:w-auto">
             <Label htmlFor="emd_start_date">From</Label>
             <Input
               id="emd_start_date"
@@ -196,7 +202,7 @@ export default function EmdPage() {
               onChange={(e) => changeFilter(() => setStartDate(e.target.value))}
             />
           </div>
-          <div className="space-y-1.5">
+          <div className="w-full space-y-1.5 sm:w-auto">
             <Label htmlFor="emd_end_date">To</Label>
             <Input
               id="emd_end_date"
@@ -208,12 +214,17 @@ export default function EmdPage() {
             />
           </div>
           {hasDateRange && (
-            <p className="pb-2.5 text-xs text-muted-foreground">Both ends are included.</p>
+            <p className="text-xs text-muted-foreground sm:pb-2.5">Both ends are included.</p>
           )}
-          <Button type="button" variant="outline" className="ml-auto" onClick={clearFilters}>
+          <Button
+            type="button"
+            variant="outline"
+            className="hidden sm:ml-auto sm:inline-flex"
+            onClick={clearFilters}
+          >
             Clear filters
           </Button>
-        </div>
+        </FilterSheet>
 
         {/* Only appears once something is ticked (CH-34). */}
         {isAdmin && selectedIds.size > 0 && (

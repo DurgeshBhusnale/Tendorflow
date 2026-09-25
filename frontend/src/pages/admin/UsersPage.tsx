@@ -95,6 +95,7 @@ export default function UsersPage() {
     },
     {
       header: "Status",
+      mobile: "status",
       cell: (u) => (
         <StatusPill
           label={u.is_active ? "Active" : "Inactive"}
@@ -138,6 +139,7 @@ export default function UsersPage() {
         title="Users"
         description="Admins and employees with access to this workspace. Deactivating revokes sign-in and keeps their history; deleting removes the account and its attribution for good."
         actions={addButton}
+        primaryAction={{ label: "Onboard User", onClick: () => setFormState({ open: true }) }}
       />
 
       <div className="surface">
@@ -158,7 +160,7 @@ export default function UsersPage() {
           rowKey={(u) => u.id}
           isLoading={isLoading}
           // A deactivated account stays legible but visibly out of service.
-          rowClassName={(u) => (u.is_active ? undefined : "bg-muted/40")}
+          rowClassName={(u) => (u.is_active ? undefined : "md:bg-muted/40")}
           empty={
             <EmptyState
               icon={Users}

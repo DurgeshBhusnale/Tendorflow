@@ -1,6 +1,7 @@
 import { CheckCircle2, Clock, Plus, Wallet } from "lucide-react";
 import { useState } from "react";
 import { Drawer } from "@/components/shared/Drawer";
+import { FilterSheet } from "@/components/shared/FilterSheet";
 import { MetricCard } from "@/components/shared/MetricCard";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Pagination } from "@/components/shared/Pagination";
@@ -89,10 +90,11 @@ export default function ExpensesPage() {
         title="Expenses"
         description="What the business spends, logged against the day it was spent. Visible to admins only."
         actions={addButton}
+        primaryAction={{ label: "Log Expense", onClick: () => setFormState({ open: true }) }}
       />
 
       {summary && (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3">
           <MetricCard
             label="Total Expenses"
             value={formatCurrency(summary.total_amount)}
@@ -139,8 +141,12 @@ export default function ExpensesPage() {
 
         {/* Dates sit on their own row: two labelled fields do not fit beside
             the tabs at tablet width without wrapping mid-pair. */}
-        <div className="flex flex-wrap items-end gap-3 px-4 pb-4 sm:px-5">
-          <div className="space-y-1.5">
+        <FilterSheet
+          activeCount={[startDate, endDate].filter(Boolean).length}
+          onClear={clearFilters}
+          resultCount={totalCount}
+        >
+          <div className="w-full space-y-1.5 sm:w-auto">
             <Label htmlFor="expense_start_date">From</Label>
             <Input
               id="expense_start_date"
@@ -151,7 +157,7 @@ export default function ExpensesPage() {
               onChange={(e) => changeFilter(() => setStartDate(e.target.value))}
             />
           </div>
-          <div className="space-y-1.5">
+          <div className="w-full space-y-1.5 sm:w-auto">
             <Label htmlFor="expense_end_date">To</Label>
             <Input
               id="expense_end_date"
@@ -163,12 +169,17 @@ export default function ExpensesPage() {
             />
           </div>
           {hasDateRange && (
-            <p className="pb-2.5 text-xs text-muted-foreground">Both ends are included.</p>
+            <p className="text-xs text-muted-foreground sm:pb-2.5">Both ends are included.</p>
           )}
-          <Button type="button" variant="outline" className="ml-auto" onClick={clearFilters}>
+          <Button
+            type="button"
+            variant="outline"
+            className="hidden sm:ml-auto sm:inline-flex"
+            onClick={clearFilters}
+          >
             Clear filters
           </Button>
-        </div>
+        </FilterSheet>
 
         <ExpensesTable
           expenses={data?.items ?? []}

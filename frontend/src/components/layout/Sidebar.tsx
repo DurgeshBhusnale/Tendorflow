@@ -1,4 +1,4 @@
-import { LogOut, X } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "@/auth/AuthContext";
 import { useConfirm } from "@/hooks/useConfirm";
@@ -16,21 +16,18 @@ function initials(fullName: string | undefined): string {
     .join("");
 }
 
-interface SidebarProps {
-  /** Mobile only — on `lg` and up the rail is always in the layout. */
-  open: boolean;
-  onClose: () => void;
-}
-
 /**
- * The navigation rail — the one dark surface in the app.
+ * The navigation rail — the one dark surface in the app, and desktop only.
  *
  * Navy rather than white so the content column reads as the workspace and the
  * rail as its frame. The active route is marked by a filled rounded item, which
  * replaced the 2px edge indicator of the first prototype: a fill survives being
  * glanced at, a hairline on the far edge of a 240px rail does not.
+ *
+ * Below `lg` it is not rendered at all: phones navigate with `<TabBar>` and the
+ * More screen, which carry the same groups from `lib/nav.ts` (CH-30).
  */
-export function Sidebar({ open, onClose }: SidebarProps) {
+export function Sidebar() {
   const { user, logout, isAdmin } = useAuth();
   const confirm = useConfirm();
 
@@ -47,37 +44,11 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   const groups = navGroups.filter((group) => !group.adminOnly || isAdmin);
 
   return (
-    <>
-      {/* Scrim, mobile only. */}
-      {open && (
-        <div
-          className="fixed inset-0 z-40 animate-fade-in bg-ink/50 lg:hidden"
-          onClick={onClose}
-          aria-hidden
-        />
-      )}
-
-      <aside
-        className={cn(
-          "flex h-dvh w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground",
-          // Off-canvas below lg, part of the flex row from lg up.
-          "fixed inset-y-0 left-0 z-50 transition-transform duration-200",
-          "lg:static lg:translate-x-0 lg:transition-none",
-          open ? "translate-x-0" : "-translate-x-full",
-        )}
-      >
+    <aside className="hidden h-dvh w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground lg:flex">
         <div className="flex h-[76px] shrink-0 items-center gap-3 border-b border-sidebar-border px-5">
           <span className="font-display text-xl font-bold tracking-tight text-white">
             Tender<span className="text-[hsl(var(--primary-light))]">Flow</span>
           </span>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close navigation"
-            className="-mr-2 ml-auto rounded-lg p-2 text-sidebar-muted transition-colors hover:bg-white/10 hover:text-white lg:hidden"
-          >
-            <X className="size-4" />
-          </button>
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-6">
@@ -93,7 +64,6 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                   <li key={item.to}>
                     <NavLink
                       to={item.to}
-                      onClick={onClose}
                       className={({ isActive }) =>
                         cn(
                           "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
@@ -134,7 +104,6 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             </button>
           </div>
         </div>
-      </aside>
-    </>
+    </aside>
   );
 }

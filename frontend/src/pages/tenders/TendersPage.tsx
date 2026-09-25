@@ -5,6 +5,7 @@ import { Drawer } from "@/components/shared/Drawer";
 import { MetricCard } from "@/components/shared/MetricCard";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Pagination } from "@/components/shared/Pagination";
+import { FilterSheet } from "@/components/shared/FilterSheet";
 import { SearchInput } from "@/components/shared/SearchInput";
 import { SegmentedFilter } from "@/components/shared/SegmentedFilter";
 import { Button } from "@/components/ui/button";
@@ -69,9 +70,6 @@ export default function TendersPage() {
     page_size: 50,
     search: debouncedClientSearch || undefined,
   });
-  // Only meaningful for one client at a time: a lump sum is paid by a person,
-  // not by a filter (CH-35).
-  const { data: outstanding } = useClientOutstanding(clientFilter);
   const deleteTender = useDeleteTender();
   const bulkDeleteTenders = useBulkDeleteTenders();
   const confirm = useConfirm();
@@ -81,10 +79,35 @@ export default function TendersPage() {
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   const hasDateRange = Boolean(startDate || endDate);
   const allOnPageSelected = rows.length > 0 && rows.every((t) => selectedIds.has(t.id));
-  const selectedClient = (clientsPage?.items ?? []).find((c) => c.id === clientFilter);
-  const clientLabel = selectedClient
-    ? `${selectedClient.contact_person_name} · ${selectedClient.company_name}`
+  // Badge on the phone's Filters button: the status tabs and the search field
+  // stay visible above the list, so neither counts here.
+  const activeFilterCount = [clientFilter, startDate, endDate].filter(Boolean).length;
+
+  /**
+   * The client the whole result set belongs to, if it belongs to exactly one.
+   *
+   * Picking a client in the filter is the obvious way to get there, but typing
+   * a name into the search box narrows to one client just as often, and the
+   * dues panel was missing in that case. Only trusted when every matching row
+   * is on screen (`totalCount <= rows.length`) — page one being all one client
+   * says nothing about page two.
+   */
+  const searchedClient =
+    rows.length > 0 &&
+    totalCount <= rows.length &&
+    rows.every((t) => t.client.id === rows[0].client.id)
+      ? rows[0].client
+      : undefined;
+  const settleClientId = clientFilter || searchedClient?.id || "";
+  const filteredClient = (clientsPage?.items ?? []).find((c) => c.id === clientFilter);
+  const settleClient = filteredClient ?? (clientFilter ? undefined : searchedClient);
+  const clientLabel = settleClient
+    ? `${settleClient.contact_person_name} · ${settleClient.company_name}`
     : "this client";
+
+  // Only meaningful for one client at a time: a lump sum is paid by a person,
+  // not by a filter (CH-35).
+  const { data: outstanding } = useClientOutstanding(settleClientId);
 
   function changeFilter(apply: () => void) {
     apply();
@@ -187,11 +210,12 @@ export default function TendersPage() {
         title="Tenders"
         description="Every submission logged against a client, with what has been paid and what is still owed."
         actions={addButton}
+        primaryAction={{ label: "Log Tender", onClick: () => setFormState({ open: true }) }}
       />
 
       {/* Revenue and receivables are admin-only (CH-12). */}
       {isAdmin && summary && (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3">
           {showOutstanding && (
             <MetricCard
               label="Total Outstanding"
@@ -239,9 +263,14 @@ export default function TendersPage() {
         </div>
 
         {/* Client and dates on their own row: two labelled date fields do not
-            fit beside the tabs at tablet width without wrapping mid-pair. */}
-        <div className="flex flex-wrap items-end gap-3 px-4 pb-4 sm:px-5">
-          <div className="space-y-1.5">
+            fit beside the tabs at tablet width without wrapping mid-pair. On a
+            phone the same fields open as a sheet instead (CH-30). */}
+        <FilterSheet
+          activeCount={activeFilterCount}
+          onClear={clearFilters}
+          resultCount={totalCount}
+        >
+          <div className="w-full space-y-1.5 sm:w-auto">
             <Label htmlFor="tender_client_filter">Client</Label>
             <Combobox
               id="tender_client_filter"
@@ -260,7 +289,7 @@ export default function TendersPage() {
               clearable
             />
           </div>
-          <div className="space-y-1.5">
+          <div className="w-full space-y-1.5 sm:w-auto">
             <Label htmlFor="tender_start_date">From</Label>
             <Input
               id="tender_start_date"
@@ -271,7 +300,7 @@ export default function TendersPage() {
               onChange={(e) => changeFilter(() => setStartDate(e.target.value))}
             />
           </div>
-          <div className="space-y-1.5">
+          <div className="w-full space-y-1.5 sm:w-auto">
             <Label htmlFor="tender_end_date">To</Label>
             <Input
               id="tender_end_date"
@@ -283,14 +312,19 @@ export default function TendersPage() {
             />
           </div>
           {hasDateRange && (
-            <p className="pb-2.5 text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground sm:pb-2.5">
               Dates are IST, and both ends are included.
             </p>
           )}
-          <Button type="button" variant="outline" className="ml-auto" onClick={clearFilters}>
+          <Button
+            type="button"
+            variant="outline"
+            className="hidden sm:ml-auto sm:inline-flex"
+            onClick={clearFilters}
+          >
             Clear filters
           </Button>
-        </div>
+        </FilterSheet>
 
         {/* Only appears once something is ticked, so the table is unchanged
             until the user is actually mid-task (CH-29). */}
@@ -340,9 +374,10 @@ export default function TendersPage() {
           }
         />
 
-        {/* Sits under the rows it summarises, and only once a single client is
-            chosen: a lump sum is paid by a person, not by a filter (CH-35). */}
-        {clientFilter && outstanding && (
+        {/* Sits under the rows it summarises, and only once the view is down to
+            a single client — chosen in the filter or narrowed to by search:
+            a lump sum is paid by a person, not by a filter (CH-35). */}
+        {settleClientId && outstanding && (
           <div className="flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-border bg-muted/60 px-4 py-4 sm:px-5">
             <div className="min-w-0">
               <p className="eyebrow">Pending for this client</p>
@@ -395,9 +430,9 @@ export default function TendersPage() {
         title="Record Payment"
         description="Spread what the client paid across their unpaid tenders, oldest first."
       >
-        {clientFilter && outstanding && (
+        {settleClientId && outstanding && (
           <SettleDuesForm
-            clientId={clientFilter}
+            clientId={settleClientId}
             clientName={clientLabel}
             outstanding={outstanding.outstanding}
             onSuccess={() => setSettleOpen(false)}

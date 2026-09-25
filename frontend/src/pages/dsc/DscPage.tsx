@@ -1,6 +1,7 @@
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { Drawer } from "@/components/shared/Drawer";
+import { FilterSheet } from "@/components/shared/FilterSheet";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Pagination } from "@/components/shared/Pagination";
 import { SearchInput } from "@/components/shared/SearchInput";
@@ -76,6 +77,7 @@ export default function DscPage() {
         title="DSC Keys"
         description="Visible to all employees — find any client's key at a glance. Select a row to see its full history."
         actions={addButton}
+        primaryAction={{ label: "Log Key", onClick: () => setFormState({ open: true }) }}
       />
 
       <div className="surface">
@@ -94,7 +96,16 @@ export default function DscPage() {
           />
         </div>
 
-        <div className="toolbar">
+        <FilterSheet
+          activeCount={[clientFilter, statusFilter].filter(Boolean).length}
+          onClear={() =>
+            changeFilter(() => {
+              setClientFilter("");
+              setStatusFilter("");
+            })
+          }
+          resultCount={totalCount}
+        >
           <div className="w-full space-y-1.5 sm:w-56">
             <Label htmlFor="dsc_client_filter">Client</Label>
             <Combobox
@@ -126,7 +137,7 @@ export default function DscPage() {
               clearable
             />
           </div>
-        </div>
+        </FilterSheet>
 
         <DscTable
           dscKeys={data?.items ?? []}

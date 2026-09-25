@@ -13,6 +13,7 @@ import ExpensesPage from "@/pages/expenses/ExpensesPage";
 import TendersPage from "@/pages/tenders/TendersPage";
 import DashboardPage from "@/pages/DashboardPage";
 import LoginPage from "@/pages/LoginPage";
+import MorePage from "@/pages/MorePage";
 import NotFoundPage from "@/pages/NotFoundPage";
 
 export const router = createBrowserRouter([
@@ -29,6 +30,9 @@ export const router = createBrowserRouter([
           { path: "/tenders", element: <TendersPage /> },
           { path: "/emd", element: <EmdPage /> },
           { path: "/dsc", element: <DscPage /> },
+          // The phone's fourth tab; it redirects to the dashboard at `lg`,
+          // where the rail already carries everything on it (CH-30).
+          { path: "/more", element: <MorePage /> },
           {
             element: <AdminRoute />,
             children: [

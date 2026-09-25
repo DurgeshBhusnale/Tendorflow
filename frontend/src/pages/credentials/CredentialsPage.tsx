@@ -1,6 +1,7 @@
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { Drawer } from "@/components/shared/Drawer";
+import { FilterSheet } from "@/components/shared/FilterSheet";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Pagination } from "@/components/shared/Pagination";
 import { SearchInput } from "@/components/shared/SearchInput";
@@ -71,6 +72,7 @@ export default function CredentialsPage() {
         title="Credentials"
         description="Portal logins for every client. Anyone signed in can reveal a password or edit a login; only admins can delete one."
         actions={addButton}
+        primaryAction={{ label: "Add Credential", onClick: () => setFormState({ open: true }) }}
       />
 
       <div className="surface">
@@ -87,7 +89,14 @@ export default function CredentialsPage() {
           />
         </div>
 
-        <div className="toolbar">
+        <FilterSheet
+          activeCount={[clientFilter, portalFilter].filter(Boolean).length}
+          onClear={() => {
+            resetToFirstPage(setClientFilter)("");
+            setPortalFilter("");
+          }}
+          resultCount={totalCount}
+        >
           <div className="w-full space-y-1.5 sm:w-56">
             <Label htmlFor="credential_client_filter">Client</Label>
             <Select
@@ -120,7 +129,7 @@ export default function CredentialsPage() {
               ))}
             </Select>
           </div>
-        </div>
+        </FilterSheet>
 
         <CredentialsTable
           credentials={data?.items ?? []}

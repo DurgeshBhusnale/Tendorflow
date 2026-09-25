@@ -144,6 +144,36 @@ search lives in each list page's toolbar.
 
 Revisit only if a genuine cross-entity search endpoint is added.
 
+### The Phone Layout (CH-30)
+
+Below `lg` the app is an app, not a narrowed desktop:
+
+- **`<TabBar>`** replaces the rail — Home, Clients, Tenders, More, fixed to the
+  bottom inside the safe-area inset. The hamburger and the off-canvas rail are
+  gone: a phone's whole navigation should not sit behind one tap. Tabs come
+  from `primaryTabs` in `lib/nav.ts`; `<Sidebar>` is `hidden lg:flex`.
+- **`MorePage`** (`/more`) is the fourth tab: the nav groups minus the
+  destinations that already have a tab, plus the identity card and Sign out
+  that live at the foot of the rail on desktop. It redirects to the dashboard
+  at `lg` — with a real `matchMedia` check, not a CSS `hidden`, since a
+  `<Navigate>` inside a hidden div still navigates.
+- **`<PageHeader>`** is the app bar: full-bleed white, `sticky top-0`, with a
+  back arrow for any page without a tab, the title, and nothing else. **The
+  supporting sentence is desktop only** — on 390px it pushed the first row of
+  data below the fold to say something the user learns once. The bar keeps its
+  fill while the content scrolls under it, so the title reads as chrome rather
+  than as the page's first line.
+- **The page's primary action is a FAB**, from `primaryAction` on
+  `<PageHeader>`: a 56px circle above the tab bar, in the thumb zone. The
+  header's buttons are `hidden sm:flex`; both call the same handler.
+- **Metrics run two to a row**, `grid-cols-2`, with the hint line dropped and
+  the icon chip at 28px.
+- **Filters open as a bottom sheet** (`<FilterSheet>`), triggered by a chip
+  with a count badge. One DOM node, laid out inline from `sm` up and as a sheet
+  below it — never two copies of the same fields.
+- **Forms** keep the drawer, full-width, with the footer buttons splitting the
+  width at 48px tall and clearing the home indicator.
+
 ### Page Header (`components/shared/PageHeader.tsx`)
 
 Title, supporting line, actions pinned right.
@@ -184,17 +214,36 @@ in a card, or its square corners fight the card's rounded ones. A table card alw
 - **Every in-table action is an `outline` button, never `ghost`.** A ghost button in a table cell
   reads as static text until hovered; the 1px border is what makes it legible as pressable.
 
-Below `md` the table is not a table. Nine columns on a 390px screen means either horizontal
-scrolling to reach the actions or text too small to read, so each row renders as a card: one value
-as the heading, the row actions opposite it, and the rest as labelled pairs. Both renderings come
-from the same `columns` array — a column declares its mobile behaviour with `mobile`:
+Below `md` the table is not a table, and it is not a stack of cards either. The first mobile
+build printed every field of every record as a labelled pair, which turned a list into a stack of
+forms — eleven lines per row, two rows per screen. **A phone row identifies a record; the record
+itself is one tap away** in a detail sheet (CH-30). Both renderings come from the same `columns`
+array — a column declares its mobile role with `mobile`:
 
 | `mobile` | Effect |
 | --- | --- |
-| `"title"` | Heads the card. Defaults to the first column if none is marked. |
-| `"actions"` | Sits opposite the title instead of in the detail list. |
-| `"hide"` | Dropped on mobile — for columns the title already implies. |
-| *(unset)* | Becomes a label/value pair. |
+| `"title"` | Heads the row. Defaults to the first column if none is marked. |
+| `"amount"` | The figure, right-aligned and bold, at the end of the row. |
+| `"status"` | The pill, under the amount. |
+| `"actions"` | Moved into the sheet's footer, where `<RowActions>` renders with labels. |
+| `"hide"` | Dropped from the row *and* the sheet — for what the title already implies. |
+| *(unset)* | A labelled pair inside the sheet only. |
+
+The sheet is a bottom sheet: drag handle, the title cell as its header, the labelled pairs, and
+the row's actions pinned at the foot as full-height buttons (`<SheetActions>` makes `<RowActions>`
+render with labels there). Escape and a scrim tap close it, and acting on the record closes it
+too, because what opens next — a form drawer, a confirmation — owns the screen from there.
+
+Two exceptions the config alone cannot express:
+
+- **A table with its own `onRowClick` never opens the sheet** (DSC opens its history panel), so
+  its actions would be unreachable: they render **in the row** instead, and the chevron is dropped
+  because the buttons say the same thing and need the width. Such a row must also carry what the
+  module exists to answer — DSC puts the status pill and the key's storage location on their own
+  line inside the client cell.
+- **`selection` gets a select-all strip above the phone list** ("Select all 12" / "Deselect all").
+  The desktop control lives in the table header, which a phone has no room for, and without it
+  bulk delete meant ticking rows one at a time.
 
 Two optional props cover the cases a column config cannot express:
 
@@ -214,6 +263,9 @@ Two optional props cover the cases a column config cannot express:
     tenders reads as "what is still owed" before a single figure is read.
     Restate the hover tint (`hover:bg-red-50`) alongside the shade, or the
     colour vanishes under the cursor.
+  - **Every one of these tints is prefixed `md:`.** On a phone a full-bleed
+    tint behind every row reads as an error state, and the amount and pill
+    already carry the status there (CH-30).
 - **`selection`** — adds a leading checkbox column, for tables with a bulk
   action. The header checkbox covers **the rendered page only**, and shows an
   indeterminate state while part of it is ticked; anything wider than the page
