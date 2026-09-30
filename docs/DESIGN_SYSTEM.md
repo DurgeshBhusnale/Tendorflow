@@ -334,9 +334,20 @@ three short sections rather than one column of twelve inputs.
   in a form it is driven by `watch` + `setValue`, not `register`.
 
   Pass `onSearchChange` when the option list can outgrow one API page, so the
-  query goes to the server rather than filtering a truncated snapshot. Always
-  seed the currently-selected item into the options when editing, or the field
-  blanks out mid-edit as soon as the search stops matching it.
+  query goes to the server rather than filtering a truncated snapshot. That
+  makes `options` a moving target, and a field that names its selection by
+  looking it up there needs two defences (CH-36):
+
+  - Seed the currently-selected item into the options when editing, or the
+    field blanks out mid-edit as soon as the search stops matching it.
+  - Remember the option just committed. Choosing one clears the search, which
+    refetches the default page, and anything found by typing is usually not on
+    that page — so the field goes blank a moment after the click, reading as
+    though the selection never landed when in fact the value was set. The
+    combobox keeps a `lastCommitted` for this. A wrapper that drives two fields
+    from one value, as `shared/ClientPicker.tsx` does, must keep the picked
+    record itself as well: the *other* field reads its label out of the same
+    list.
 
 **Multi-line fields are `ui/textarea.tsx`**, not a taller `Input`. It wears
 the same 1px chrome and indigo focus ring, starts at four rows and is

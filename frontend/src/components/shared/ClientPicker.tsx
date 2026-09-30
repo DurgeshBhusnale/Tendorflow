@@ -26,7 +26,7 @@ interface ClientPickerProps {
   disabled?: boolean;
 }
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 100;
 
 /**
  * Picks a client by contact name *or* company name (CH-14).
@@ -55,15 +55,31 @@ export function ClientPicker({
     search: debouncedSearch || undefined,
   });
 
+  // The client picked in this session, kept for the same reason `selected` is
+  // (CH-36): choosing one clears the search, which refetches the default page,
+  // and a client found by typing is usually not on it. Both fields read their
+  // label out of this list, so without it the *other* field blanks even when
+  // the one clicked in remembers its own choice.
+  const [picked, setPicked] = React.useState<ClientRef | null>(null);
+
   const clients = React.useMemo<ClientRef[]>(() => {
     const items: ClientRef[] = data?.items ?? [];
-    // The linked client may not match the current search; without this the
-    // fields would blank out mid-edit and a save could drop the association.
-    if (selected && !items.some((item) => item.id === selected.id)) {
-      return [selected, ...items];
-    }
-    return items;
-  }, [data?.items, selected]);
+    const missing = [selected, picked].filter(
+      (client): client is ClientRef =>
+        client != null && !items.some((item) => item.id === client.id),
+    );
+    // Two fields, one value (CH-14): whichever was clicked in, both need the
+    // chosen client present to render its name.
+    const deduped = missing.filter(
+      (client, index) => missing.findIndex((other) => other.id === client.id) === index,
+    );
+    return deduped.length > 0 ? [...deduped, ...items] : items;
+  }, [data?.items, selected, picked]);
+
+  function handleChange(clientId: string) {
+    setPicked(clients.find((client) => client.id === clientId) ?? null);
+    onChange(clientId);
+  }
 
   const byContact: ComboboxOption[] = clients.map((client) => ({
     value: client.id,
@@ -85,7 +101,7 @@ export function ClientPicker({
             id={`${idPrefix}_client_name`}
             options={byContact}
             value={value}
-            onChange={onChange}
+            onChange={handleChange}
             onSearchChange={setSearch}
             placeholder="Search contact person…"
             emptyMessage="No client matches"
@@ -98,7 +114,7 @@ export function ClientPicker({
             id={`${idPrefix}_company_name`}
             options={byCompany}
             value={value}
-            onChange={onChange}
+            onChange={handleChange}
             onSearchChange={setSearch}
             placeholder="Search company…"
             emptyMessage="No client matches"

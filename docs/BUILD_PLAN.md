@@ -664,3 +664,38 @@ writing, so the confirmation screen cannot drift from the behaviour.
 - **No payments ledger.** Balances move; the visit itself is not recorded. The
   cost — not being able to reconstruct a single day's takings later — was named
   and accepted.
+
+---
+
+## Phase 16 — The Client Dropdown That Would Not Take a Selection
+
+| Ref | Change | Where it is specified |
+|---|---|---|
+| CH-36 | A searchable dropdown keeps the option just picked, instead of re-deriving its label from a list that has moved | `DESIGN_SYSTEM.md` §4 |
+
+No migration, no API change: the value was always being set correctly. Only the
+label was missing, which is why it looked like the click did nothing.
+
+### What actually happened
+
+Reported as "these two clients cannot be selected." Four facts met:
+
+1. `ClientPicker` fetched one page of clients, ordered newest-first, and the
+   page held 50.
+2. Typing searched the server, so any client could be *found*.
+3. Committing a choice cleared the search, which refetched that first page.
+4. Both the Client Name and Company Name fields rendered their label by looking
+   the selected id up in that page.
+
+So picking a client who was not among the newest 50 set the id, closed the
+panel, and then both fields came up blank — indistinguishable from a click that
+never landed. The affected set was every client past the 50th oldest, not two;
+the two named were simply the ones someone tried.
+
+### Why the fix is in two places
+
+The combobox remembering its own last commit is not enough here. Two fields are
+driven by one client id (CH-14), and the field that was *not* clicked reads its
+label out of the shared list — so `ClientPicker` merges the picked record into
+that list itself. The page size went to 100 as well, which narrows the window
+but does not close it; the remembered selection is what closes it.

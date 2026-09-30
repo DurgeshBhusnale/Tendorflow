@@ -63,7 +63,19 @@ export function Combobox({
   const generatedId = React.useId();
   const listboxId = `${id ?? generatedId}-listbox`;
 
-  const selected = options.find((option) => option.value === value);
+  // The option chosen here most recently, remembered so the field can still
+  // name it when it is no longer in `options` (CH-36).
+  //
+  // Committing clears the search, which for a server-backed list refetches
+  // the default page. Anything found by typing that is not on that page then
+  // vanishes from `options`, and a field that named its selection only by
+  // looking it up there went blank — reading as though the click never
+  // landed, while the value was in fact set.
+  const [lastCommitted, setLastCommitted] = React.useState<ComboboxOption | null>(null);
+
+  const selected =
+    options.find((option) => option.value === value) ??
+    (lastCommitted?.value === value ? lastCommitted : undefined);
 
   // With a server-side search the list is already the answer to the query;
   // filtering it again locally would hide rows the server deliberately matched
@@ -104,6 +116,7 @@ export function Combobox({
   }
 
   function commit(option: ComboboxOption) {
+    setLastCommitted(option);
     onChange(option.value);
     close();
     inputRef.current?.blur();
