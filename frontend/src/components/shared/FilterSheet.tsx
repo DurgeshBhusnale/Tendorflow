@@ -82,9 +82,12 @@ export function FilterSheet({ activeCount, onClear, resultCount, children }: Fil
         aria-modal={open ? true : undefined}
         aria-label={open ? "Filters" : undefined}
         className={cn(
-          // Desktop: the toolbar row it has always been.
-          "sm:flex sm:flex-wrap sm:items-end sm:gap-3 sm:px-5 sm:pb-4",
+          // Desktop: the toolbar row it has always been. The sheet's padding is
+          // reset *before* the row's own: cn() runs tailwind-merge, which keeps
+          // the last conflicting class, so a trailing sm:p-0 erased sm:px-5 and
+          // left the fields flush against the card edge.
           "sm:static sm:z-auto sm:max-h-none sm:rounded-none sm:bg-transparent sm:p-0 sm:shadow-none",
+          "sm:flex sm:flex-wrap sm:items-end sm:gap-3 sm:px-5 sm:pb-4",
           // Phone: the same fields, in a sheet.
           open
             ? "fixed inset-x-0 bottom-0 z-50 flex max-h-[85dvh] flex-col gap-4 overflow-y-auto rounded-t-2xl bg-card p-4 pb-[max(env(safe-area-inset-bottom,0px),16px)] shadow-pop"
