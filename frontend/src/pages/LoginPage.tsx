@@ -49,8 +49,8 @@ export default function LoginPage() {
     <div className="flex min-h-screen">
       {/* Left: editorial panel over the brand artwork. */}
       <div className="login-backdrop hidden flex-1 flex-col justify-between p-12 lg:flex">
-        <div className="self-start rounded-xl bg-white px-4 py-2.5 shadow-pop">
-          <img src="/logo.png" alt="Mangal Infotech" className="h-12 w-auto object-contain" />
+        <div className="self-start rounded-2xl bg-white px-6 py-4 shadow-pop">
+          <img src="/logo.png" alt="Mangal Infotech" className="h-20 w-auto object-contain" />
         </div>
         <div className="max-w-md">
           <p className="font-display text-4xl font-semibold leading-[1.15] tracking-tight text-white">
@@ -75,7 +75,7 @@ export default function LoginPage() {
           <img
             src="/logo.png"
             alt="Mangal Infotech"
-            className="mx-auto mb-8 h-14 w-auto object-contain sm:h-16"
+            className="mx-auto mb-8 h-20 w-auto object-contain sm:h-24"
           />
 
           <div className="space-y-5">

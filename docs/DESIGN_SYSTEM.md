@@ -116,7 +116,7 @@ come back from the API on an old row (`DATABASE_SCHEMA.md` §7), so index with
 ### Sidebar (`components/layout/Sidebar.tsx`)
 
 256px fixed, full height, navy (`bg-sidebar`), no border — the colour change is the edge. A 76px
-header carries the **Mangal Infotech logo** (`public/logo.png`) on a full-width white rounded
+header (96px, taller than the old wordmark's 76px so the logo reads) carries the **Mangal Infotech logo** (`public/logo.png`) on a full-width white rounded
 plate. The artwork has a white ground, so set directly on navy it read as a pasted-on box; the
 plate makes that white deliberate. It replaced the serif "TenderFlow" wordmark.
 Links are grouped ("Workspace", "Administration") with `.eyebrow` section labels in

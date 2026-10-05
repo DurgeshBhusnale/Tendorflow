@@ -47,9 +47,9 @@ export function Sidebar() {
     <aside className="hidden h-dvh w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground lg:flex">
         {/* The logo artwork has a white ground, so it sits on a white plate
             rather than floating as a box against the navy rail. */}
-        <div className="flex h-[76px] shrink-0 items-center border-b border-sidebar-border px-4">
-          <div className="flex h-12 w-full items-center justify-center rounded-lg bg-white px-3">
-            <img src="/logo.png" alt="Mangal Infotech" className="max-h-10 w-auto object-contain" />
+        <div className="flex h-24 shrink-0 items-center border-b border-sidebar-border px-4">
+          <div className="flex h-[72px] w-full items-center justify-center rounded-xl bg-white px-3">
+            <img src="/logo.png" alt="Mangal Infotech" className="h-14 w-auto object-contain" />
           </div>
         </div>
 
