@@ -30,11 +30,12 @@ async def list_tenders(
     search: str | None = Query(default=None),
     start_date: date | None = Query(default=None),
     end_date: date | None = Query(default=None),
+    created_by: UUID | None = Query(default=None),
     session: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(get_current_user),
 ):
     items, total_count = await tender_service.list_tenders(
-        session, page, page_size, client_id, status, search, start_date, end_date
+        session, page, page_size, client_id, status, search, start_date, end_date, created_by
     )
     return paginated(
         [TenderRead.model_validate(item) for item in items], total_count, page, page_size
@@ -48,6 +49,7 @@ async def summarize_tenders(
     search: str | None = Query(default=None),
     start_date: date | None = Query(default=None),
     end_date: date | None = Query(default=None),
+    created_by: UUID | None = Query(default=None),
     session: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(require_admin),
 ):
@@ -58,7 +60,7 @@ async def summarize_tenders(
     the endpoint itself is what enforces it.
     """
     summary = await tender_service.summarize_tenders(
-        session, client_id, status, search, start_date, end_date
+        session, client_id, status, search, start_date, end_date, created_by
     )
     return ok(summary)
 

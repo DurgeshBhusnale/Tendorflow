@@ -699,3 +699,28 @@ driven by one client id (CH-14), and the field that was *not* clicked reads its
 label out of the shared list — so `ClientPicker` merges the picked record into
 that list itself. The page size went to 100 as well, which narrows the window
 but does not close it; the remembered selection is what closes it.
+
+---
+
+## Phase 17 — Filtering Tenders by Who Touched Them
+
+| Ref | Change | Where it is specified |
+|---|---|---|
+| CH-37 | `created_by` filter on the tender list and summary, plus a names-only `GET /api/users` directory open to every role | `API_CONTRACT.md` §2a and §7, `PRD.md` §4.4 |
+
+No migration: `tenders.created_by` already exists.
+
+### "Last touched by", not "logged by"
+
+The filter matches the "Added/Updated By" column, and that column is re-set on
+every edit (CH-19). So filtering by a user returns what they logged *or* last
+edited, and a row someone else later edits leaves their results. A true
+authorship filter would need a column that is never overwritten, which nothing
+in the schema has. The label says "Added/Updated By" for that reason.
+
+### Why a new endpoint
+
+The dropdown needs every user's name, and `/api/admin/users` is admin-only.
+Tenders are read by employees too, so the filter would have been admin-only by
+accident. `GET /api/users` returns `id`, `full_name` and `is_active` only, which
+are names every role already sees beside each row.

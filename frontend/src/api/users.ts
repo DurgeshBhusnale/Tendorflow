@@ -1,6 +1,6 @@
 import { apiClient } from "@/api/client";
 import type { ApiSuccess, PaginatedResponse } from "@/types/api";
-import type { User, UserCreate, UserUpdate } from "@/types/user";
+import type { User, UserCreate, UserOption, UserUpdate } from "@/types/user";
 
 export const usersApi = {
   list: async (params: {
@@ -13,6 +13,14 @@ export const usersApi = {
       "/api/admin/users",
       { params },
     );
+    return data.data;
+  },
+  /**
+   * Every account's name, for the "Added/Updated By" filter (CH-37). Unlike
+   * `list` this is open to employees, and returns a plain array.
+   */
+  directory: async () => {
+    const { data } = await apiClient.get<ApiSuccess<UserOption[]>>("/api/users");
     return data.data;
   },
   create: async (payload: UserCreate) => {

@@ -91,3 +91,17 @@ class UserRead(BaseModel):
     role: str
     is_active: bool
     created_at: datetime
+
+
+class UserOption(BaseModel):
+    """One entry in the user directory — a dropdown source, not an account (CH-37).
+
+    Readable by every signed-in user, so it carries only what the
+    "Added/Updated By" column already shows them: no username, email or role.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    full_name: str
+    is_active: bool

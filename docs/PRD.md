@@ -229,8 +229,12 @@ Flagged in `ARCHITECTURE.md` as a hardening item.
   follows the active filter: Total Outstanding, Partially Paid Value, Total Paid
   Value.
 - Filter bar: searchable Client dropdown, Status segmented control
-  (All / Pending / Partially Paid / Paid), and a **From / To date range**.
-  Dates are IST calendar days and both ends are inclusive.
+  (All / Pending / Partially Paid / Paid), an **Added/Updated By** user
+  dropdown, and a **From / To date range**. Dates are IST calendar days and
+  both ends are inclusive.
+  - The user filter matches the column of the same name, so it finds the rows a
+    person **last touched**, not only the ones they first logged. Available to
+    employees as well as admins.
 - **Bulk delete, admin-only.** Each row carries a checkbox for admins, with a
   header checkbox selecting everything on the current page. Where the filter
   matches more rows than the page shows, an explicit "Select all N matching

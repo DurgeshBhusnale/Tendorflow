@@ -32,6 +32,16 @@ export interface UserUpdate {
   password?: string;
 }
 
+/**
+ * One entry in the user directory (CH-37) — readable by every role, so it
+ * carries the name only, never the account details.
+ */
+export interface UserOption {
+  id: string;
+  full_name: string;
+  is_active: boolean;
+}
+
 export interface AuthUser {
   id: string;
   full_name: string;

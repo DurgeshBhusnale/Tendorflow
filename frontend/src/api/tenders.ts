@@ -18,6 +18,11 @@ export interface TenderFilters {
   /** Inclusive IST calendar days, as YYYY-MM-DD. */
   start_date?: string;
   end_date?: string;
+  /**
+   * A user id. Matches the row's last editor, not its original author:
+   * `created_by` is re-set on every update (CH-19, CH-37).
+   */
+  created_by?: string;
 }
 
 export const tendersApi = {

@@ -383,3 +383,39 @@ async def test_deleting_a_users_records_keeps_them_but_drops_attribution(
     resp = await client.get(f"/api/clients/{client_row_id}", headers=admin_headers)
     assert resp.status_code == 200
     assert resp.json()["data"]["created_by"] is None
+
+
+# --------------------------------------------------------------------------
+# User directory (CH-37) — names for the "Added/Updated By" filter
+# --------------------------------------------------------------------------
+
+
+async def test_directory_is_readable_by_an_employee(
+    client, employee_headers, employee_user, make_user, uniq
+):
+    inactive, _ = await make_user(
+        email=f"gone-{uniq}@example.com", full_name=f"Former Employee {uniq}", is_active=False
+    )
+
+    resp = await client.get("/api/users", headers=employee_headers)
+
+    assert resp.status_code == 200
+    entries = {entry["id"]: entry for entry in resp.json()["data"]}
+    assert entries[str(employee_user[0].id)]["full_name"] == "Test User"
+    # Deactivated accounts stay listed: the rows they touched still carry their name.
+    assert entries[str(inactive.id)]["is_active"] is False
+
+
+async def test_directory_exposes_names_only(client, employee_headers):
+    """Readable by every role, so nothing beyond what the tables already print."""
+    resp = await client.get("/api/users", headers=employee_headers)
+
+    entry = resp.json()["data"][0]
+    assert set(entry) == {"id", "full_name", "is_active"}
+
+
+async def test_directory_requires_auth(client):
+    resp = await client.get("/api/users")
+
+    assert resp.status_code == 401
+    assert resp.json()["error"]["code"] == "UNAUTHENTICATED"

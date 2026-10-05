@@ -16,6 +16,7 @@ import { tendersApi } from "@/api/tenders";
 import { useClients } from "@/hooks/useClients";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useUserDirectory } from "@/hooks/useUsers";
 import {
   useBulkDeleteTenders,
   useClientOutstanding,
@@ -39,6 +40,7 @@ export default function TendersPage() {
   const [search, setSearch] = useState("");
   const [clientFilter, setClientFilter] = useState("");
   const [clientSearch, setClientSearch] = useState("");
+  const [userFilter, setUserFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusOption>("All");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -58,6 +60,7 @@ export default function TendersPage() {
     search: search || undefined,
     start_date: startDate || undefined,
     end_date: endDate || undefined,
+    created_by: userFilter || undefined,
   };
 
   const { data, isLoading } = useTenders({ ...filters, page, page_size: PAGE_SIZE });
@@ -70,6 +73,7 @@ export default function TendersPage() {
     page_size: 50,
     search: debouncedClientSearch || undefined,
   });
+  const { data: users } = useUserDirectory();
   const deleteTender = useDeleteTender();
   const bulkDeleteTenders = useBulkDeleteTenders();
   const confirm = useConfirm();
@@ -81,7 +85,7 @@ export default function TendersPage() {
   const allOnPageSelected = rows.length > 0 && rows.every((t) => selectedIds.has(t.id));
   // Badge on the phone's Filters button: the status tabs and the search field
   // stay visible above the list, so neither counts here.
-  const activeFilterCount = [clientFilter, startDate, endDate].filter(Boolean).length;
+  const activeFilterCount = [clientFilter, userFilter, startDate, endDate].filter(Boolean).length;
 
   /**
    * The client the whole result set belongs to, if it belongs to exactly one.
@@ -171,6 +175,7 @@ export default function TendersPage() {
     changeFilter(() => {
       setSearch("");
       setClientFilter("");
+      setUserFilter("");
       setStatusFilter("All");
       setStartDate("");
       setEndDate("");
@@ -286,6 +291,26 @@ export default function TendersPage() {
               onSearchChange={setClientSearch}
               placeholder="All clients"
               emptyMessage="No client matches"
+              clearable
+            />
+          </div>
+          {/* Matches the table's Added/Updated By column: the last person to
+              touch each row, not necessarily who logged it (CH-37). */}
+          <div className="w-full space-y-1.5 sm:w-auto">
+            <Label htmlFor="tender_user_filter">Added/Updated By</Label>
+            <Combobox
+              id="tender_user_filter"
+              aria-label="Filter by who added or last updated the tender"
+              className="w-full sm:w-48"
+              options={(users ?? []).map((u) => ({
+                value: u.id,
+                label: u.full_name,
+                hint: u.is_active ? undefined : "Inactive",
+              }))}
+              value={userFilter}
+              onChange={(value) => changeFilter(() => setUserFilter(value))}
+              placeholder="All users"
+              emptyMessage="No user matches"
               clearable
             />
           </div>

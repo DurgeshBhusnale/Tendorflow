@@ -252,6 +252,30 @@ attribution should be preserved.
 
 ---
 
+## 2a. User Directory
+
+### `GET /api/users`
+
+**Any signed-in user.** The source for the "Added/Updated By" filter on the
+Tenders page, which employees use as well as admins — account management above
+stays admin-only.
+
+Returns names only: no username, email or role. Every role can already read
+these names beside each row, so this exposes nothing new.
+
+**Not paginated**, like the master lists: the team is a bounded dropdown source.
+Ordered by `full_name`. Deactivated accounts are included, because the rows they
+touched still carry their name.
+
+**Success 200:**
+```json
+{ "success": true, "data": [ { "id": "uuid", "full_name": "Asha Patil", "is_active": true } ] }
+```
+
+**Errors:** `401 UNAUTHENTICATED`.
+
+---
+
 ## 3. Clients
 
 ### `GET /api/clients`
@@ -537,6 +561,13 @@ Query params:
 | `search` | Matches client contact_person_name, client company_name, or tender department name. |
 | `start_date` | Inclusive lower bound, `YYYY-MM-DD`. |
 | `end_date` | Inclusive upper bound, `YYYY-MM-DD`. |
+| `created_by` | A user id. Restricts to rows that user **last touched** — see below. |
+
+`created_by` matches the column the table labels "Added/Updated By". Because it
+is re-set to the acting user on every update, filtering by a user returns the
+rows they logged *or* were the last to edit, and a row someone else has since
+edited drops out of their results. It is a "last touched by" filter, not an
+authorship one. Names for the dropdown come from `GET /api/users` (§2a).
 
 **Filtering and ordering are by `tender_date`**, the calendar day the tender is
 logged *for*, which is not necessarily the day someone typed it in. Both bounds
@@ -622,7 +653,7 @@ endpoint: hiding the cards in the UI would leave the numbers one API call away
 from any employee.
 
 Accepts the **same** filter params as `GET /api/tenders` (`client_id`, `status`,
-`search`, `start_date`, `end_date`; pagination params are ignored) and describes
+`search`, `start_date`, `end_date`, `created_by`; pagination params are ignored) and describes
 exactly the rows that filter selects — so the strip always agrees with the table
 beneath it. Filtering to `status=Paid` therefore reports a pending value of
 `"0.00"`, which is correct for the visible rows.

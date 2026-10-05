@@ -5,6 +5,7 @@ import type { UserUpdate } from "@/types/user";
 export const usersKeys = {
   all: ["users"] as const,
   list: (params: object) => [...usersKeys.all, "list", params] as const,
+  directory: () => [...usersKeys.all, "directory"] as const,
 };
 
 export function useUsers(params: {
@@ -16,6 +17,14 @@ export function useUsers(params: {
   return useQuery({
     queryKey: usersKeys.list(params),
     queryFn: () => usersApi.list(params),
+  });
+}
+
+/** Names for the "Added/Updated By" filter — readable by any role (CH-37). */
+export function useUserDirectory() {
+  return useQuery({
+    queryKey: usersKeys.directory(),
+    queryFn: usersApi.directory,
   });
 }
 

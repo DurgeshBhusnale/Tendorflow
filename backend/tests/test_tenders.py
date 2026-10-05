@@ -522,6 +522,61 @@ async def test_search_matches_company_name(
     assert resp.json()["data"]["total_count"] == 1
 
 
+async def test_filter_by_last_touched_by(
+    client, employee_headers, other_employee_headers, client_id, tender_department_id
+):
+    """`created_by` narrows to one user's rows (CH-37)."""
+    mine = await _create_tender(client, employee_headers, client_id, tender_department_id)
+    await _create_tender(client, other_employee_headers, client_id, tender_department_id)
+    my_id = mine.json()["data"]["created_by"]["id"]
+
+    resp = await client.get(
+        "/api/tenders",
+        params={"client_id": client_id, "created_by": my_id},
+        headers=employee_headers,
+    )
+
+    assert resp.status_code == 200
+    body = resp.json()["data"]
+    assert body["total_count"] == 1
+    assert body["items"][0]["id"] == mine.json()["data"]["id"]
+
+
+async def test_filter_by_user_follows_the_latest_edit(
+    client, employee_headers, other_employee_headers, client_id, tender_department_id
+):
+    """created_by is re-set on every edit (CH-19), so an edit moves the row to
+    the editor — the filter answers "last touched by", not "logged by"."""
+    created = await _create_tender(client, employee_headers, client_id, tender_department_id)
+    tender = created.json()["data"]
+    edited = await client.patch(
+        f"/api/tenders/{tender['id']}", json={"quantity": 3}, headers=other_employee_headers
+    )
+
+    original_author = await client.get(
+        "/api/tenders",
+        params={"client_id": client_id, "created_by": tender["created_by"]["id"]},
+        headers=employee_headers,
+    )
+    editor = await client.get(
+        "/api/tenders",
+        params={"client_id": client_id, "created_by": edited.json()["data"]["created_by"]["id"]},
+        headers=employee_headers,
+    )
+
+    assert original_author.json()["data"]["total_count"] == 0
+    assert editor.json()["data"]["total_count"] == 1
+
+
+async def test_filter_by_user_rejects_a_malformed_id(client, employee_headers):
+    resp = await client.get(
+        "/api/tenders", params={"created_by": "not-a-uuid"}, headers=employee_headers
+    )
+
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
 async def test_date_range_includes_today_in_ist(
     client, employee_headers, client_id, tender_department_id
 ):
@@ -775,6 +830,37 @@ async def test_summary_respects_the_date_filter(
     )
 
     assert resp.json()["data"]["total_pending_value"] == "0.00"
+
+
+async def test_summary_respects_the_user_filter(
+    client,
+    admin_headers,
+    employee_headers,
+    other_employee_headers,
+    client_id,
+    tender_department_id,
+):
+    """Same rows as the table, so the user filter narrows the strip too (CH-37)."""
+    mine = await _create_tender(
+        client, employee_headers, client_id, tender_department_id, quantity=1, price="900.00"
+    )
+    await _create_tender(
+        client,
+        other_employee_headers,
+        client_id,
+        tender_department_id,
+        quantity=1,
+        price="400.00",
+    )
+
+    resp = await client.get(
+        "/api/tenders/summary",
+        params={"client_id": client_id, "created_by": mine.json()["data"]["created_by"]["id"]},
+        headers=admin_headers,
+    )
+
+    assert resp.json()["data"]["total_pending_value"] == "900.00"
+    assert resp.json()["data"]["pending_count"] == 1
 
 
 async def test_summary_route_not_shadowed_by_id_route(client, admin_headers):

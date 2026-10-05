@@ -39,6 +39,16 @@ async def list_users(
     return items, total_count or 0
 
 
+async def list_user_directory(session: AsyncSession) -> list[User]:
+    """Every account, by name, for the "Added/Updated By" filter (CH-37).
+
+    Deactivated accounts stay in: the rows they touched are still attributed
+    to them, and those are exactly the rows someone may want to find.
+    """
+    query = select(User).order_by(User.full_name, User.created_at)
+    return list((await session.scalars(query)).all())
+
+
 async def _assert_identity_available(
     session: AsyncSession,
     *,

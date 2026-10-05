@@ -47,6 +47,7 @@ def _apply_filters(
     search,
     start_date: date | None = None,
     end_date: date | None = None,
+    created_by: UUID | None = None,
     *,
     needs_join: bool,
 ):
@@ -57,6 +58,10 @@ def _apply_filters(
     """
     if client_id is not None:
         query = query.where(Tender.client_id == client_id)
+    # created_by is re-set on every edit (CH-19), so this selects the rows a
+    # user touched last, not the ones they originally logged (CH-37).
+    if created_by is not None:
+        query = query.where(Tender.created_by == created_by)
     if status is not None:
         query = query.where(Tender.status == status)
     # Both bounds are inclusive. tender_date is already a calendar day (CH-22),
@@ -101,9 +106,17 @@ async def list_tenders(
     search: str | None = None,
     start_date: date | None = None,
     end_date: date | None = None,
+    created_by: UUID | None = None,
 ) -> tuple[list[Tender], int]:
     query = _apply_filters(
-        select(Tender), client_id, status, search, start_date, end_date, needs_join=True
+        select(Tender),
+        client_id,
+        status,
+        search,
+        start_date,
+        end_date,
+        created_by,
+        needs_join=True,
     )
     count_query = _apply_filters(
         select(func.count()).select_from(Tender),
@@ -112,6 +125,7 @@ async def list_tenders(
         search,
         start_date,
         end_date,
+        created_by,
         needs_join=True,
     )
 
@@ -135,6 +149,7 @@ async def summarize_tenders(
     search: str | None = None,
     start_date: date | None = None,
     end_date: date | None = None,
+    created_by: UUID | None = None,
 ) -> TenderSummary:
     """Totals for exactly the rows the same filters select, summed in Postgres.
 
@@ -155,6 +170,7 @@ async def summarize_tenders(
         search,
         start_date,
         end_date,
+        created_by,
         needs_join=True,
     ).group_by(Tender.status)
 
