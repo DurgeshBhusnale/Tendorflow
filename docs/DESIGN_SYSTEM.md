@@ -116,9 +116,9 @@ come back from the API on an old row (`DATABASE_SCHEMA.md` §7), so index with
 ### Sidebar (`components/layout/Sidebar.tsx`)
 
 256px fixed, full height, navy (`bg-sidebar`), no border — the colour change is the edge. A 76px
-header carries the serif wordmark alone, its second half in `--primary-light`. The indigo icon
-tile that sat beside it is gone: a wordmark *is* the mark, and a generic document glyph next to
-it claimed a logo the product does not have.
+header carries the **Mangal Infotech logo** (`public/logo.png`) on a full-width white rounded
+plate. The artwork has a white ground, so set directly on navy it read as a pasted-on box; the
+plate makes that white deliberate. It replaced the serif "TenderFlow" wordmark.
 Links are grouped ("Workspace", "Administration") with `.eyebrow` section labels in
 `text-sidebar-muted`; the Administration group renders only for admins, and `lib/nav.ts` is the
 single source for both groups.
@@ -403,12 +403,16 @@ the default tone rather than the red one.
 ### Sign-in Page (`pages/LoginPage.tsx`)
 
 Split screen. **Left:** the editorial panel on `.login-backdrop` — the brand artwork at
-`public/login-bg.svg` over a matching navy wash, carrying the wordmark, serif headline, supporting
+`public/login-bg.svg` over a matching navy wash, carrying the logo on a white plate, serif headline, supporting
 line and `Internal use only` eyebrow, all in white. A left-to-right scrim sits over the artwork so
 the copy stays legible at any crop, and the artwork is anchored left so the document motif falls in
 the panel's right half. **Right:** a 420px white `rounded-2xl` card with `shadow-pop`, on the
-standard off-white surface. The card carries no wordmark or logo — the brand lives on the other
-half. Below the `lg` breakpoint the editorial panel drops and the card takes the full width.
+standard off-white surface. The card opens with the logo, centred. It repeats the panel's on
+desktop, but below the `lg` breakpoint the editorial panel drops and the card takes the full
+width, and without it a phone showed no branding at all.
+
+The browser tab reads **Mangal Infotech** and uses the round mark (`public/favicon.png`) as its
+icon.
 
 Two deliberate departures from the rest of the app:
 
@@ -416,7 +420,7 @@ Two deliberate departures from the rest of the app:
   the product that isn't indigo; sign-in is a standalone surface with no competing actions.
 - The password field has a show/hide toggle. Purely client-side — it flips the input `type`.
 
-The wordmark's accent half uses `--primary-light` (a lifted indigo) rather than `--primary`;
+`--primary-light` (a lifted indigo) was introduced for the old wordmark's accent half, since
 `#2952E3` has too little contrast on navy. It is applied as `text-[hsl(var(--primary-light))]`
 rather than a registered Tailwind colour deliberately — a single-use shade isn't worth a config
 entry, and config changes only take effect after a dev-server restart.

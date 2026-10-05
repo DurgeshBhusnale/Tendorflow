@@ -49,9 +49,9 @@ export default function LoginPage() {
     <div className="flex min-h-screen">
       {/* Left: editorial panel over the brand artwork. */}
       <div className="login-backdrop hidden flex-1 flex-col justify-between p-12 lg:flex">
-        <span className="font-display text-lg font-bold tracking-tight text-white">
-          Tender<span className="text-[hsl(var(--primary-light))]">Flow</span>
-        </span>
+        <div className="self-start rounded-xl bg-white px-4 py-2.5 shadow-pop">
+          <img src="/logo.png" alt="Mangal Infotech" className="h-12 w-auto object-contain" />
+        </div>
         <div className="max-w-md">
           <p className="font-display text-4xl font-semibold leading-[1.15] tracking-tight text-white">
             Every tender, tracked from notice to award.
@@ -69,7 +69,14 @@ export default function LoginPage() {
           onSubmit={onSubmit}
           className="w-full max-w-[420px] rounded-2xl border border-border bg-card p-6 shadow-pop sm:p-10"
         >
-          <h1 className="sr-only">Sign in</h1>
+          <h1 className="sr-only">Sign in to Mangal Infotech</h1>
+          {/* The editorial panel carrying the logo is hidden below lg, so the
+              card brings its own — on a phone this is the only branding. */}
+          <img
+            src="/logo.png"
+            alt="Mangal Infotech"
+            className="mx-auto mb-8 h-14 w-auto object-contain sm:h-16"
+          />
 
           <div className="space-y-5">
             <div className="space-y-2">
