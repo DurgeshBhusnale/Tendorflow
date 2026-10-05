@@ -48,11 +48,9 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen">
       {/* Left: editorial panel over the brand artwork. */}
-      <div className="login-backdrop hidden flex-1 flex-col justify-between p-12 lg:flex">
-        <div className="self-start rounded-2xl bg-white px-6 py-4 shadow-pop">
-          <img src="/logo.png" alt="Mangal Infotech" className="h-20 w-auto object-contain" />
-        </div>
-        <div className="max-w-md">
+      {/* No logo here: the card carries the only one, so it is not shown twice. */}
+      <div className="login-backdrop hidden flex-1 flex-col p-12 lg:flex">
+        <div className="my-auto max-w-md">
           <p className="font-display text-4xl font-semibold leading-[1.15] tracking-tight text-white">
             Every tender, tracked from notice to award.
           </p>
@@ -70,8 +68,8 @@ export default function LoginPage() {
           className="w-full max-w-[420px] rounded-2xl border border-border bg-card p-6 shadow-pop sm:p-10"
         >
           <h1 className="sr-only">Sign in to Mangal Infotech</h1>
-          {/* The editorial panel carrying the logo is hidden below lg, so the
-              card brings its own — on a phone this is the only branding. */}
+          {/* The page's only logo, so it shows at every width — the editorial
+              panel beside it is hidden below lg anyway. */}
           <img
             src="/logo.png"
             alt="Mangal Infotech"

@@ -403,13 +403,13 @@ the default tone rather than the red one.
 ### Sign-in Page (`pages/LoginPage.tsx`)
 
 Split screen. **Left:** the editorial panel on `.login-backdrop` — the brand artwork at
-`public/login-bg.svg` over a matching navy wash, carrying the logo on a white plate, serif headline, supporting
+`public/login-bg.svg` over a matching navy wash, carrying the serif headline (vertically centred), supporting
 line and `Internal use only` eyebrow, all in white. A left-to-right scrim sits over the artwork so
 the copy stays legible at any crop, and the artwork is anchored left so the document motif falls in
 the panel's right half. **Right:** a 420px white `rounded-2xl` card with `shadow-pop`, on the
-standard off-white surface. The card opens with the logo, centred. It repeats the panel's on
-desktop, but below the `lg` breakpoint the editorial panel drops and the card takes the full
-width, and without it a phone showed no branding at all.
+standard off-white surface. The card opens with the logo, centred — the **only** logo on the page;
+the panel carries none, so it is not shown twice side by side. Below the `lg` breakpoint the
+editorial panel drops and the card takes the full width.
 
 The browser tab reads **Mangal Infotech** and uses the round mark (`public/favicon.png`) as its
 icon.
